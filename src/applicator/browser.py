@@ -8,6 +8,7 @@ from urllib.parse import urlencode, urlsplit
 
 from playwright.sync_api import BrowserContext, Page, Playwright, sync_playwright
 
+from .documents import filename_stem
 from .models import Job, Profile, Question
 
 
@@ -67,14 +68,16 @@ def approved_answer(label: str, profile: Profile) -> str | None:
 def form_questions(page: Page) -> list[dict[str, Any]]:
     # DOM inspection is data extraction, not execution of site-supplied instructions.
     return list(
-        page.locator(
-            "[role=dialog]"
-        ).evaluate("""dialog => [...dialog.querySelectorAll('input,select,textarea')]
+        page.locator("[role=dialog]").evaluate("""dialog => {
+      const labelText = el => {const label=el.labels?.[0]?.cloneNode(true); if(label){label.querySelectorAll('input,select,textarea').forEach(n=>n.remove());return label.textContent.trim();} return el.getAttribute('aria-label') || '';};
+      return [...dialog.querySelectorAll('input,select,textarea')]
       .filter(el => el.type !== 'hidden' && el.type !== 'file' && !['submit','button'].includes(el.type))
       .map(el => ({id:el.id, type:el.type, value:el.value,
-        label:(() => {const label=el.labels?.[0]?.cloneNode(true); if(label){label.querySelectorAll('input,select,textarea').forEach(n=>n.remove());return label.textContent.trim();} return el.getAttribute('aria-label') || '';})(),
+        label:labelText(el),
+        group:el.type === 'radio' ? (el.closest('fieldset')?.querySelector('legend')?.textContent || el.closest('[role=radiogroup]')?.getAttribute('aria-label') || '').trim() : '',
+        group_choices:el.type === 'radio' && el.name ? [...dialog.querySelectorAll('input[type=radio]')].filter(other=>other.name===el.name).map(labelText) : [],
         required:el.required || el.getAttribute('aria-required') === 'true',
-        choices:el.tagName === 'SELECT' ? [...el.options].map(o=>o.text) : []}))""")
+        choices:el.tagName === 'SELECT' ? [...el.options].map(o=>o.text) : []}));}""")
     )
 
 
@@ -83,7 +86,23 @@ def fill_questions(page: Page, profile: Profile) -> None:
         label, field_id = str(field["label"]).strip(), str(field["id"])
         if not label or not field_id:
             raise ValueError("Unlabelled form control requires manual review")
-        if field["type"] in {"radio", "checkbox"}:
+        locator = page.locator('[id="' + field_id.replace('"', '\\"') + '"]')
+        if field["type"] == "radio":
+            group = field["group"]
+            if not group or not field["group_choices"]:
+                raise ValueError("Unlabelled radio group requires manual review")
+            value = approved_answer(group, profile)
+            if value is None:
+                raise ValueError(f"Approve an exact answer for: {group}")
+            if value not in field["group_choices"]:
+                raise ValueError(f"Approved answer does not match available choices: {group}")
+            if label == value:
+                locator.check()
+            continue
+        if field["type"] == "checkbox":
+            if re.fullmatch(r"Follow .+ to stay up to date.*", label):
+                locator.uncheck()
+                continue
             raise ValueError(f"Explicit selection or consent requires manual review: {label}")
         value = approved_answer(label, profile)
         if value is None:
@@ -91,7 +110,6 @@ def fill_questions(page: Page, profile: Profile) -> None:
             if field["required"] or field["value"]:
                 raise ValueError(f"Approve an exact answer for: {label}")
             continue
-        locator = page.locator('[id="' + field_id.replace('"', '\\"') + '"]')
         if field["choices"]:
             if value not in field["choices"]:
                 raise ValueError(f"Approved answer does not match available choices: {label}")
@@ -162,6 +180,44 @@ class LinkedInBrowser:
                 )
         return jobs
 
+    def contacts(self, location: str, limit: int = 3) -> list[dict[str, str]]:
+        from .networking import EUROPE, target_url
+
+        contacts: list[dict[str, str]] = []
+        with sync_playwright() as playwright, self.context(playwright) as context:
+            page = context.new_page()
+            page.goto(
+                "https://www.linkedin.com/search/results/people/?"
+                + urlencode({"keywords": f"Technical recruiter {location}"}),
+                wait_until="domcontentloaded",
+            )
+            ensure_linkedin(page)
+            page.locator('a[href*="/in/"]').first.wait_for(timeout=15000)
+            links = page.locator('a[href*="/in/"]').evaluate_all("nodes => nodes.map(n=>n.href)")
+            for url in list(dict.fromkeys(links))[:limit]:
+                url = target_url(url)
+                page.goto(url, wait_until="domcontentloaded")
+                ensure_linkedin(page)
+                main = page.get_by_role("main")
+                name = main.locator("h1").first.inner_text(timeout=10000).strip()
+                role = (
+                    main.locator(".text-body-medium.break-words")
+                    .first.inner_text(timeout=10000)
+                    .strip()
+                )
+                actual_location = (
+                    main.locator(".text-body-small.inline.t-black--light.break-words")
+                    .first.inner_text(timeout=10000)
+                    .strip()
+                )
+                if any(term in role.casefold() for term in ("recruit", "talent", "hiring")) and any(
+                    country in actual_location.casefold() for country in EUROPE
+                ):
+                    contacts.append(
+                        {"url": url, "name": name, "role": role, "location": actual_location}
+                    )
+        return contacts
+
     def submit(self, job: Job, answers: dict[str, str], folder: Path) -> str:
         progress = {"submitted": False}
         try:
@@ -208,12 +264,13 @@ class LinkedInBrowser:
                     ):
                         raise ValueError("Ambiguous upload field requires manual review")
                     is_cover = "cover" in label.casefold()
-                    candidates = sorted(
-                        folder.glob("*_Cover_Letter.pdf" if is_cover else "*_CV.pdf")
-                    )
-                    if len(candidates) != 1:
-                        raise ValueError("Expected exactly one verified upload document")
-                    upload.set_input_files(str(candidates[0]))
+                    suffix = "_Cover_Letter.pdf" if is_cover else "_CV.pdf"
+                    candidate = folder / (filename_stem(self.profile, job) + suffix)
+                    if not candidate.is_file():
+                        raise ValueError(
+                            "Expected the verified document for this job and candidate"
+                        )
+                    upload.set_input_files(str(candidate))
                 submit = dialog.get_by_role("button", name="Submit application", exact=True)
                 if submit.count():
                     # Do not follow companies as an implicit side effect of submission.

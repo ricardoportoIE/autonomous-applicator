@@ -2,6 +2,7 @@
 const $ = (selector) => document.querySelector(selector);
 const all = (selector) => [...document.querySelectorAll(selector)];
 let token = sessionStorage.getItem("applicator-token") || "";
+let editingJob = null;
 let profile = null,
   settings = null,
   applications = [];
@@ -263,6 +264,16 @@ async function detail(id) {
     target.append(form);
   }
   const actions = node("div", undefined, "actions");
+  if (!["submitted", "submitting", "uncertain"].includes(row.state)) {
+    const edit = node("button", "Edit job details", "secondary");
+    edit.onclick = () => {
+      editingJob = row;
+      fill($("#job-form"), row.job);
+      $("#job-form button").textContent = "Save updated opportunity";
+      $("#job-form").scrollIntoView({ behavior: "smooth" });
+    };
+    actions.append(edit);
+  }
   for (const [label, ai] of [
     ["Prepare documents", false],
     ["Select evidence with GPT-6.1 Sol", true],
@@ -430,9 +441,31 @@ $("#job-form").onsubmit = (event) => {
     const match =
       linkedin.hostname === "www.linkedin.com" &&
       linkedin.pathname.match(/^\/jobs\/view\/(\d+)\/?$/);
-    obj.source = match ? "linkedin" : "manual";
-    obj.source_id = match ? match[1] : obj.url;
-    await api("/jobs", "POST", obj);
+    obj.source = editingJob
+      ? editingJob.job.source
+      : match
+        ? "linkedin"
+        : "manual";
+    obj.source_id = editingJob
+      ? editingJob.job.source_id
+      : match
+        ? match[1]
+        : Array.from(
+            new Uint8Array(
+              await crypto.subtle.digest(
+                "SHA-256",
+                new TextEncoder().encode(obj.url),
+              ),
+            ),
+          )
+            .map((byte) => byte.toString(16).padStart(2, "0"))
+            .join("");
+    obj.questions = editingJob ? editingJob.job.questions : [];
+    if (editingJob)
+      await api("/applications/" + editingJob.id + "/job", "PUT", obj);
+    else await api("/jobs", "POST", obj);
+    editingJob = null;
+    $("#job-form button").textContent = "Save opportunity";
     event.target.reset();
     await refresh();
     message("Opportunity imported. Prepare it to evaluate the fit.");
@@ -455,6 +488,12 @@ $("#linkedin-search").onclick = () =>
     const result = await api("/discover/linkedin", "POST");
     await refresh();
     message("Imported " + result.imported + " LinkedIn opportunities.");
+  });
+$("#contact-search").onclick = () =>
+  action(async () => {
+    const result = await api("/discover/contacts", "POST");
+    await refresh();
+    message("Reviewed " + result.reviewed + " European hiring contacts.");
   });
 $("#connection-form").onsubmit = (event) => {
   event.preventDefault();

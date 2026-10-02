@@ -77,6 +77,15 @@ class Networking:
         with self.store.connect() as db:
             return [dict(row) for row in db.execute("SELECT * FROM connections ORDER BY id DESC")]
 
+    def remaining(self) -> int:
+        with self.store.connect() as db:
+            count = int(
+                db.execute("SELECT COUNT(*) FROM connections WHERE day=?", (day_key(),)).fetchone()[
+                    0
+                ]
+            )
+        return max(0, self.store.settings().daily_connection_limit - count)
+
     def reserve(self, connection_id: int) -> dict[str, Any]:
         with self.store.connect(True) as db:
             from .models import Settings

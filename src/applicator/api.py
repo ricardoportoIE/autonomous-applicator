@@ -77,6 +77,19 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
         with browser_lock:
             configure_adapter()
             settings = store.settings()
+            if (
+                settings.automation_enabled
+                and settings.connections_enabled
+                and settings.discovery_enabled
+                and settings.linkedin_authorised
+                and network.remaining()
+            ):
+                profile, _ = store.profile()
+                contacts = LinkedInBrowser(data, profile).contacts(
+                    settings.search_location, min(3, network.remaining())
+                )
+                for contact in contacts:
+                    network.add(**contact)
             if settings.automation_enabled:
                 if settings.discovery_enabled and settings.linkedin_authorised:
                     profile, _ = store.profile()
@@ -222,6 +235,12 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
         app_id, created = store.add_job(job)
         return {"id": app_id, "created": created}
 
+    @app.put("/api/applications/{app_id}/job", dependencies=auth)
+    def update_job(app_id: int, job: Job) -> dict[str, str]:
+        with browser_lock:
+            store.update_job(app_id, job)
+        return {"status": "updated"}
+
     @app.post("/api/discover/greenhouse", dependencies=auth)
     def discover_greenhouse(board: Board) -> dict[str, int]:
         try:
@@ -265,7 +284,8 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
                     502, "AI advice failed; no documents or applications were sent"
                 ) from exc
             selected = advice.evidence_ids
-        service.prepare(app_id, selected)
+        with browser_lock:
+            service.prepare(app_id, selected)
         return store.application(app_id)
 
     @app.post("/api/applications/{app_id}/submit", dependencies=auth)
@@ -323,6 +343,18 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
     @app.get("/api/connections", dependencies=auth)
     def connections() -> list[dict[str, Any]]:
         return network.list()
+
+    @app.post("/api/discover/contacts", dependencies=auth)
+    def discover_contacts() -> dict[str, int]:
+        settings = store.settings()
+        if not settings.linkedin_authorised:
+            raise ValueError("Configure the declared LinkedIn authorisation scope first")
+        profile, _ = store.profile()
+        with browser_lock:
+            contacts = LinkedInBrowser(data, profile).contacts(settings.search_location)
+        for contact in contacts:
+            network.add(**contact)
+        return {"reviewed": len(contacts)}
 
     @app.post("/api/connections", dependencies=auth)
     def add_connection(connection: Connection) -> dict[str, str]:

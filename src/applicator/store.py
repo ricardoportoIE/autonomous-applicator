@@ -141,6 +141,31 @@ class Store:
                 result[key] = json.loads(result[key])
             return result
 
+    def update_job(self, app_id: int, job: Job) -> None:
+        with self.connect(True) as db:
+            row = db.execute("SELECT job,state FROM applications WHERE id=?", (app_id,)).fetchone()
+            if not row:
+                raise KeyError(app_id)
+            old = Job.model_validate_json(row["job"])
+            if row["state"] in {State.SUBMITTED, State.SUBMITTING, State.UNCERTAIN}:
+                raise ValueError("Submitted or uncertain job records are immutable")
+            if (
+                (old.source, old.source_id) != (job.source, job.source_id)
+                or urlsplit(old.url).path.rstrip("/") != urlsplit(job.url).path.rstrip("/")
+                or urlsplit(old.url).netloc != urlsplit(job.url).netloc
+            ):
+                raise ValueError("Import a different job as a new opportunity")
+            db.execute(
+                "UPDATE applications SET job=?,state=?,evaluation='{}',revision=0,manifest='{}' WHERE id=?",
+                (job.model_dump_json(), State.REVIEW, app_id),
+            )
+            self.event(
+                db,
+                "job_updated",
+                "Job details changed; re-evaluation and fresh materials required.",
+                app_id,
+            )
+
     def applications(self) -> list[dict[str, Any]]:
         with self.connect() as db:
             ids = [

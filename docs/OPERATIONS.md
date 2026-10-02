@@ -24,7 +24,7 @@ To import a prepared local profile:
 uv run python -m applicator.cli import-profile data/my-profile.json
 ```
 
-Edits invalidate pending documents. Reprepare before sending. Unknown salary, availability, work authorisation or screening answers must be supplied explicitly. Store exact approved LinkedIn question answers using `question:` followed by the lower-case label with normalised spaces. Required questions discovered during a safe pre-submission stop appear on the application detail for approval.
+Edits invalidate pending documents. Reprepare before sending. Documents from confirmed submissions remain available as historical records after profile edits. Use **Edit job details** to update the same opportunity after a description change; submitted and uncertain records are immutable. Unknown salary, availability, work authorisation or screening answers must be supplied explicitly. Store exact approved LinkedIn question answers using `question:` followed by the lower-case label with normalised spaces. Required questions discovered during a safe pre-submission stop appear on the application detail for approval.
 
 ## Browser session
 
@@ -40,7 +40,7 @@ The candidate declared that their LinkedIn authorisation covers discovery, Easy 
 
 Enable discovery, application automation and the declared scope only after profile review and local sign-in. The worker searches configured keywords/location, imports opportunities, prepares unevaluated or stale pending applications and submits ready applications. Its default application attempt limit is ten per London calendar day. Every external submission is journalled first. Unknown pre-submission questions become review items; a missing receipt after a submission click becomes uncertain.
 
-Networking is a separate queue for selected European recruiters or hiring contacts, with three attempts per day by default. Enable it separately. Identity, displayed role and location are checked again before an invitation without a note. Duplicate invitations and uncertain attempts are held.
+Networking is a separate queue for European recruiters or hiring contacts, with three attempts per day by default. Contacts can be queued manually or discovered through the networking search. When networking and discovery are both enabled, the worker reviews up to three recruiter profiles per cycle and queues matching European contacts while daily capacity remains. Identity, displayed role and location are checked again before an invitation without a note. Duplicate invitations and uncertain attempts are held.
 
 Pause all automation stops new attempts. A request already in flight may finish. A restart converts interrupted submission states to uncertain; reconcile against actual LinkedIn application history before recording a manual receipt. Never guess that a failed request was rejected.
 

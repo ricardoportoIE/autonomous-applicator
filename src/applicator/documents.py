@@ -191,11 +191,15 @@ def write_pair(lines: list[tuple[str, str]], pdf: Path, docx: Path) -> int:
     return len(reader.pages)
 
 
+def filename_stem(profile: Profile, job: Job) -> str:
+    return re.sub(r"[^A-Za-z0-9_-]", "_", f"{profile.name}_{job.title}")[:110]
+
+
 def generate(
     profile: Profile, job: Job, evidence_ids: list[str], folder: Path, revision: int
 ) -> dict[str, Any]:
     folder.mkdir(parents=True, exist_ok=True)
-    stem = re.sub(r"[^A-Za-z0-9_-]", "_", f"{profile.name}_{job.title}")[:110]
+    stem = filename_stem(profile, job)
     files: dict[str, Any] = {}
     lines = selected_lines(profile, job, evidence_ids)
     cv_pdf, cv_docx = folder / f"{stem}_CV.pdf", folder / f"{stem}_CV.docx"
