@@ -2,6 +2,8 @@
 
 A local job application workbench that links every candidate claim to evidence, explains job fit, prepares tailored CVs and cover letters, and controls application queues.
 
+![Local application dashboard with fictional example data](docs/assets/dashboard.png)
+
 Built for an Ireland and UK technology job search. The interface, code, prompts and documentation use British English. Personal information, credentials, generated documents and browser sessions stay outside Git.
 
 ## Delivery status
