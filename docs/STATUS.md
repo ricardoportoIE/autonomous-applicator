@@ -30,7 +30,7 @@ Version 0.1.0 implemented and locally validated on 2 October 2026. Repository: [
 | Persistence and security | Threshold properties, concurrent reservation, daily limits, unknown answers, altered documents, origin/Host/token checks, crash recovery and SQLite backup/restore |
 | Repository hygiene | Credential patterns and private contact details absent from tracked files |
 
-JavaScript is checked through browser journeys; no JavaScript statement-coverage percentage is claimed. CI runs the suite on Linux and Windows with Python 3.12 and 3.14. Remote run results are tracked by GitHub Actions rather than inferred from local results.
+JavaScript is checked through browser journeys; no JavaScript statement-coverage percentage is claimed. [Remote CI passed in all four combinations](https://github.com/ricardoportoIE/autonomous-applicator/actions/runs/37001153213): Linux and Windows, each with Python 3.12 and 3.14, for implementation commit `6d8cc84`. Coverage explicitly traces Playwright greenlets and API worker threads using the C tracing core, following the [Coverage.py configuration guidance](https://coverage.readthedocs.io/en/latest/config.html).
 
 ## Required live setup and limits
 
