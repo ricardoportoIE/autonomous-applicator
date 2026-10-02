@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "autonomous-applicator"
+version = "0.1.0"
+description = "A local, evidence-led job application workbench with controlled browser automation."
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115,<1", "uvicorn>=0.34,<1", "pydantic>=2.10,<3",
+  "httpx>=0.28,<1", "openai>=2,<3", "reportlab>=4.3,<5",
+  "pypdf>=5,<7", "python-docx>=1.1,<2", "python-dotenv>=1,<2",
+  "playwright>=1.50,<2", "tzdata>=2025.1"
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "pytest-cov>=6,<8", "hypothesis>=6,<7", "ruff>=0.11,<1", "mypy>=1.15,<2", "pip-audit>=2.8,<3", "pymupdf>=1.25,<2"]
+
+[project.scripts]
+applicator = "applicator.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/applicator"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-markers --cov=applicator --cov-branch --cov-report=term-missing --cov-report=xml --cov-fail-under=90"
+markers = ["browser: real Chromium tests against a local fixture"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "S"]
+ignore = ["E501", "S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+
