@@ -50,6 +50,8 @@ uv run python -m applicator.cli browser-login
 
 This deliberately opens an interactive, dedicated browser so the candidate can sign in and complete MFA. Press Enter in the terminal once signed in. Passwords are never collected by the application. Cookies remain in `data/browser/linkedin`; protect this folder like a credential. Keep other application browser operations stopped during login.
 
+If the visible window has already been closed after signing in, pressing Enter still finishes the command without an unnecessary closed-browser traceback. Navigation failures and unrelated browser errors remain visible. Finishing this step records the candidate's confirmation; verify access with a read-only search before enabling automation.
+
 The candidate declared that their LinkedIn authorisation covers discovery, Easy Apply and invitations. The application cannot verify that declaration. Configure its scope in Agent settings. No operation edits the public profile. Selector changes, challenges, unrecognised consent or unsupported form controls stop automation for review; nothing bypasses access controls.
 
 ## Autonomous cycles

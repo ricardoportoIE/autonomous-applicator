@@ -6,7 +6,7 @@ from pathlib import Path
 
 import uvicorn
 from dotenv import load_dotenv
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Error, sync_playwright
 
 from .api import create_app, local_token
 from .browser import LinkedInBrowser
@@ -34,15 +34,27 @@ def main() -> None:
         )
     elif args.command == "browser-login":
         profile, _ = store.profile()
-        with (
-            sync_playwright() as playwright,
-            LinkedInBrowser(data, profile).context(playwright, headless=False) as context,
-        ):
-            page = context.new_page()
-            page.goto("https://www.linkedin.com/login")
-            input(
-                "Sign in and complete verification in the browser, then press Enter here to save the local session: "
-            )
+        confirmed = False
+        try:
+            with (
+                sync_playwright() as playwright,
+                LinkedInBrowser(data, profile).context(playwright, headless=False) as context,
+            ):
+                page = context.new_page()
+                page.goto("https://www.linkedin.com/login")
+                input(
+                    "Sign in and complete verification in the browser, then press Enter here to save the local session: "
+                )
+                confirmed = True
+        except Error as exc:
+            # Closing the visible window before pressing Enter is normal. Suppress only
+            # this cleanup error after manual confirmation; preserve all setup failures.
+            if (
+                not confirmed
+                or "Target page, context or browser has been closed" not in exc.message
+            ):
+                raise
+        print("Sign-in step finished. The dedicated local browser profile has been retained.")
     else:
         host = os.getenv("APPLICATOR_HOST", "127.0.0.1")
         if host not in {"127.0.0.1", "localhost"}:

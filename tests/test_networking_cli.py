@@ -105,3 +105,42 @@ def test_cli_import_serve_loopback_and_login(data, profile, monkeypatch):
     context.__enter__.return_value.new_page.return_value.goto.assert_called_once_with(
         "https://www.linkedin.com/login"
     )
+
+
+@pytest.mark.parametrize(
+    "failure", ["closed_after_confirmation", "closed_during_navigation", "unrelated_cleanup"]
+)
+def test_browser_login_handles_only_confirmed_window_closure(
+    data, profile, monkeypatch, capsys, failure
+):
+    from playwright.sync_api import Error
+
+    import applicator.cli as module
+
+    Store(data / "applicator.sqlite3").save_profile(profile)
+    monkeypatch.setenv("APPLICATOR_DATA_DIR", str(data))
+    monkeypatch.setattr("sys.argv", ["applicator", "browser-login"])
+    monkeypatch.setattr(module, "sync_playwright", MagicMock())
+    confirmation = Mock(return_value="")
+    monkeypatch.setattr("builtins.input", confirmation)
+    context = MagicMock()
+    monkeypatch.setattr(module.LinkedInBrowser, "context", Mock(return_value=context))
+    closed = Error("Target page, context or browser has been closed")
+    if failure == "closed_during_navigation":
+        context.__enter__.return_value.new_page.return_value.goto.side_effect = closed
+    else:
+        context.__exit__.side_effect = (
+            closed
+            if failure == "closed_after_confirmation"
+            else Error("Unexpected browser cleanup failure")
+        )
+    if failure == "closed_after_confirmation":
+        module.main()
+        confirmation.assert_called_once()
+        assert "local browser profile has been retained" in capsys.readouterr().out
+    else:
+        with pytest.raises(Error):
+            module.main()
+        assert "Sign-in step finished" not in capsys.readouterr().out
+        if failure == "closed_during_navigation":
+            confirmation.assert_not_called()

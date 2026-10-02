@@ -50,8 +50,12 @@ The [complete source review](CODE_REVIEW.md) records the line-by-line inspection
 
 ## Required live setup and limits
 
+The coverage measurements and full-suite counts above refer to implementation commit `2f5ebcf`. A subsequent CLI correction handles a browser window closed after manual sign-in confirmation; six CLI/networking tests passed, including three new cases that distinguish expected cleanup from navigation and unrelated cleanup failures. The complete non-browser suite was then repeated: 113 passed. Ruff and strict mypy also passed for that change.
+
+Manual LinkedIn sign-in was completed in the dedicated local profile on 2 October 2026. A separate read-only check reopened that saved profile headlessly and reached both the authenticated feed and the configured job search. It imported no records and sent no applications or invitations. This verifies session reuse and search access; Easy Apply uploads and submission selectors still need live validation.
+
 The candidate-declared LinkedIn scope for discovery, Easy Apply and networking is configured in the local workspace. The initial adapter still requires validation against the authenticated account and current live selectors. All LinkedIn traffic in the automated tests is intercepted; tests send no real applications or invitations. A missing visible confirmation after a submission click is explicitly tested as uncertain, without automatic retry.
 
-The local candidate profile was translated from the supplied documents and awaits contact/fact confirmation. The accounting specialisation remains unapproved pending certificate review. The candidate must sign in with `browser-login` and configure a fresh, rotated API key locally to use live AI advice. The credential shared in chat was not used or committed. No paid OpenAI request was made during implementation/testing.
+The local candidate profile was translated from the supplied documents and awaits contact/fact confirmation. The accounting specialisation remains unapproved pending certificate review. Use `browser-login` to renew authentication when needed. Configure a fresh, rotated API key locally to use live AI advice. The credential shared in chat was not used or committed. No paid OpenAI request was made during implementation/testing.
 
 Automation remains paused locally. Unknown or unsupported questions stop for review; employer-specific portals without an adapter use manual hand-off. Feedback currently provides recorded outcomes and cautious observations, not self-training or automatic factual/policy changes. This is a tested local prototype, not a guarantee of defect-free live job applications or ATS acceptance.
