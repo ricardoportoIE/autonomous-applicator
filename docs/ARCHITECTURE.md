@@ -23,9 +23,23 @@ flowchart LR
     Receipt --> History[Application history and outcomes]
 ```
 
-An immediate SQLite transaction reserves an attempt after checking automation, profile revision, documents, questions, fit, daily limit and provider capability. The attempt is committed before external activity. Success needs a provider receipt. A known pre-submission stop becomes review and records unknown question labels; failure after attempting the irreversible action becomes uncertain. A separate confirmed manual outcome can reconcile the attempt.
+The service checks current policy, provider capability, scope, target identity, document hashes, a required cover PDF and known questionnaire answers before requesting a reservation. An immediate SQLite transaction then rechecks automation, scope, profile revision, current policy, manifest presence and the daily limit. The attempt is committed before external activity. Success needs a provider receipt. A known pre-submission stop becomes review and records unknown question labels; failure after attempting the irreversible action becomes uncertain. A separate confirmed manual outcome can reconcile the attempt.
 
 The worker checks the kill switch before each attempt. It cannot undo a submission already in flight. One application per canonical source identifier prevents duplicates. Editing evidence changes the revision and requires regenerating materials. Settings changes do not manufacture eligibility.
+
+## Inspection and queue navigation
+
+| Authenticated read endpoint | Result |
+| --- | --- |
+| `GET /api/usage` | Current London-day application reservations, configured limit and remaining capacity |
+| `GET /api/applications/{id}/preflight` | Current fit evaluation and named local submission checks with passed/blocked explanations |
+| `GET /api/applications/{id}/events` | Latest 200 events belonging to this application, newest first |
+
+Preflight calls read local records and verify document files. They do not reserve an attempt, generate materials, start a browser, call the adviser or append events. Each report has a UTC timestamp. It is an advisory snapshot rather than a transaction locking the candidate record; actual submission repeats the gates. Provider sign-in, changed descriptions, newly discovered questions and uploads remain live adapter responsibilities.
+
+Daily usage reads the saved limit and counted reservations in one SQLite statement. Every reserved attempt counts, regardless of receipt or uncertainty; manual receipts do not create reservations. Europe/London calendar boundaries use timezone rules, including summer time. Remaining capacity cannot become negative if the candidate lowers a limit.
+
+Queue listings fetch and decode records in one connection. Journal and attempt-day indexes support scoped histories and budget counts. Dashboard search/status/sort operations work on the loaded records without mutating them. A pure helper supplies consistent, tested ordering, with record identifiers breaking ties. Filtering does not change routing or eligibility.
 
 ## Learning
 
