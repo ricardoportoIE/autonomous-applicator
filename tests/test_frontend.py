@@ -394,6 +394,13 @@ def test_manual_invitation_runs_only_selected_contact_with_live_progress(
         complete.set()
     expect(card.locator(".invitation-progress")).to_contain_text("Done")
     expect(page.locator("#notice")).to_contain_text("Invitation confirmed")
+    expect(page.get_by_role("tab", name="Active (1)", exact=True)).to_have_attribute(
+        "aria-selected", "true"
+    )
+    expect(page.locator('#connections [data-connection-id="1"]')).to_have_count(0)
+    page.get_by_role("tab", name="Archived (1)", exact=True).click()
+    expect(card).to_be_visible()
+    expect(card.get_by_role("button", name="Send queued invitation", exact=True)).to_have_count(0)
     assert_networking_accessibility(page)
     assert calls == [(1, True)]
     assert app.state.network.status(2)["state"] == "queued"
@@ -414,6 +421,9 @@ def test_connection_profile_links_remain_available_after_send_or_uncertainty(das
     page.reload()
     page.get_by_role("button", name="Networking", exact=True).click()
     for slug in ["sent-example", "uncertain-example"]:
+        page.get_by_role(
+            "tab", name="Archived (1)" if slug == "sent-example" else "Active (1)", exact=True
+        ).click()
         link = page.get_by_role("link", name=re.compile(f"^Open LinkedIn profile for {slug}"))
         expect(link).to_have_attribute("href", f"https://www.linkedin.com/in/{slug}/")
     expect(page.get_by_role("button", name="Send queued invitation", exact=True)).to_have_count(0)
@@ -839,3 +849,160 @@ def test_recruiter_discovery_displays_browser_failure_and_recovers(dashboard, mo
     expect(page.locator("#connections")).to_contain_text("Example Recruiter")
     assert app.state.network.list()[0]["state"] == "queued"
     assert app.state.network.list()[0]["receipt"] is None
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("width", [390, 1440])
+@pytest.mark.parametrize("outcome", ["success", "empty", "failure"])
+def test_recruiter_search_shows_loading_prevents_duplicates_and_finishes(
+    dashboard, monkeypatch, outcome, width
+):
+    from playwright.sync_api import Error as BrowserError
+
+    import applicator.api as module
+
+    page, app, _ = dashboard
+    page.set_viewport_size({"width": width, "height": 1000})
+    app.state.store.set_settings(Settings(linkedin_authorised=True, daily_connection_limit=5))
+    started, complete = threading.Event(), threading.Event()
+    calls = []
+    original_profile = app.state.store.profile()
+    original_applications = app.state.store.applications()
+
+    def discover(self, location, limit, *, exclude_urls):
+        calls.append((location, limit, exclude_urls))
+        started.set()
+        assert complete.wait(timeout=30)
+        if outcome == "failure":
+            raise BrowserError("private-provider-diagnostic")
+        return (
+            []
+            if outcome == "empty"
+            else [
+                {
+                    "url": f"https://www.linkedin.com/in/example-{index}/",
+                    "name": f"Example Recruiter {index}",
+                    "role": "Recruiter",
+                    "location": "Ireland",
+                }
+                for index in range(5)
+            ]
+        )
+
+    monkeypatch.setattr(module.LinkedInBrowser, "contacts", discover)
+    page.reload()
+    page.get_by_role("button", name="Networking", exact=True).click()
+    try:
+        page.get_by_role("button", name="Find European recruiters", exact=True).click()
+        loading = page.get_by_role("button", name="Searching…", exact=True)
+        expect(loading).to_be_disabled()
+        expect(loading).to_have_attribute("aria-busy", "true")
+        expect(page.locator("#contact-search-status")).to_contain_text("up to 5 new European")
+        assert started.wait(timeout=5)
+        loading.dispatch_event("click")
+        assert calls == [("Ireland", 5, set())]
+        assert_networking_accessibility(page)
+        assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+    finally:
+        complete.set()
+    button = page.get_by_role("button", name="Find European recruiters", exact=True)
+    expect(button).to_be_enabled()
+    expect(button).not_to_have_attribute("aria-busy", "true")
+    if outcome == "success":
+        expect(page.locator("#contact-search-status")).to_have_text(
+            "Search complete. 5 new European hiring contacts found."
+        )
+        expect(page.get_by_role("tab", name="Active (5)", exact=True)).to_have_attribute(
+            "aria-selected", "true"
+        )
+        assert len(app.state.network.list()) == 5
+    elif outcome == "empty":
+        expect(page.locator("#contact-search-status")).to_contain_text("No new matching contacts")
+        page.get_by_role("tab", name="Archived (0)", exact=True).click()
+        expect(page.locator("#archived-connections")).to_contain_text("No archived invitations yet")
+    else:
+        expect(page.locator("#contact-search-status")).to_contain_text("Search failed")
+        expect(page.locator("#notice")).to_contain_text("The browser could not read or complete")
+        assert "private-provider-diagnostic" not in page.locator("body").inner_text()
+    assert calls == [("Ireland", 5, set())]
+    assert app.state.network.remaining() == 5
+    assert app.state.store.profile() == original_profile
+    assert app.state.store.applications() == original_applications
+    assert_networking_accessibility(page)
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("width", [390, 1440])
+def test_connection_archive_preserves_history_and_has_accessible_keyboard_tabs(
+    dashboard, width, tmp_path
+):
+    page, app, _ = dashboard
+    page.set_viewport_size({"width": width, "height": 1000})
+    for index, state in enumerate(["queued", "uncertain", "failed", "sent"], start=1):
+        app.state.network.add(
+            f"https://www.linkedin.com/in/example-{index}/",
+            f"Example Recruiter {index}",
+            "Recruiter",
+            "Ireland",
+        )
+        if state in {"uncertain", "sent"}:
+            app.state.network.finish(index, "fixture:pending" if state == "sent" else None)
+        elif state == "failed":
+            with app.state.store.connect(True) as db:
+                db.execute("UPDATE connections SET state='failed' WHERE id=?", (index,))
+    original_rows = app.state.network.list()
+    original_events = app.state.store.events()
+    page.reload()
+    page.get_by_role("button", name="Networking", exact=True).click()
+    active = page.get_by_role("tab", name="Active (3)", exact=True)
+    archived = page.get_by_role("tab", name="Archived (1)", exact=True)
+    expect(active).to_have_attribute("aria-selected", "true")
+    expect(page.locator("#connections .entry")).to_have_count(3)
+    expect(page.locator("#connections")).not_to_contain_text("Example Recruiter 4")
+    active.focus()
+    active.press("End")
+    expect(archived).to_be_focused()
+    expect(archived).to_have_attribute("aria-selected", "true")
+    expect(page.locator("#connections-active-panel")).to_be_hidden()
+    expect(page.locator("#archived-connections .entry")).to_have_count(1)
+    expect(page.locator("#archived-connections")).to_contain_text("Done")
+    expect(page.get_by_role("button", name="Send queued invitation", exact=True)).to_have_count(0)
+    expect(
+        page.get_by_role("link", name=re.compile("^Open LinkedIn profile for Example Recruiter 4"))
+    ).to_have_attribute("href", "https://www.linkedin.com/in/example-4/")
+    assert_networking_accessibility(page)
+    assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+    page.screenshot(path=str(tmp_path / f"networking-archive-{width}.png"), full_page=True)
+    archived.press("ArrowLeft")
+    expect(active).to_be_focused()
+    active.press("ArrowRight")
+    expect(archived).to_be_focused()
+    archived.press("Home")
+    expect(active).to_be_focused()
+    active.press("Tab")
+    expect(page.locator("#connections-active-panel")).to_be_focused()
+    assert app.state.network.list() == original_rows
+    assert app.state.store.events() == original_events
+    assert_networking_accessibility(page)
+    page.get_by_role("button", name="Lock workspace", exact=True).click()
+    assert page.locator("#archived-connections").inner_html() == ""
+    expect(page.locator("#connections-active-tab")).to_have_text("Active (0)")
+    expect(page.locator("#connections-archived-tab")).to_have_text("Archived (0)")
+
+
+@pytest.mark.browser
+def test_lock_during_contact_search_discards_the_late_response(dashboard):
+    page, _, _ = dashboard
+    held = []
+    page.route("**/api/discover/contacts", lambda route: held.append(route))
+    page.get_by_role("button", name="Networking", exact=True).click()
+    page.get_by_role("button", name="Find European recruiters", exact=True).click()
+    expect(page.locator("#contact-search-status")).to_contain_text("Searching")
+    page.get_by_role("button", name="Lock workspace", exact=True).click()
+    assert len(held) == 1
+    held[0].fulfill(status=200, content_type="application/json", body='{"reviewed":5}')
+    expect(page.locator("#workspace")).to_be_hidden()
+    expect(page.locator("#contact-search-status")).to_have_text("")
+    expect(page.locator("#contact-search")).not_to_have_attribute("aria-busy", "true")
+    assert page.locator("#connections").inner_html() == ""
+    assert page.locator("#archived-connections").inner_html() == ""

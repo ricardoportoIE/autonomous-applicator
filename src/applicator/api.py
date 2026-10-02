@@ -90,7 +90,9 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
             ):
                 profile, _ = store.profile()
                 contacts = LinkedInBrowser(data, profile).contacts(
-                    settings.search_location, min(3, network.remaining())
+                    settings.search_location,
+                    network.remaining(),
+                    exclude_urls={row["url"] for row in network.list()},
                 )
                 for contact in contacts:
                     network.add(**contact)
@@ -192,7 +194,9 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
 
     @app.exception_handler(KeyError)
     async def key_error(_request: Request, _exc: KeyError) -> JSONResponse:
-        return JSONResponse({"detail": "Application, evidence or connection not found"}, status_code=404)
+        return JSONResponse(
+            {"detail": "Application, evidence or connection not found"}, status_code=404
+        )
 
     @app.exception_handler(BrowserError)
     async def browser_error(_request: Request, _exc: BrowserError) -> JSONResponse:
@@ -386,7 +390,11 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
             raise ValueError("Configure the declared LinkedIn authorisation scope first")
         profile, _ = store.profile()
         with browser_lock:
-            contacts = LinkedInBrowser(data, profile).contacts(settings.search_location)
+            contacts = LinkedInBrowser(data, profile).contacts(
+                settings.search_location,
+                settings.daily_connection_limit,
+                exclude_urls={row["url"] for row in network.list()},
+            )
         for contact in contacts:
             network.add(**contact)
         return {"reviewed": len(contacts)}

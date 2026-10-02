@@ -18,6 +18,7 @@ let profile = null,
   applications = [],
   connections = [];
 let activeInvitation = null;
+let connectionTab = "active";
 const invitationFeedback = new Map();
 function node(tag, text, cls) {
   const el = document.createElement(tag);
@@ -276,13 +277,54 @@ async function refresh() {
   renderConnections();
   renderReadiness(usage);
 }
+function updateConnectionTabs() {
+  for (const tab of all("[data-connection-tab]")) {
+    const archived = tab.dataset.connectionTab === "archived";
+    const count = connections.filter(
+      (item) => (item.state === "sent") === archived,
+    ).length;
+    tab.textContent = `${archived ? "Archived" : "Active"} (${count})`;
+    const selected = tab.dataset.connectionTab === connectionTab;
+    tab.setAttribute("aria-selected", String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+    $("#" + tab.getAttribute("aria-controls")).hidden = !selected;
+  }
+}
+all("[data-connection-tab]").forEach((tab) => {
+  tab.onclick = () => {
+    connectionTab = tab.dataset.connectionTab;
+    updateConnectionTabs();
+  };
+  tab.onkeydown = (event) => {
+    const tabs = all("[data-connection-tab]");
+    let next;
+    if (event.key === "ArrowRight" || event.key === "ArrowLeft")
+      next = tabs[(tabs.indexOf(tab) + 1) % tabs.length];
+    else if (event.key === "Home") next = tabs[0];
+    else if (event.key === "End") next = tabs[tabs.length - 1];
+    else return;
+    event.preventDefault();
+    next.click();
+    next.focus();
+  };
+});
 function renderConnections() {
   $("#connections").replaceChildren();
-  if (!connections.length)
+  $("#archived-connections").replaceChildren();
+  updateConnectionTabs();
+  if (!connections.some((item) => item.state !== "sent"))
     $("#connections").append(
       node(
         "p",
-        "No contacts queued yet. Add a recruiter or use discovery to begin.",
+        "No active contacts. Add a recruiter or use discovery to begin.",
+        "empty",
+      ),
+    );
+  if (!connections.some((item) => item.state === "sent"))
+    $("#archived-connections").append(
+      node(
+        "p",
+        "No archived invitations yet. Confirmed invitations will appear here automatically.",
         "empty",
       ),
     );
@@ -316,7 +358,9 @@ function renderConnections() {
     progress.setAttribute("aria-live", "polite");
     progress.setAttribute("aria-atomic", "true");
     el.append(progress);
-    $("#connections").append(el);
+    $(item.state === "sent" ? "#archived-connections" : "#connections").append(
+      el,
+    );
     renderInvitationProgress(item);
   }
   const running = connections.find((item) => item.state === "sending");
@@ -379,7 +423,8 @@ async function sendInvitation(id, observeOnly = false) {
   try {
     if (!observeOnly) {
       await api(`/connections/${id}/send`, "POST");
-      if (current()) message("Invitation confirmed.");
+      if (current())
+        message("Invitation confirmed. Contact moved to Archived.");
     }
   } catch (error) {
     if (current()) {
@@ -834,9 +879,30 @@ $("#linkedin-search").onclick = () =>
   });
 $("#contact-search").onclick = () =>
   action(async () => {
-    const result = await api("/discover/contacts", "POST");
-    await refresh();
-    message("Reviewed " + result.reviewed + " European hiring contacts.");
+    const requestToken = token;
+    const button = $("#contact-search");
+    const status = $("#contact-search-status");
+    button.textContent = "Searching…";
+    button.setAttribute("aria-busy", "true");
+    status.textContent = `Searching for up to ${settings.daily_connection_limit} new European hiring contacts…`;
+    try {
+      const result = await api("/discover/contacts", "POST");
+      connectionTab = "active";
+      await refresh();
+      if (token !== requestToken) return;
+      status.textContent = result.reviewed
+        ? `Search complete. ${result.reviewed} new European hiring contacts found.`
+        : "Search complete. No new matching contacts were found in the available results.";
+      message("Reviewed " + result.reviewed + " European hiring contacts.");
+    } catch (error) {
+      if (token === requestToken)
+        status.textContent =
+          "Search failed. Check the message above, then try again.";
+      throw error;
+    } finally {
+      button.textContent = "Find European recruiters";
+      button.removeAttribute("aria-busy");
+    }
   });
 $("#connection-form").onsubmit = (event) => {
   event.preventDefault();
@@ -900,6 +966,11 @@ function lockWorkspace() {
   settings = null;
   applications = [];
   connections = [];
+  connectionTab = "active";
+  updateConnectionTabs();
+  $("#contact-search-status").textContent = "";
+  $("#contact-search").textContent = "Find European recruiters";
+  $("#contact-search").removeAttribute("aria-busy");
   clearTimeout(activeInvitation?.timer);
   activeInvitation = null;
   invitationFeedback.clear();
@@ -924,6 +995,7 @@ function lockWorkspace() {
     "#application-detail",
     "#evidence-list",
     "#connections",
+    "#archived-connections",
     "#events",
     "#insights",
     "#readiness",

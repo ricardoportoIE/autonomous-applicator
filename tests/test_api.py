@@ -6,7 +6,8 @@ from fastapi.testclient import TestClient
 from playwright.sync_api import Error as BrowserError
 
 from applicator.api import create_app, local_token
-from applicator.models import Advice, State
+from applicator.browser import LinkedInBrowser
+from applicator.models import Advice, Settings, State
 
 TOKEN = "test-only-local-token-01234567890123456789"
 
@@ -14,6 +15,52 @@ TOKEN = "test-only-local-token-01234567890123456789"
 def client(data):
     app = create_app(data, TOKEN)
     return app, TestClient(app, headers={"Authorization": "Bearer " + TOKEN})
+
+
+@pytest.mark.parametrize("limit", [1, 5, 10])
+def test_contact_discovery_uses_saved_limit_and_excludes_existing_contacts(
+    data, profile, monkeypatch, limit
+):
+    app, session = client(data)
+    app.state.store.save_profile(profile)
+    app.state.store.set_settings(Settings(linkedin_authorised=True, daily_connection_limit=limit))
+    for slug, receipt in [("queued", "queued"), ("sent", "fixture:pending"), ("uncertain", None)]:
+        app.state.network.add(f"https://www.linkedin.com/in/{slug}/", slug, "Recruiter", "Ireland")
+        if receipt != "queued":
+            app.state.network.finish(app.state.network.list()[0]["id"], receipt)
+    before = app.state.network.list()
+    discover = Mock(return_value=[])
+    monkeypatch.setattr(LinkedInBrowser, "contacts", discover)
+    assert session.post("/api/discover/contacts").json() == {"reviewed": 0}
+    discover.assert_called_once_with("Ireland", limit, exclude_urls={row["url"] for row in before})
+    assert app.state.network.list() == before
+
+
+def test_background_contact_discovery_uses_remaining_quota_without_three_contact_cap(
+    data, profile, monkeypatch
+):
+    app, session = client(data)
+    app.state.store.save_profile(profile)
+    app.state.store.set_settings(
+        Settings(
+            linkedin_authorised=True,
+            automation_enabled=True,
+            connections_enabled=True,
+            discovery_enabled=True,
+            daily_connection_limit=5,
+        )
+    )
+    app.state.network.add("https://www.linkedin.com/in/sent/", "Sent", "Recruiter", "Ireland")
+    row = app.state.network.reserve(1)
+    app.state.network.finish(1, "fixture:pending", run_id=row["run_id"])
+    discover = Mock(return_value=[])
+    monkeypatch.setattr(LinkedInBrowser, "contacts", discover)
+    monkeypatch.setattr(LinkedInBrowser, "search", Mock(return_value=[]))
+    monkeypatch.setattr(app.state.service, "tick", Mock(return_value={}))
+    assert session.post("/api/worker/tick").status_code == 200
+    discover.assert_called_once_with(
+        "Ireland", 4, exclude_urls={"https://www.linkedin.com/in/sent/"}
+    )
 
 
 def test_auth_host_origin_and_security_headers(data):

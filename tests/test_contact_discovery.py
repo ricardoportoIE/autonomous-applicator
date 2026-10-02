@@ -160,3 +160,53 @@ def test_discovery_deduplicates_valid_results_and_ignores_navigation_and_related
 def test_recruiter_discovery_rejects_unbounded_limits_before_launch(data, profile, limit):
     with pytest.raises(ValueError, match="between 1 and 10"):
         LinkedInBrowser(data, profile).contacts("Ireland", limit=limit)
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize(("limit", "expected", "reviewed"), [(5, 5, 7), (10, 8, 10)])
+def test_discovery_fills_saved_target_after_filters_and_skips_known_profiles(
+    data, profile, monkeypatch, limit, expected, reviewed
+):
+    visited = []
+    search = (
+        "<main>"
+        + "".join(
+            f'<div role="listitem"><a href="https://www.linkedin.com/in/member-{index}/">Result</a></div>'
+            for index in range(15)
+        )
+        + "</main>"
+    )
+
+    def fixture_context(self, playwright, **kwargs):
+        context = playwright.chromium.launch_persistent_context(
+            str(data / "fixture-browser"), headless=True, **browser_options()
+        )
+
+        def serve(route):
+            url = route.request.url
+            visited.append(url)
+            if "/search/" in url:
+                body = search
+            else:
+                slug = url.rstrip("/").rsplit("/", 1)[-1]
+                body = modern_profile(
+                    heading="Example Recruiter",
+                    overlay=slug,
+                    role="Engineer" if slug == "member-1" else "Technical Recruiter",
+                    location="Brazil" if slug == "member-2" else "Ireland",
+                )
+            route.fulfill(content_type="text/html", body=body)
+
+        context.route("**/*", serve)
+        return context
+
+    monkeypatch.setattr(LinkedInBrowser, "context", fixture_context)
+    contacts = LinkedInBrowser(data, profile).contacts(
+        "Ireland", limit, exclude_urls={"https://www.linkedin.com/in/member-0/"}
+    )
+    assert len(contacts) == expected
+    assert [item["url"] for item in contacts] == [
+        f"https://www.linkedin.com/in/member-{index}/" for index in range(3, 3 + expected)
+    ]
+    assert len(visited) == reviewed + 1
+    assert not any("/member-0/" in url for url in visited)

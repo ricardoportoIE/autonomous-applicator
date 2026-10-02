@@ -26,6 +26,12 @@ LinkedIn sign-in and local candidate confirmation are separate steps. Applicatio
 
 Each connection queue entry includes **Open LinkedIn profile**, which opens the stored member URL in a separate tab. The link remains available for queued, sent, failed and uncertain contacts. Opening it does not submit an invitation or change the queue state.
 
+**Find European recruiters** uses the saved **Daily connection attempt limit** as the maximum number of new matching contacts per manual search. With a limit of five, discovery aims for five new contacts rather than a fixed three. Existing contacts in every state are excluded. The provider adapter checks at most ten new primary results from the available search page, continuing past unsuitable roles or locations until the target is met; fewer matches can be returned when suitable results are exhausted. Searches do not consume invitation attempts. Background discovery uses the remaining invitation quota as its target.
+
+While discovery runs, the button displays **Searching…**, an activity indicator and an accessible status message. Duplicate clicks cannot start another search. Completion, no matching results and failure are explained before the button returns to **Find European recruiters**.
+
+The connection queue opens on **Active**, containing queued, running, failed and uncertain contacts. Confirmed sent invitations move automatically to **Archived**, with their original profile links, delivery status and confirmation retained. Archiving changes the displayed tab only: it does not delete records, reset quotas or allow a second invitation. Both tabs show counts and support arrow, Home and End keys. New search results open in Active.
+
 **Send queued invitation** executes only that contact. It opens the dedicated signed-in browser visibly, goes directly to the stored member URL, verifies name, role and location, and uses **Connect** or **More → Connect** before sending without a note. It never invokes the application worker, creates CVs, searches for more contacts or follows a member. The browser closes when the operation ends. Manual execution is independent of the application/networking background enable switches; the declared LinkedIn scope, daily networking quota and duplicate safeguards still apply.
 
 When LinkedIn displays **Add a note to your invitation?**, the agent always selects **Send without a note**. It never selects **Add a note** or writes an invitation message.

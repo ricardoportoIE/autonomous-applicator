@@ -273,6 +273,22 @@
   .connection-actions {
     @apply mt-4 flex flex-wrap items-center gap-2;
   }
+  .connection-tabs {
+    @apply mt-4 mb-5 flex flex-wrap gap-2 border-b border-slate-200 pb-3;
+  }
+  .connection-tabs button {
+    @apply border border-transparent bg-transparent text-slate-600 hover:bg-slate-100;
+  }
+  .connection-tabs button[aria-selected="true"] {
+    @apply border-violet-200 bg-violet-50 text-violet-900;
+  }
+  .search-status:not(:empty) {
+    @apply rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900;
+  }
+  #contact-search[aria-busy="true"]::before {
+    content: "";
+    @apply mr-2 inline-block size-4 animate-spin rounded-full border-2 border-current border-r-transparent align-middle;
+  }
   .entry .connection-actions button {
     @apply m-0;
   }

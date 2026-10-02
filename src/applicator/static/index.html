@@ -444,6 +444,17 @@
             <article class="panel">
               <h2>Networking controls</h2>
               <button id="contact-search">Find European recruiters</button>
+              <p
+                id="contact-search-status"
+                class="search-status"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+              ></p>
+              <p>
+                Each search finds up to your daily connection limit in new
+                contacts. The daily invitation quota is tracked separately.
+              </p>
               <p>
                 Send queued invitation runs only the selected contact in a
                 visible browser. It opens their profile, checks their identity
@@ -463,7 +474,52 @@
           </div>
           <article class="panel">
             <h2>Connection queue</h2>
-            <div id="connections"></div>
+            <div
+              class="connection-tabs"
+              role="tablist"
+              aria-label="Connection queue"
+            >
+              <button
+                id="connections-active-tab"
+                role="tab"
+                aria-controls="connections-active-panel"
+                aria-selected="true"
+                data-connection-tab="active"
+              >
+                Active (0)
+              </button>
+              <button
+                id="connections-archived-tab"
+                role="tab"
+                aria-controls="connections-archived-panel"
+                aria-selected="false"
+                tabindex="-1"
+                data-connection-tab="archived"
+              >
+                Archived (0)
+              </button>
+            </div>
+            <div
+              id="connections-active-panel"
+              role="tabpanel"
+              aria-labelledby="connections-active-tab"
+              tabindex="0"
+            >
+              <div id="connections"></div>
+            </div>
+            <div
+              id="connections-archived-panel"
+              role="tabpanel"
+              aria-labelledby="connections-archived-tab"
+              tabindex="0"
+              hidden
+            >
+              <p>
+                Confirmed invitations are kept here with their profile links and
+                delivery status.
+              </p>
+              <div id="archived-connections"></div>
+            </div>
           </article>
         </section>
         <section data-section="settings" hidden>

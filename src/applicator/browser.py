@@ -293,7 +293,9 @@ class LinkedInBrowser:
                 )
         return jobs
 
-    def contacts(self, location: str, limit: int = 3) -> list[dict[str, str]]:
+    def contacts(
+        self, location: str, limit: int = 3, *, exclude_urls: set[str] | None = None
+    ) -> list[dict[str, str]]:
         from .networking import european_location, target_url
 
         if not 1 <= limit <= 10:
@@ -326,9 +328,11 @@ class LinkedInBrowser:
                     url = target_url(link)
                 except ValueError:
                     continue
-                if url not in urls:
+                if url not in urls and url not in (exclude_urls or set()):
                     urls.append(url)
-            for url in urls[:limit]:
+            # Review at most ten new primary results to fill the requested
+            # number of eligible contacts, rather than counting rejected ones.
+            for url in urls[:10]:
                 page.goto(url, wait_until="domcontentloaded")
                 ensure_linkedin(page)
                 if target_url(page.url) != url:
@@ -341,6 +345,8 @@ class LinkedInBrowser:
                     term in role.casefold() for term in ("recruit", "talent", "hiring")
                 ) and european_location(actual_location):
                     contacts.append({"url": url, **details})
+                    if len(contacts) >= limit:
+                        break
         return contacts
 
     def submit(self, job: Job, answers: dict[str, str], folder: Path) -> str:

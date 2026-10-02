@@ -64,6 +64,7 @@ def test_networking_browser_receipt_and_failure(data, profile, monkeypatch):
     page.url = "https://www.linkedin.com/in/example/"
     main = page.get_by_role.return_value
     main.get_by_role.return_value.filter.return_value.count.return_value = 1
+    main.get_by_role.return_value.or_.return_value.filter.return_value.count.return_value = 1
     monkeypatch.setattr(module.LinkedInBrowser, "context", Mock(return_value=context))
     monkeypatch.setattr(module, "member_action_scope", Mock(return_value=main))
     monkeypatch.setattr(
