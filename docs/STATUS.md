@@ -22,6 +22,16 @@ Version 0.3.0 reviewed and locally validated on 2 October 2026. Repository: [ric
 
 ## Local validation
 
+### Pending invitation confirmation follow-up
+
+The live LinkedIn profile layout renders **Pending** as a link whose accessible name includes an invitation-withdrawal description. The previous confirmation check accepted only a button, so a successful invitation could remain uncertain. Confirmation now accepts a visible button or link, with either a plain or extended Pending label, and requires exactly one matching control on the verified primary member card. Recommended members' controls cannot confirm an invitation.
+
+Five intercepted-provider regressions cover plain Pending links, extended button/link labels, a recommended member's pending control and duplicate confirmations. A separate read-only account inspection confirmed existing invitations and reconciled the corresponding local records without clicking Connect, Follow, Send or Withdraw. Private identities and runtime records remain outside the repository.
+
+Follow-up validation: **45 tests passed** across the manual-networking and contact-discovery modules. Ruff checks, Python formatting and strict mypy also passed. These checks do not repeat the complete frontend suite or establish live submission behaviour for every LinkedIn layout.
+
+The full-suite results below describe the earlier validated implementation; follow-up checks are recorded separately.
+
 | Check | Result |
 | --- | --- |
 | Python tests | 220 passed, including backend and real-browser integration tests |

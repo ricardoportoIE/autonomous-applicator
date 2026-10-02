@@ -20,6 +20,18 @@ class ReviewRequired(ValueError):
     """A provider stopped before attempting an irreversible submission."""
 
 
+PENDING_INVITATION_NAME = re.compile(r"^(?:Pending|Invitation pending)(?:$|[,\s])")
+
+
+def pending_invitation_action(card: Locator) -> Locator:
+    """Read a visible pending control belonging to the verified member's card."""
+    return (
+        card.get_by_role("button", name=PENDING_INVITATION_NAME)
+        .or_(card.get_by_role("link", name=PENDING_INVITATION_NAME))
+        .filter(visible=True)
+    )
+
+
 def browser_options() -> BrowserOptions:
     channel = os.getenv("APPLICATOR_BROWSER_CHANNEL", "")
     if (
@@ -103,10 +115,14 @@ def member_action_scope(page: Page, details: dict[str, str]) -> Locator:
     """Find the primary card's actions, excluding recommendation sections."""
     main = page.get_by_role("main")
     action_name = re.compile(
-        r"^Connect$|^Invite .+ to connect$|^More(?: options| actions(?: for .+)?)?$|^Follow(?:ing)?(?: .+)?$|^Message(?: .+)?$|^Pending$|^Invitation pending"
+        r"^Connect$|^Invite .+ to connect$|^More(?: options| actions(?: for .+)?)?$|^Follow(?:ing)?(?: .+)?$|^Message(?: .+)?$|"
+        + PENDING_INVITATION_NAME.pattern
     )
     main.get_by_role("button", name=action_name).or_(
-        main.get_by_role("link", name=re.compile(r"^Connect$|^Invite .+ to connect$"))
+        main.get_by_role(
+            "link",
+            name=re.compile(r"^Connect$|^Invite .+ to connect$|" + PENDING_INVITATION_NAME.pattern),
+        )
     ).filter(visible=True).first.wait_for(timeout=10000)
     card = main.locator("h1, h2").first
     fallback = None
@@ -133,7 +149,10 @@ def member_action_scope(page: Page, details: dict[str, str]) -> Locator:
         )
         if primary_action.count():
             return card
-        if card.get_by_role("button", name=action_name).filter(visible=True).count():
+        if (
+            card.get_by_role("button", name=action_name).filter(visible=True).count()
+            or pending_invitation_action(card).count()
+        ):
             fallback = card
     if fallback is not None:
         return fallback

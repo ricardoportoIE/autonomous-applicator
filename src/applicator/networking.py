@@ -11,7 +11,13 @@ from playwright.sync_api import Error as BrowserError
 from playwright.sync_api import TimeoutError as BrowserTimeout
 from playwright.sync_api import sync_playwright
 
-from .browser import LinkedInBrowser, ensure_linkedin, member_action_scope, member_details
+from .browser import (
+    LinkedInBrowser,
+    ensure_linkedin,
+    member_action_scope,
+    member_details,
+    pending_invitation_action,
+)
 from .store import Store, day_key
 
 EUROPE = (
@@ -285,9 +291,10 @@ class Networking:
                 self.progress(
                     connection_id, row["run_id"], "Waiting for LinkedIn to confirm the invitation."
                 )
-                card.get_by_role(
-                    "button", name=re.compile(r"^Pending$|^Invitation pending")
-                ).first.wait_for(timeout=10000)
+                pending = pending_invitation_action(card)
+                pending.first.wait_for(state="visible", timeout=10000)
+                if pending.count() != 1:
+                    raise ValueError("The member's pending invitation confirmation is ambiguous.")
                 receipt = "linkedin:invitation-pending"
         except Exception as exc:
             if attempted:

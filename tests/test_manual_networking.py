@@ -41,6 +41,11 @@ def network_fixture(data):
         "menu",
         "menu_popup",
         "delayed_actions",
+        "pending_link",
+        "pending_named_link",
+        "pending_named_button",
+        "recommended_pending",
+        "duplicate_pending",
         "follow_only",
         "recommendation",
         "duplicate",
@@ -94,6 +99,25 @@ def test_manual_invitation_uses_only_connect_and_selected_profile(data, monkeypa
         script = script.replace("document.querySelector('#dialog').hidden=false;", "")
     if case == "no_receipt":
         script = script.replace("document.querySelector('article').append(pending);", "")
+    if case in {"pending_link", "pending_named_link"}:
+        script = script.replace("createElement('button')", "createElement('a')")
+        script = script.replace(
+            "pending.textContent='Pending';", "pending.textContent='Pending'; pending.href='#';"
+        )
+    if case in {"pending_named_link", "pending_named_button"}:
+        script = script.replace(
+            "pending.textContent='Pending';",
+            "pending.textContent='Pending'; pending.setAttribute('aria-label','Pending, click to withdraw invitation sent to Example Recruiter');",
+        )
+    if case == "recommended_pending":
+        script = script.replace(
+            "querySelector('article').append(pending)", "querySelector('aside').append(pending)"
+        )
+    if case == "duplicate_pending":
+        script = script.replace(
+            "document.querySelector('article').append(pending);",
+            "document.querySelector('article').append(pending, pending.cloneNode(true));",
+        )
     html = html.replace("</article>", controls + "</article>") + script
     if case == "recommendation":
         html = html.replace("</aside>", connect + "</aside>")
@@ -147,7 +171,16 @@ def test_manual_invitation_uses_only_connect_and_selected_profile(data, monkeypa
             return result
 
         monkeypatch.setattr(module, "member_details", revoke)
-    if case in {"direct", "direct_link", "menu", "menu_popup", "delayed_actions"}:
+    if case in {
+        "direct",
+        "direct_link",
+        "menu",
+        "menu_popup",
+        "delayed_actions",
+        "pending_link",
+        "pending_named_link",
+        "pending_named_button",
+    }:
         assert network.send(1, manual=True) == "linkedin:invitation-pending"
         assert network.status(1)["run_status"] == "done"
         assert actions == ["action:connect", "action:send"]
@@ -155,9 +188,11 @@ def test_manual_invitation_uses_only_connect_and_selected_profile(data, monkeypa
         with pytest.raises((ValueError, BrowserError)):
             network.send(1, manual=True)
         assert network.status(1)["run_status"] == (
-            "uncertain" if case in {"no_dialog", "no_receipt"} else "failed"
+            "uncertain"
+            if case in {"no_dialog", "no_receipt", "recommended_pending", "duplicate_pending"}
+            else "failed"
         )
-        if case not in {"no_dialog", "no_receipt"}:
+        if case not in {"no_dialog", "no_receipt", "recommended_pending", "duplicate_pending"}:
             assert not actions
     assert "action:follow" not in actions
     assert "action:add-note" not in actions
