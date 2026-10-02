@@ -20,7 +20,7 @@ The module commands avoid unsigned console launchers sometimes blocked by Window
 
 Review the Candidate profile tab. The private working copy has a profile translated from the supplied documents in `data/ricardo-profile.json`, imported into local SQLite. This file is excluded from Git and is not supplied to repository visitors. A fresh clone starts without a candidate profile.
 
-Confirm contacts, qualifications, work authorisation facts and approved answers. An evidence item's approved flag means approved by the candidate for use, not independently audited. The accounting specialisation remains unapproved because its original certificate has not been visually checked. Exact portfolio metrics and unverified equivalences are omitted.
+Confirm contacts, qualifications, work authorisation facts and approved answers. An evidence item's approved flag means approved by the candidate for use, not independently audited. Unapproved evidence remains excluded until candidate review. Exact portfolio metrics and unverified equivalences are omitted.
 
 LinkedIn sign-in and local candidate confirmation are separate steps. Application submissions and background networking require a confirmed local candidate record. In **Candidate profile**, review the saved facts, tick **I have reviewed and confirmed the candidate facts**, then choose **Save candidate profile**. A single manual invitation without a note uses the signed-in LinkedIn session and does not require candidate CV facts. It does not change profile confirmation or enable background automation.
 
