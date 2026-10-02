@@ -1,6 +1,7 @@
 """Real-browser UI regressions, accessibility and responsive-layout checks."""
 
 import re
+import threading
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -38,6 +39,19 @@ def dashboard(data, profile, job, request):
         save_coverage(coverage, request.node.nodeid)
         assert not errors
         browser.close()
+
+
+def assert_networking_accessibility(page):
+    axe = Path("node_modules/axe-core/axe.min.js").read_text(encoding="utf-8")
+    page.route(
+        "**/__test/networking-axe.js",
+        lambda route: route.fulfill(content_type="text/javascript", body=axe),
+    )
+    page.add_script_tag(url=page.url + "__test/networking-axe.js")
+    result = page.evaluate(
+        "async () => await axe.run(document, {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa']}})"
+    )
+    assert not result["violations"]
 
 
 @pytest.mark.browser
@@ -270,7 +284,9 @@ def test_evidence_update_and_removal_invalidate_documents(dashboard):
 
 @pytest.mark.browser
 @pytest.mark.parametrize("width", [390, 1440])
-def test_networking_form_queues_a_contact_and_paused_send_is_held(dashboard, width, tmp_path):
+def test_networking_form_queues_a_contact_and_missing_scope_send_is_held(
+    dashboard, width, tmp_path
+):
     page, app, _ = dashboard
     page.set_viewport_size({"width": width, "height": 1000})
     page.get_by_role("button", name="Networking", exact=True).click()
@@ -309,15 +325,23 @@ def test_networking_form_queues_a_contact_and_paused_send_is_held(dashboard, wid
         "async () => await axe.run(document, {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa']}})"
     )
     assert not result["violations"]
+    app.state.store.set_settings(Settings())
     page.get_by_role("button", name="Send queued invitation", exact=True).click()
-    expect(page.locator("#notice")).to_contain_text("Networking is paused")
+    expect(page.locator("#notice")).to_contain_text(
+        "Configure the declared LinkedIn authorisation scope first"
+    )
+    expect(page.locator(".invitation-progress")).to_contain_text("Failed")
     assert app.state.network.list()[0]["state"] == "queued"
     assert app.state.network.list()[0]["day"] is None
 
 
 @pytest.mark.browser
-def test_networking_profile_review_explains_and_resolves_local_confirmation(dashboard):
+@pytest.mark.parametrize("width", [390, 1440])
+def test_manual_invitation_runs_only_selected_contact_with_live_progress(
+    dashboard, monkeypatch, width, tmp_path
+):
     page, app, _ = dashboard
+    page.set_viewport_size({"width": width, "height": 1000})
     candidate, _ = app.state.store.profile()
     candidate.confirmed = False
     app.state.store.save_profile(candidate)
@@ -327,26 +351,56 @@ def test_networking_profile_review_explains_and_resolves_local_confirmation(dash
         "Technical Recruiter",
         "Dublin, Ireland",
     )
+    app.state.network.add(
+        "https://www.linkedin.com/in/other/", "Other Recruiter", "Recruiter", "Ireland"
+    )
+    applications = app.state.store.applications()
+    revision = app.state.store.profile()[1]
+    started = threading.Event()
+    complete = threading.Event()
+    calls = []
+
+    def send(connection_id, *, manual):
+        calls.append((connection_id, manual))
+        row = app.state.network.reserve(connection_id, manual=manual)
+        started.set()
+        assert complete.wait(timeout=30)
+        app.state.network.finish(connection_id, "fixture:pending", run_id=row["run_id"])
+        return "fixture:pending"
+
+    monkeypatch.setattr(app.state.network, "send", send)
     page.reload()
     page.get_by_role("button", name="Networking", exact=True).click()
-    explanation = page.locator("#networking-profile-review")
-    expect(explanation).to_be_visible()
-    expect(explanation).to_contain_text("Signing in to LinkedIn does not confirm this record")
-    page.get_by_role("button", name="Send queued invitation", exact=True).click()
-    expect(page.locator("#notice")).to_contain_text("Confirm the candidate profile first")
-    assert app.state.network.list()[0]["day"] is None
-    page.get_by_role("button", name="Review candidate profile", exact=True).click()
-    confirmation = page.get_by_label("I have reviewed and confirmed the candidate facts", exact=True)
-    expect(confirmation).to_be_focused()
-    confirmation.check()
-    page.get_by_role("button", name="Save candidate profile", exact=True).click()
-    expect(page.locator("#notice")).to_contain_text("Profile saved")
-    page.get_by_role("button", name="Networking", exact=True).click()
-    expect(explanation).to_be_hidden()
-    page.get_by_role("button", name="Send queued invitation", exact=True).click()
-    expect(page.locator("#notice")).to_contain_text("Networking is paused")
-    assert app.state.network.list()[0]["state"] == "queued"
-    assert app.state.network.list()[0]["day"] is None
+    card = page.locator('[data-connection-id="1"]')
+    button = card.get_by_role("button", name="Send queued invitation", exact=True)
+    try:
+        button.click()
+        expect(card.locator(".invitation-progress")).to_contain_text("Started")
+        assert started.wait(timeout=5)
+        button.dispatch_event("click")
+        expect(page.locator("#workspace")).not_to_have_attribute("aria-busy", "true")
+        expect(page.locator('[data-connection-id="2"] button')).to_be_disabled()
+        row = app.state.network.status(1)
+        app.state.network.progress(1, row["run_id"], "Checking the selected member's identity.")
+        expect(card.locator(".invitation-progress")).to_contain_text("Running")
+        expect(card.locator(".invitation-progress")).to_contain_text("Checking the selected member")
+        assert_networking_accessibility(page)
+        assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+        page.screenshot(path=str(tmp_path / f"invitation-running-{width}.png"), full_page=True)
+        page.get_by_role("button", name="Candidate profile", exact=True).click()
+        expect(page.locator("#profile-form")).to_be_visible()
+        page.get_by_role("button", name="Networking", exact=True).click()
+    finally:
+        complete.set()
+    expect(card.locator(".invitation-progress")).to_contain_text("Done")
+    expect(page.locator("#notice")).to_contain_text("Invitation confirmed")
+    assert_networking_accessibility(page)
+    assert calls == [(1, True)]
+    assert app.state.network.status(2)["state"] == "queued"
+    assert app.state.network.status(2)["day"] is None
+    assert app.state.store.applications() == applications
+    assert app.state.store.profile()[1] == revision
+    assert not app.state.store.settings().automation_enabled
 
 
 @pytest.mark.browser
@@ -363,6 +417,121 @@ def test_connection_profile_links_remain_available_after_send_or_uncertainty(das
         link = page.get_by_role("link", name=re.compile(f"^Open LinkedIn profile for {slug}"))
         expect(link).to_have_attribute("href", f"https://www.linkedin.com/in/{slug}/")
     expect(page.get_by_role("button", name="Send queued invitation", exact=True)).to_have_count(0)
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("uncertain", [False, True])
+@pytest.mark.parametrize("width", [390, 1440])
+def test_invitation_failure_reports_safe_or_uncertain_outcome(
+    dashboard, monkeypatch, uncertain, width
+):
+    from playwright.sync_api import Error as BrowserError
+
+    page, app, _ = dashboard
+    page.set_viewport_size({"width": width, "height": 1000})
+    app.state.network.add("https://www.linkedin.com/in/example/", "Example", "Recruiter", "Ireland")
+
+    def send(connection_id, *, manual):
+        row = app.state.network.reserve(connection_id, manual=manual)
+        if uncertain:
+            app.state.network.finish(connection_id, None, run_id=row["run_id"])
+        else:
+            with app.state.store.connect(True) as db:
+                db.execute(
+                    "UPDATE connections SET state='failed',run_status='failed',run_message='The browser stopped before connecting.' WHERE id=?",
+                    (connection_id,),
+                )
+        raise BrowserError("private-provider-cookie")
+
+    monkeypatch.setattr(app.state.network, "send", send)
+    page.reload()
+    page.get_by_role("button", name="Networking", exact=True).click()
+    page.get_by_role("button", name="Send queued invitation", exact=True).click()
+    expect(page.locator(".invitation-progress")).to_contain_text(
+        "Needs review" if uncertain else "Failed"
+    )
+    expect(page.locator(".invitation-progress")).to_contain_text(
+        "Check LinkedIn" if uncertain else "before connecting"
+    )
+    expect(page.get_by_role("button", name="Send queued invitation", exact=True)).to_have_count(0)
+    assert "private-provider-cookie" not in page.locator("body").inner_text()
+    assert_networking_accessibility(page)
+
+
+@pytest.mark.browser
+def test_lost_send_response_keeps_observing_and_never_resends(dashboard):
+    page, app, _ = dashboard
+    app.state.network.add("https://www.linkedin.com/in/example/", "Example", "Recruiter", "Ireland")
+    requests = []
+
+    def lost_response(route):
+        requests.append(route.request.url)
+        row = app.state.network.reserve(1, manual=True)
+        app.state.network.progress(1, row["run_id"], "Waiting for confirmation.")
+        route.fulfill(status=502, content_type="text/plain", body="Connection lost")
+
+    page.route("**/api/connections/1/send", lost_response)
+    page.reload()
+    page.get_by_role("button", name="Networking", exact=True).click()
+    page.get_by_role("button", name="Send queued invitation", exact=True).click()
+    expect(page.locator(".invitation-progress")).to_contain_text("Running")
+    row = app.state.network.status(1)
+    app.state.network.finish(1, "fixture:pending", run_id=row["run_id"])
+    expect(page.locator(".invitation-progress")).to_contain_text("Done")
+    assert len(requests) == 1
+
+
+@pytest.mark.browser
+def test_reload_observes_existing_invitation_and_status_errors_do_not_resend(dashboard):
+    page, app, _ = dashboard
+    app.state.network.add("https://www.linkedin.com/in/example/", "Example", "Recruiter", "Ireland")
+    row = app.state.network.reserve(1, manual=True)
+    app.state.network.progress(1, row["run_id"], "Checking the selected profile.")
+    sends, polls = [], []
+    page.on(
+        "request",
+        lambda request: sends.append(request.url) if request.url.endswith("/send") else None,
+    )
+
+    def first_status_fails(route):
+        polls.append(route.request.url)
+        if len(polls) == 1:
+            route.fulfill(
+                status=502,
+                content_type="application/json",
+                body='{"detail":"Status temporarily unavailable"}',
+            )
+        else:
+            route.continue_()
+
+    page.route("**/api/connections/1/status", first_status_fails)
+    page.reload()
+    page.get_by_role("button", name="Networking", exact=True).click()
+    expect(page.locator(".invitation-progress")).to_contain_text("Running")
+    app.state.network.finish(1, None, run_id=row["run_id"])
+    expect(page.locator(".invitation-progress")).to_contain_text("Needs review")
+    assert not sends
+    assert len(polls) >= 2
+
+
+@pytest.mark.browser
+def test_lock_during_invitation_clears_progress_without_repeating_send(dashboard):
+    page, app, _ = dashboard
+    app.state.network.add("https://www.linkedin.com/in/example/", "Example", "Recruiter", "Ireland")
+    held = []
+    page.route("**/api/connections/1/send", lambda route: held.append(route))
+    page.reload()
+    page.get_by_role("button", name="Networking", exact=True).click()
+    page.get_by_role("button", name="Send queued invitation", exact=True).click()
+    expect(page.locator(".invitation-progress")).to_contain_text("Started")
+    page.get_by_role("button", name="Lock workspace", exact=True).click()
+    assert len(held) == 1
+    held[0].fulfill(
+        status=200, content_type="application/json", body='{"receipt":"fixture:pending"}'
+    )
+    expect(page.locator("#workspace")).to_be_hidden()
+    assert page.locator("#connections").inner_html() == ""
+    assert page.evaluate("sessionStorage.getItem('applicator-token')") is None
 
 
 @pytest.mark.browser

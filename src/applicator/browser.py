@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, TypedDict
 from urllib.parse import urlencode, urlsplit
 
-from playwright.sync_api import BrowserContext, Page, Playwright, sync_playwright
+from playwright.sync_api import BrowserContext, Locator, Page, Playwright, sync_playwright
 
 from .documents import filename_stem
 from .models import Job, Profile, Question
@@ -99,6 +99,49 @@ def member_details(page: Page) -> dict[str, str]:
     return {key: str(details[key]).strip() for key in ("name", "role", "location")}
 
 
+def member_action_scope(page: Page, details: dict[str, str]) -> Locator:
+    """Find the primary card's actions, excluding recommendation sections."""
+    main = page.get_by_role("main")
+    action_name = re.compile(
+        r"^Connect$|^Invite .+ to connect$|^More(?: options| actions(?: for .+)?)?$|^Follow(?:ing)?(?: .+)?$|^Message(?: .+)?$|^Pending$|^Invitation pending"
+    )
+    main.get_by_role("button", name=action_name).or_(
+        main.get_by_role("link", name=re.compile(r"^Connect$|^Invite .+ to connect$"))
+    ).filter(visible=True).first.wait_for(timeout=10000)
+    card = main.locator("h1, h2").first
+    fallback = None
+    for _depth in range(12):
+        card = card.locator("xpath=..")
+        if card.evaluate("el => el.tagName === 'MAIN'"):
+            break
+        if card.locator("h1, h2").count() != 1:
+            continue
+        text = " ".join(card.inner_text().casefold().split())
+        if not all(
+            " ".join(details[key].casefold().split()) in text for key in ("role", "location")
+        ):
+            continue
+        primary_action = (
+            card.get_by_role(
+                "button",
+                name=re.compile(
+                    r"^Connect$|^Invite .+ to connect$|^More(?: options| actions(?: for .+)?)?$"
+                ),
+            )
+            .or_(card.get_by_role("link", name=re.compile(r"^Connect$|^Invite .+ to connect$")))
+            .filter(visible=True)
+        )
+        if primary_action.count():
+            return card
+        if card.get_by_role("button", name=action_name).filter(visible=True).count():
+            fallback = card
+    if fallback is not None:
+        return fallback
+    raise ReviewRequired(
+        "The primary member's connection controls are unavailable. Review this profile."
+    )
+
+
 def approved_answer(label: str, profile: Profile) -> str | None:
     # Exact approved label answers take precedence; never infer legal eligibility from a score.
     key = "question:" + " ".join(label.casefold().split())
@@ -172,7 +215,7 @@ def fill_questions(page: Page, profile: Profile) -> None:
 class LinkedInBrowser:
     """A bounded Easy Apply adapter. Site changes fail closed rather than guess."""
 
-    def __init__(self, data: Path, profile: Profile):
+    def __init__(self, data: Path, profile: Profile | None = None):
         self.data, self.profile = data, profile
 
     def context(self, playwright: Playwright, *, headless: bool = True) -> BrowserContext:
@@ -293,6 +336,8 @@ class LinkedInBrowser:
     def _submit(
         self, job: Job, answers: dict[str, str], folder: Path, progress: dict[str, bool]
     ) -> str:
+        if self.profile is None:
+            raise ReviewRequired("Configure a candidate profile before submitting applications")
         if linkedin_job_id(job.url) != job.source_id:
             raise ValueError("LinkedIn job identifier does not match the reviewed opportunity")
         with sync_playwright() as playwright, self.context(playwright) as context:

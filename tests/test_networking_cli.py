@@ -63,8 +63,9 @@ def test_networking_browser_receipt_and_failure(data, profile, monkeypatch):
     page = context.__enter__.return_value.new_page.return_value
     page.url = "https://www.linkedin.com/in/example/"
     main = page.get_by_role.return_value
-    main.get_by_role.return_value.count.return_value = 1
+    main.get_by_role.return_value.filter.return_value.count.return_value = 1
     monkeypatch.setattr(module.LinkedInBrowser, "context", Mock(return_value=context))
+    monkeypatch.setattr(module, "member_action_scope", Mock(return_value=main))
     monkeypatch.setattr(
         module,
         "member_details",
@@ -81,7 +82,7 @@ def test_networking_browser_receipt_and_failure(data, profile, monkeypatch):
         network.send(3)
     network.add("https://www.linkedin.com/in/alex3/", "Alex", "Recruiter", "Ireland")
     page.url = "https://www.linkedin.com/in/alex3/"
-    main.get_by_role.return_value.count.return_value = 2
+    main.get_by_role.return_value.filter.return_value.count.return_value = 2
     with pytest.raises(ValueError, match="ambiguous"):
         network.send(4)
     network.add("https://www.linkedin.com/in/redirected/", "Alex", "Recruiter", "Ireland")

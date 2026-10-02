@@ -113,7 +113,7 @@ def test_ai_prepare_no_key_mock_success_and_failure(data, profile, job, monkeypa
 def test_discovery_and_network_queue(data, profile, job, monkeypatch):
     import applicator.api as module
 
-    _, session = client(data)
+    app, session = client(data)
     session.put("/api/profile", json=profile.model_dump())
     monkeypatch.setattr(module, "greenhouse", Mock(return_value=[job]))
     assert (
@@ -138,7 +138,10 @@ def test_discovery_and_network_queue(data, profile, job, monkeypatch):
     assert session.post("/api/discover/contacts").json()["reviewed"] == 1
     assert session.post("/api/connections", json=target).status_code == 200
     assert len(session.get("/api/connections").json()) == 1
-    assert session.post("/api/connections/1/send").status_code == 409
+    manual_send = Mock(return_value="fixture:manual-invitation")
+    monkeypatch.setattr(app.state.network, "send", manual_send)
+    assert session.post("/api/connections/1/send").json()["receipt"] == "fixture:manual-invitation"
+    manual_send.assert_called_once_with(1, manual=True)
 
 
 def test_local_token_persisted_env_and_short_rejected(data, monkeypatch):

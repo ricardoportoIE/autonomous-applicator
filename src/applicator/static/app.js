@@ -15,7 +15,10 @@ let profileRevision = 0;
 let pending = false;
 let profile = null,
   settings = null,
-  applications = [];
+  applications = [],
+  connections = [];
+let activeInvitation = null;
+const invitationFeedback = new Map();
 function node(tag, text, cls) {
   const el = document.createElement(tag);
   if (text !== undefined) el.textContent = text;
@@ -42,7 +45,9 @@ async function api(path, method = "GET", body) {
   if (!response.ok) {
     if (response.status === 401) lockWorkspace();
     const error = await response.json().catch(() => null);
-    throw new Error(errorDetail(error, response.status));
+    const failure = new Error(errorDetail(error, response.status));
+    failure.status = response.status;
+    throw failure;
   }
   const result = await response.json();
   if (requestToken !== token)
@@ -267,8 +272,11 @@ async function refresh() {
   }
   const events = await api("/events");
   renderEvents(events, $("#events"));
-  const connections = await api("/connections");
-  $("#networking-profile-review").hidden = Boolean(profile?.confirmed);
+  connections = await api("/connections");
+  renderConnections();
+  renderReadiness(usage);
+}
+function renderConnections() {
   $("#connections").replaceChildren();
   if (!connections.length)
     $("#connections").append(
@@ -280,6 +288,7 @@ async function refresh() {
     );
   for (const item of connections) {
     const el = node("div", undefined, "entry");
+    el.dataset.connectionId = item.id;
     el.append(
       node("strong", item.name),
       node("p", item.role + " · " + item.location),
@@ -297,17 +306,118 @@ async function refresh() {
     controls.append(link);
     if (item.state === "queued") {
       const button = node("button", "Send queued invitation", "secondary");
-      button.onclick = () =>
-        action(async () => {
-          await api("/connections/" + item.id + "/send", "POST");
-          message("Invitation confirmed.");
-          await refresh();
-        });
+      button.disabled = Boolean(activeInvitation);
+      button.onclick = () => sendInvitation(item.id);
       controls.append(button);
     }
     el.append(controls);
+    const progress = node("div", undefined, "invitation-progress");
+    progress.setAttribute("role", "status");
+    progress.setAttribute("aria-live", "polite");
+    progress.setAttribute("aria-atomic", "true");
+    el.append(progress);
     $("#connections").append(el);
+    renderInvitationProgress(item);
   }
+  const running = connections.find((item) => item.state === "sending");
+  if (running && !activeInvitation) void sendInvitation(running.id, true);
+}
+function renderInvitationProgress(item) {
+  const card = $(`[data-connection-id="${item.id}"]`);
+  const panel = card?.querySelector(".invitation-progress");
+  if (!panel) return;
+  const badge = card.querySelector(".badge");
+  badge.textContent = stateLabel(item.state);
+  badge.className = "badge " + item.state;
+  const feedback = invitationFeedback.get(item.id) || item;
+  const labels = {
+    started: "Started",
+    running: "Running",
+    done: "Done",
+    failed: "Failed",
+    uncertain: "Needs review",
+  };
+  panel.hidden = !labels[feedback.run_status];
+  panel.className = "invitation-progress " + feedback.run_status;
+  panel.replaceChildren(
+    node("strong", labels[feedback.run_status] || ""),
+    node("p", feedback.run_message || ""),
+  );
+}
+async function sendInvitation(id, observeOnly = false) {
+  if (activeInvitation) return;
+  const operation = { id, token, timer: null, responseFinished: false };
+  activeInvitation = operation;
+  if (!observeOnly)
+    invitationFeedback.set(id, {
+      run_status: "started",
+      run_message: "Starting this invitation in the visible LinkedIn browser.",
+    });
+  renderConnections();
+  const current = () =>
+    activeInvitation === operation && token === operation.token;
+  async function poll() {
+    try {
+      const item = await api(`/connections/${id}/status`);
+      if (!current()) return;
+      if (item.run_status !== "idle") {
+        invitationFeedback.delete(id);
+        connections = connections.map((row) => (row.id === id ? item : row));
+        renderInvitationProgress(item);
+      }
+      if (operation.responseFinished && item.state !== "sending") {
+        activeInvitation = null;
+        renderConnections();
+        return;
+      }
+    } catch {
+      // A status failure never retries the invitation.
+    }
+    if (current()) operation.timer = setTimeout(poll, 700);
+  }
+  operation.timer = setTimeout(poll, 300);
+  try {
+    if (!observeOnly) {
+      await api(`/connections/${id}/send`, "POST");
+      if (current()) message("Invitation confirmed.");
+    }
+  } catch (error) {
+    if (current()) {
+      invitationFeedback.set(id, {
+        run_status:
+          !error.status || error.status >= 500 ? "uncertain" : "failed",
+        run_message: error.message,
+      });
+      message(error.message, true);
+    }
+  } finally {
+    operation.responseFinished = true;
+    clearTimeout(operation.timer);
+    if (current()) {
+      let running =
+        observeOnly ||
+        connections.some((row) => row.id === id && row.state === "sending");
+      try {
+        const item = await api(`/connections/${id}/status`);
+        if (current()) {
+          connections = connections.map((row) => (row.id === id ? item : row));
+          if (item.run_status !== "idle") invitationFeedback.delete(id);
+          running = item.state === "sending";
+        }
+      } catch {
+        // Retain the last diagnostic when the status endpoint is unavailable.
+      }
+      if (current()) {
+        if (running) operation.timer = setTimeout(poll, 700);
+        else {
+          activeInvitation = null;
+          renderConnections();
+        }
+      }
+    }
+  }
+}
+function renderReadiness(usage) {
   $("#pause").textContent = settings.automation_enabled
     ? "Pause all automation"
     : "Automation paused";
@@ -789,6 +899,10 @@ function lockWorkspace() {
   profileRevision = 0;
   settings = null;
   applications = [];
+  connections = [];
+  clearTimeout(activeInvitation?.timer);
+  activeInvitation = null;
+  invitationFeedback.clear();
   $("#workspace").hidden = true;
   $("#login").hidden = false;
   $("#pause").disabled = true;
@@ -825,10 +939,6 @@ $("#lock").onclick = () => {
   message("Workspace locked on this tab.");
 };
 $("#view-queue").onclick = () => view("applications");
-$("#review-networking-profile").onclick = () => {
-  view("profile");
-  $("#profile-form input[name='confirmed']").focus();
-};
 $("#cancel-job-edit").onclick = () => {
   editingJob = null;
   $("#job-form").reset();

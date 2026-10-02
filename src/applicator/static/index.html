@@ -443,25 +443,17 @@
             </form>
             <article class="panel">
               <h2>Networking controls</h2>
-              <div id="networking-profile-review" hidden>
-                <p>
-                  Invitations require your local candidate facts to be reviewed
-                  and confirmed. Signing in to LinkedIn does not confirm this
-                  record. Review your details, tick the confirmation box and
-                  save your candidate profile.
-                </p>
-                <button
-                  id="review-networking-profile"
-                  class="secondary"
-                  type="button"
-                >
-                  Review candidate profile
-                </button>
-              </div>
               <button id="contact-search">Find European recruiters</button>
               <p>
-                Networking has a separate daily limit and enable switch in Agent
-                settings. The global pause stops both queues.
+                Send queued invitation runs only the selected contact in a
+                visible browser. It opens their profile, checks their identity
+                and uses Connect to send an invitation without a note.
+              </p>
+              <p>
+                Manual invitations use the declared LinkedIn scope and daily
+                networking limit. They run independently of candidate CV
+                confirmation and background automation settings. Queue-wide
+                invitations remain controlled by Agent settings.
               </p>
               <p>
                 No public profile edits are supported. An uncertain invitation
@@ -538,7 +530,7 @@
                 required /></label
             ><label class="check"
               ><input name="connections_enabled" type="checkbox" /> Enable
-              queued networking invitations</label
+              background networking invitations</label
             ><label
               >Daily connection attempt limit<input
                 name="daily_connection_limit"

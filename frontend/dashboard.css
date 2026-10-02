@@ -249,6 +249,9 @@
   .badge.sending {
     @apply bg-violet-50 text-violet-800;
   }
+  .badge.failed {
+    @apply bg-rose-50 text-rose-800;
+  }
   .score {
     @apply text-xl font-semibold tabular-nums;
   }
@@ -276,8 +279,20 @@
   .profile-link {
     @apply inline-flex min-h-11 items-center justify-center rounded-lg border px-4 py-2.5 text-sm font-semibold no-underline transition-colors hover:no-underline;
   }
-  #networking-profile-review {
-    @apply mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4;
+  .invitation-progress {
+    @apply mt-4 rounded-xl border border-violet-200 bg-violet-50 p-4 text-violet-900;
+  }
+  .invitation-progress.done {
+    @apply border-emerald-200 bg-emerald-50 text-emerald-900;
+  }
+  .invitation-progress.failed {
+    @apply border-rose-200 bg-rose-50 text-rose-900;
+  }
+  .invitation-progress.uncertain {
+    @apply border-amber-200 bg-amber-50 text-amber-900;
+  }
+  .invitation-progress p {
+    @apply mb-0 text-inherit;
   }
   .actions {
     @apply my-5 flex flex-wrap gap-2;

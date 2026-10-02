@@ -192,7 +192,7 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
 
     @app.exception_handler(KeyError)
     async def key_error(_request: Request, _exc: KeyError) -> JSONResponse:
-        return JSONResponse({"detail": "Application or evidence not found"}, status_code=404)
+        return JSONResponse({"detail": "Application, evidence or connection not found"}, status_code=404)
 
     @app.exception_handler(BrowserError)
     async def browser_error(_request: Request, _exc: BrowserError) -> JSONResponse:
@@ -398,8 +398,18 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
 
     @app.post("/api/connections/{connection_id}/send", dependencies=auth)
     def send_connection(connection_id: int) -> dict[str, str]:
-        with browser_lock:
-            return {"receipt": network.send(connection_id)}
+        if not browser_lock.acquire(blocking=False):
+            raise HTTPException(
+                409, "The dedicated browser is busy. Wait for its current operation to finish."
+            )
+        try:
+            return {"receipt": network.send(connection_id, manual=True)}
+        finally:
+            browser_lock.release()
+
+    @app.get("/api/connections/{connection_id}/status", dependencies=auth)
+    def connection_status(connection_id: int) -> dict[str, Any]:
+        return network.status(connection_id)
 
     @app.post("/api/worker/tick", dependencies=auth)
     def run_tick() -> dict[str, str]:

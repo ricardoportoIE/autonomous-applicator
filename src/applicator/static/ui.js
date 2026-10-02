@@ -9,6 +9,7 @@ export const stateLabels = Object.freeze({
   queued: "Queued",
   sending: "Sending",
   sent: "Sent",
+  failed: "Failed",
 });
 
 export function stateLabel(value) {
