@@ -2,6 +2,7 @@
 
 import re
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 from playwright.sync_api import expect, sync_playwright
@@ -395,3 +396,170 @@ def test_job_updates_and_ai_failure_preserve_current_opportunity(dashboard):
     )
     page.get_by_role("button", name="Select evidence with GPT-6.1 Sol", exact=True).click()
     expect(page.locator("#notice")).to_contain_text("Set a fresh OPENAI_API_KEY locally")
+
+
+@pytest.mark.browser
+def test_queue_search_status_sort_and_clear_preserve_the_underlying_records(dashboard):
+    page, app, _ = dashboard
+    original = Job.model_validate(app.state.store.applications()[0]["job"])
+    for source_id, title, company, technologies in [
+        ("platform", "Platform Engineer", "Acme", ["Go"]),
+        ("data", "Data Analyst", "Zed", ["Python", "Rust"]),
+    ]:
+        job = original.model_copy(
+            update={
+                "source_id": source_id,
+                "title": title,
+                "company": company,
+                "requirements": technologies,
+                "url": f"https://example.test/{source_id}",
+            }
+        )
+        app_id, _ = app.state.store.add_job(job)
+        app.state.service.prepare(app_id)
+    before = app.state.store.applications()
+    page.reload()
+    expect(page.locator("#notice")).not_to_have_class("error")
+    page.get_by_role("button", name="Applications", exact=True).click()
+    expect(page.locator("#queue-count")).to_have_text("3 of 3 opportunities shown")
+    page.get_by_label("Sort opportunities", exact=True).select_option("fit")
+    expect(page.locator("#application-list td strong")).to_have_text(
+        ["Backend Engineer", "Data Analyst", "Platform Engineer"]
+    )
+    page.get_by_label("Sort opportunities", exact=True).select_option("company")
+    expect(page.locator("#application-list td strong")).to_have_text(
+        ["Platform Engineer", "Backend Engineer", "Data Analyst"]
+    )
+    page.get_by_label("Search opportunities", exact=True).fill("  ENGINEER ACME ireland ")
+    expect(page.locator("#queue-count")).to_have_text("1 of 3 opportunities shown")
+    page.get_by_label("Application status", exact=True).select_option("review")
+    expect(page.locator("#application-list")).to_contain_text(
+        "No opportunities match these filters"
+    )
+    page.get_by_role("button", name="Clear filters", exact=True).click()
+    expect(page.locator("#queue-count")).to_have_text("3 of 3 opportunities shown")
+    page.get_by_label("Application status", exact=True).select_option("review")
+    page.get_by_role("button", name="Open Data Analyst at Zed", exact=True).click()
+    page.get_by_role("button", name="Prepare documents", exact=True).click()
+    expect(page.locator("#notice")).to_have_text("Documents prepared from approved evidence.")
+    expect(page.get_by_label("Application status", exact=True)).to_have_value("review")
+    expect(page.locator("#queue-count")).to_have_text("1 of 3 opportunities shown")
+    assert [row["job"] for row in app.state.store.applications()] == [row["job"] for row in before]
+    page.get_by_role("button", name="Lock workspace", exact=True).click()
+    expect(page.get_by_label("Search opportunities", exact=True)).to_have_value("")
+    expect(page.get_by_label("Application status", exact=True)).to_have_value("all")
+
+
+@pytest.mark.browser
+def test_daily_budget_displays_reserved_uncertain_attempts(dashboard):
+    page, app, _ = dashboard
+    app.state.store.set_settings(Settings(automation_enabled=True, daily_limit=1))
+    row = app.state.store.applications()[0]
+    attempt = app.state.store.reserve(row["id"], row["revision"])
+    app.state.store.finish(row["id"], attempt, None)
+    page.reload()
+    expect(page.locator("#daily-usage")).to_contain_text("1 / 1 attempts used")
+    expect(page.locator("#readiness")).to_contain_text("0 attempts remaining today")
+    expect(
+        page.get_by_role("progressbar", name="Daily application attempt usage")
+    ).to_have_attribute("value", "1")
+    assert app.state.store.daily_usage().remaining == 0
+
+
+def linkedin_opportunity(app):
+    job = Job.model_validate(app.state.store.applications()[0]["job"])
+    job.source, job.source_id, job.url = (
+        "linkedin",
+        "123",
+        "https://www.linkedin.com/jobs/view/123/",
+    )
+    app_id, _ = app.state.store.add_job(job)
+    app.state.service.prepare(app_id)
+    app.state.store.set_settings(Settings(automation_enabled=True, linkedin_authorised=True))
+    return app_id
+
+
+@pytest.mark.browser
+def test_preflight_recheck_and_mocked_submission_update_budget_and_timeline(dashboard, monkeypatch):
+    from applicator.browser import LinkedInBrowser
+
+    page, app, _ = dashboard
+    app_id = linkedin_opportunity(app)
+    adapter = Mock(return_value="fixture:confirmed-readiness")
+    monkeypatch.setattr(LinkedInBrowser, "submit", adapter)
+    page.reload()
+    expect(page.locator("#readiness")).to_contain_text("Agent enabled")
+    page.get_by_role("button", name="Applications", exact=True).click()
+    page.locator("#application-list tbody tr").first.get_by_role("button").click()
+    checks = page.get_by_role("region", name="Local submission checks")
+    expect(checks).to_contain_text("All local checks passed.")
+    before = app.state.store.events(app_id)
+    page.get_by_role("button", name="Recheck readiness", exact=True).click()
+    expect(page.locator("#workspace")).not_to_have_attribute("aria-busy", "true")
+    assert app.state.store.events(app_id) == before
+    assert app.state.store.daily_usage().used == 0
+    adapter.assert_not_called()
+    page.get_by_role("button", name="Run authorised submission", exact=True).click()
+    expect(page.locator("#notice")).to_have_text("Provider receipt recorded.")
+    assert app.state.store.application(app_id)["receipt"] == "fixture:confirmed-readiness"
+    adapter.assert_called_once()
+    expect(page.locator("#daily-usage")).to_contain_text("1 / 10 attempts used")
+    page.get_by_text("Activity for this application", exact=True).click()
+    expect(page.locator(".timeline")).to_contain_text("submission finished")
+    expect(page.locator(".timeline")).to_contain_text("submission reserved")
+    expect(page.locator(".timeline")).not_to_contain_text("settings updated")
+    page.get_by_label("Record outcome", exact=True).select_option("offer")
+    page.get_by_role("button", name="Save outcome", exact=True).click()
+    expect(page.locator("#notice")).to_have_text("Outcome saved.")
+    page.get_by_role("button", name="Recheck readiness", exact=True).click()
+    expect(page.get_by_label("Record outcome", exact=True)).to_have_value("offer")
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("width", [390, 1440])
+def test_preflight_blocks_changed_profile_and_passes_accessibility_checks(dashboard, width):
+    page, app, _ = dashboard
+    app_id = linkedin_opportunity(app)
+    page.reload()
+    expect(page.locator("#readiness")).to_contain_text("Agent enabled")
+    page.set_viewport_size({"width": width, "height": 1000})
+    page.get_by_role("button", name="Applications", exact=True).click()
+    page.locator("#application-list tbody tr").first.get_by_role("button").click()
+    profile, _ = app.state.store.profile()
+    profile.confirmed = False
+    app.state.store.save_profile(profile)
+    page.get_by_role("button", name="Recheck readiness", exact=True).click()
+    expect(page.get_by_role("region", name="Local submission checks")).to_contain_text(
+        "Confirm the candidate facts first."
+    )
+    expect(page.locator("#workspace")).not_to_have_attribute("aria-busy", "true")
+    assert page.get_by_role("button", name="Run authorised submission", exact=True).count() == 0
+    assert app.state.store.daily_usage().used == 0
+    page.get_by_text("Activity for this application", exact=True).focus()
+    page.keyboard.press("Enter")
+    expect(page.locator(".timeline")).to_have_attribute("open", "")
+    axe = Path("node_modules/axe-core/axe.min.js").read_text(encoding="utf-8")
+    page.route(
+        "**/__test/axe.js", lambda route: route.fulfill(content_type="text/javascript", body=axe)
+    )
+    page.add_script_tag(url=page.url + "__test/axe.js")
+    result = page.evaluate(
+        "async () => await axe.run(document, {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa']}})"
+    )
+    assert not result["violations"], [(item["id"], item["nodes"]) for item in result["violations"]]
+    assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+    assert app.state.store.application(app_id)["state"] == "review"
+
+
+@pytest.mark.browser
+def test_empty_queue_and_activity_states_are_explained(dashboard):
+    page, _, _ = dashboard
+    for pattern in ["**/api/applications", "**/api/events", "**/api/applications/*/events"]:
+        page.route(pattern, lambda route: route.fulfill(content_type="application/json", body="[]"))
+    page.reload()
+    expect(page.locator("#workspace")).to_be_visible()
+    page.get_by_role("button", name="Applications", exact=True).click()
+    expect(page.locator("#application-list")).to_contain_text("No opportunities yet.")
+    expect(page.locator("#queue-count")).to_have_text("0 of 0 opportunities shown")
+    page.get_by_role("button", name="Activity log", exact=True).click()
+    expect(page.locator("#events")).to_contain_text("No activity recorded yet.")

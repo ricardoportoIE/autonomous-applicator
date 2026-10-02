@@ -106,6 +106,24 @@ def test_question_and_changed_policy_are_explained(data, profile, job):
     assert "Location needs candidate confirmation." in report.evaluation.blockers
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://example.test/jobs/view/123/",
+        "https://www.linkedin.com:8443/jobs/view/123/",
+        "https://www.linkedin.com/jobs/view/456/",
+    ],
+)
+def test_invalid_linkedin_targets_are_blocked_before_reserving(data, profile, job, url):
+    job.source, job.source_id, job.url = "linkedin", "123", url
+    store, service, app_id, adapter = ready(data, profile, job)
+    assert "target" in blocked(service.preflight(app_id))
+    with pytest.raises(ValueError, match="LinkedIn"):
+        service.submit(app_id)
+    assert store.daily_usage().used == 0
+    adapter.submit.assert_not_called()
+
+
 def test_daily_usage_counts_uncertain_attempts_and_resets_on_london_day(
     data, profile, job, monkeypatch
 ):

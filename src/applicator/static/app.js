@@ -1,6 +1,7 @@
 "use strict";
 import {
   errorDetail,
+  filterApplications,
   linkedinIdentity,
   parseAnswers,
   splitList,
@@ -107,13 +108,15 @@ function view(name) {
 all("[data-view]").forEach(
   (button) => (button.onclick = () => view(button.dataset.view)),
 );
-function applicationTable(rows, target) {
+function applicationTable(
+  rows,
+  target,
+  emptyMessage = "No opportunities yet. Import a job to start.",
+) {
   target.classList.add("table-wrap");
   target.replaceChildren();
   if (!rows.length) {
-    target.append(
-      node("p", "No opportunities yet. Import a job to start.", "empty"),
-    );
+    target.append(node("p", emptyMessage, "empty"));
     return;
   }
   const table = node("table"),
@@ -156,9 +159,53 @@ function applicationTable(rows, target) {
   }
   target.append(table);
 }
+function renderQueue() {
+  const rows = filterApplications(applications, {
+    query: $("#queue-search").value,
+    state: $("#queue-state").value,
+    sort: $("#queue-sort").value,
+  });
+  $("#queue-count").textContent =
+    `${rows.length} of ${applications.length} opportunities shown`;
+  applicationTable(
+    rows,
+    $("#application-list"),
+    applications.length
+      ? "No opportunities match these filters. Try another search or clear the filters."
+      : undefined,
+  );
+}
+$("#queue-search").oninput = renderQueue;
+$("#queue-state").onchange = renderQueue;
+$("#queue-sort").onchange = renderQueue;
+$("#queue-clear").onclick = () => {
+  $("#queue-search").value = "";
+  $("#queue-state").value = "all";
+  $("#queue-sort").value = "recent";
+  renderQueue();
+};
+function renderEvents(events, target) {
+  target.replaceChildren();
+  if (!events.length)
+    target.append(node("p", "No activity recorded yet.", "empty"));
+  for (const event of events) {
+    const el = node("div", undefined, "entry");
+    el.append(
+      node("strong", event.kind.replaceAll("_", " ")),
+      node("p", event.detail),
+      node("small", new Date(event.created).toLocaleString("en-GB")),
+    );
+    target.append(el);
+  }
+}
 async function refresh() {
-  settings = await api("/settings");
-  applications = await api("/applications");
+  const records = await Promise.all([
+    api("/settings"),
+    api("/applications"),
+    api("/usage"),
+  ]);
+  [settings, applications] = records;
+  const usage = records[2];
   try {
     const record = await api("/profile");
     profile = record.profile;
@@ -182,7 +229,7 @@ async function refresh() {
     el.append(node("span", label), node("strong", String(value)));
     $("#stats").append(el);
   }
-  applicationTable(applications, $("#application-list"));
+  renderQueue();
   applicationTable(applications.slice(0, 5), $("#recent"));
   renderEvidence();
   const insights = await api("/insights");
@@ -219,16 +266,7 @@ async function refresh() {
     $("#policy-bands").append(band);
   }
   const events = await api("/events");
-  $("#events").replaceChildren();
-  for (const event of events) {
-    const el = node("div", undefined, "entry");
-    el.append(
-      node("strong", event.kind),
-      node("p", event.detail),
-      node("small", new Date(event.created).toLocaleString("en-GB")),
-    );
-    $("#events").append(el);
-  }
+  renderEvents(events, $("#events"));
   const connections = await api("/connections");
   $("#connections").replaceChildren();
   if (!connections.length)
@@ -280,11 +318,20 @@ async function refresh() {
       profile?.confirmed ? "Profile confirmed" : "Profile review needed",
       "badge " + (profile?.confirmed ? "ready" : "review"),
     ),
+    node("span", usage.remaining + " attempts remaining today", "badge"),
+  );
+  const progress = node("progress");
+  progress.max = usage.limit;
+  progress.value = Math.min(usage.used, usage.limit);
+  progress.setAttribute("aria-label", "Daily application attempt usage");
+  $("#daily-usage").replaceChildren(
     node(
-      "span",
-      "Limit: " + settings.daily_limit + " applications / day",
-      "badge",
+      "strong",
+      `${usage.used} / ${usage.limit} attempts used`,
+      "text-2xl font-semibold tabular-nums",
     ),
+    node("p", `${usage.remaining} remaining · ${usage.day}`, "my-3"),
+    progress,
   );
 }
 function renderEvidence() {
@@ -330,7 +377,11 @@ function renderEvidence() {
 }
 async function detail(id) {
   view("applications");
-  const row = await api("/applications/" + id),
+  const [row, report, events] = await Promise.all([
+      api("/applications/" + id),
+      api("/applications/" + id + "/preflight"),
+      api("/applications/" + id + "/events"),
+    ]),
     target = $("#application-detail");
   target.hidden = false;
   target.replaceChildren(
@@ -342,6 +393,42 @@ async function detail(id) {
   link.target = "_blank";
   link.rel = "noopener noreferrer";
   target.append(link);
+  const preflight = node("section", undefined, "preflight");
+  preflight.setAttribute("aria-label", "Local submission checks");
+  preflight.append(
+    node("h3", "Submission readiness"),
+    node(
+      "p",
+      report.can_submit
+        ? "All local checks passed."
+        : "Resolve the blocked checks before automatic submission.",
+    ),
+    node(
+      "small",
+      "Checked " +
+        new Date(report.checked_at).toLocaleString("en-GB") +
+        ". This is a local snapshot. Provider sign-in, changed job details and new questions are checked during submission.",
+    ),
+  );
+  const checklist = node("ul", undefined, "checklist");
+  for (const check of report.checks) {
+    const item = node("li");
+    item.append(
+      node(
+        "span",
+        check.passed ? "Passed" : "Blocked",
+        "badge " + (check.passed ? "ready" : "review"),
+      ),
+    );
+    const copy = node("div");
+    copy.append(node("strong", check.label), node("p", check.detail));
+    item.append(copy);
+    checklist.append(item);
+  }
+  const recheck = node("button", "Recheck readiness", "secondary");
+  recheck.onclick = () => action(() => detail(id));
+  preflight.append(checklist, recheck);
+  target.append(preflight);
   if (row.evaluation.score !== undefined) {
     target.append(
       node("p", "Fit: " + row.evaluation.score + "/100 · " + row.state),
@@ -429,7 +516,7 @@ async function detail(id) {
   }
   if (row.state === "ready") {
     const submit = node("button", "Run authorised submission");
-    submit.disabled = !settings.automation_enabled;
+    submit.disabled = !report.can_submit;
     submit.onclick = () =>
       action(async () => {
         await api("/applications/" + id + "/submit", "POST");
@@ -501,6 +588,7 @@ async function detail(id) {
       option.value = value;
       select.append(option);
     }
+    if (row.outcome) select.value = row.outcome;
     label.append(select);
     const button = node("button", "Save outcome", "secondary");
     button.onclick = () =>
@@ -513,6 +601,15 @@ async function detail(id) {
       });
     target.append(label, button);
   }
+  const timeline = node("details", undefined, "timeline");
+  timeline.append(
+    node("summary", "Activity for this application"),
+    node("small", "Latest 200 entries, newest first."),
+  );
+  const entries = node("div");
+  renderEvents(events, entries);
+  timeline.append(entries);
+  target.append(timeline);
   target.scrollIntoView({ behavior: "smooth" });
 }
 $("#token-form").onsubmit = (event) => {
@@ -689,6 +786,9 @@ function lockWorkspace() {
   $("#job-form").reset();
   $("#connection-form").reset();
   $("#settings-form").reset();
+  $("#queue-search").value = "";
+  $("#queue-state").value = "all";
+  $("#queue-sort").value = "recent";
   editingJob = null;
   $("#job-form button").textContent = "Save opportunity";
   $("#cancel-job-edit").hidden = true;
@@ -702,6 +802,8 @@ function lockWorkspace() {
     "#insights",
     "#readiness",
     "#stats",
+    "#daily-usage",
+    "#queue-count",
   ].forEach((selector) => $(selector).replaceChildren());
   $("#token").value = "";
   view("overview");

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   errorDetail,
+  filterApplications,
   linkedinIdentity,
   parseAnswers,
   splitList,
@@ -86,4 +87,113 @@ test("LinkedIn recognition requires the approved HTTPS origin and an exact job p
   ])
     assert.equal(linkedinIdentity(url), null);
   assert.throws(() => linkedinIdentity("invalid"), TypeError);
+});
+
+const opportunities = [
+  {
+    id: 1,
+    state: "ready",
+    evaluation: { score: 100 },
+    job: {
+      title: "Backend Engineer",
+      company: "Alpha",
+      location: "Dublin, Ireland",
+    },
+  },
+  {
+    id: 2,
+    state: "review",
+    evaluation: {},
+    job: {
+      title: "Data Analyst",
+      company: "Beta",
+      location: "London, United Kingdom",
+    },
+  },
+  {
+    id: 3,
+    state: "ready",
+    evaluation: { score: 100 },
+    job: {
+      title: "Platform Engineer",
+      company: "Alpha",
+      location: "Dublin, Ireland",
+    },
+  },
+  {
+    id: 4,
+    state: "uncertain",
+    evaluation: { score: 0 },
+    job: { title: "QA Engineer", company: "Alpha", location: "Cork, Ireland" },
+  },
+  {
+    id: 5,
+    state: "review",
+    evaluation: {},
+    job: {
+      title: "Support Analyst",
+      company: "Beta",
+      location: "London, United Kingdom",
+    },
+  },
+  {
+    id: 6,
+    state: "ready",
+    evaluation: { score: 50 },
+    job: {
+      title: "Technical Analyst",
+      company: "Gamma",
+      location: "Belfast, United Kingdom",
+    },
+  },
+];
+const ids = (rows) => rows.map((row) => row.id);
+
+test("queue search combines case-insensitive terms across role, company and location", () => {
+  assert.deepEqual(
+    ids(
+      filterApplications(opportunities, { query: "  ENGINEER alpha Dublin  " }),
+    ),
+    [3, 1],
+  );
+  assert.deepEqual(
+    ids(filterApplications(opportunities, { query: "nonexistent" })),
+    [],
+  );
+  assert.deepEqual(filterApplications([], { query: "engineer" }), []);
+});
+
+test("queue status filters compose with searches without modifying source records", () => {
+  const before = structuredClone(opportunities);
+  assert.deepEqual(
+    ids(filterApplications(opportunities, { state: "ready" })),
+    [6, 3, 1],
+  );
+  assert.deepEqual(
+    ids(
+      filterApplications(opportunities, { state: "review", query: "london" }),
+    ),
+    [5, 2],
+  );
+  assert.deepEqual(
+    ids(filterApplications(opportunities, { state: "submitted" })),
+    [],
+  );
+  assert.deepEqual(opportunities, before);
+});
+
+test("queue sorts use predictable tie-breaks and put unevaluated jobs below zero fit", () => {
+  assert.deepEqual(ids(filterApplications(opportunities)), [6, 5, 4, 3, 2, 1]);
+  assert.deepEqual(
+    ids(filterApplications(opportunities, { sort: "fit" })),
+    [3, 1, 6, 4, 5, 2],
+  );
+  assert.deepEqual(
+    ids(filterApplications(opportunities, { sort: "company" })),
+    [4, 3, 1, 5, 2, 6],
+  );
+  assert.deepEqual(
+    ids(filterApplications(opportunities, { sort: "unknown" })),
+    [6, 5, 4, 3, 2, 1],
+  );
 });

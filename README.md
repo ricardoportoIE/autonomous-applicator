@@ -2,6 +2,8 @@
 
 A local job application workbench that links every candidate claim to evidence, explains job fit, prepares tailored CVs and cover letters, and controls application queues.
 
+Inspect submission readiness without opening a browser or consuming a daily attempt. Search and sort the queue, follow an individual application's activity, and see the remaining London-day attempt budget.
+
 ![Local application dashboard with fictional example data](docs/assets/dashboard.png)
 
 Built for an Ireland and UK technology job search. The interface, code, prompts and documentation use British English. Personal information, credentials, generated documents and browser sessions stay outside Git.
@@ -51,6 +53,7 @@ uv run python -m pip_audit
 - [Operating guide](docs/OPERATIONS.md)
 - [Delivery and validation record](docs/STATUS.md)
 - [Complete source review and regression findings](docs/CODE_REVIEW.md)
+- [Improvements and next priorities](docs/IMPROVEMENTS.md)
 
 ## Frontend development and testing
 

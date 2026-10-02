@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
 
-from .browser import ReviewRequired
+from .browser import ReviewRequired, linkedin_job_id
 from .documents import generate, validate_manifest
 from .models import Job, Preflight, State, SubmissionCheck
 from .policy import answer_questions, evaluate, select_evidence
@@ -13,6 +13,11 @@ from .store import Store
 
 class Adapter(Protocol):
     def submit(self, job: Job, answers: dict[str, str], folder: Path) -> str: ...
+
+
+def validate_target(job: Job) -> None:
+    if job.source == "linkedin" and linkedin_job_id(job.url) != job.source_id:
+        raise ValueError("LinkedIn job identifier does not match the reviewed opportunity")
 
 
 class Service:
@@ -74,6 +79,19 @@ class Service:
             if scope
             else "Configure the declared LinkedIn authorisation scope first.",
         )
+        try:
+            validate_target(job)
+        except ValueError as exc:
+            check("target", "Opportunity identity", False, str(exc))
+        else:
+            check(
+                "target",
+                "Opportunity identity",
+                True,
+                "The LinkedIn URL matches the reviewed identifier."
+                if job.source == "linkedin"
+                else "No LinkedIn identity check is required for this source.",
+            )
         evaluation = None
         try:
             profile, revision = self.store.profile()
@@ -167,6 +185,7 @@ class Service:
             raise ValueError("No permitted submission adapter; use manual hand-off")
         if job.source == "linkedin" and not self.store.settings().linkedin_authorised:
             raise ValueError("LinkedIn authorisation scope must be configured")
+        validate_target(job)
         folder = self.data / "documents" / str(app_id)
         validate_manifest(row["manifest"], folder, revision)
         if job.cover_letter_required and "cover_pdf" not in row["manifest"]["files"]:

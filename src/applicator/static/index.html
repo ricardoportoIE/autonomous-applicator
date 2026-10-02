@@ -164,6 +164,21 @@
         ></div>
         <section data-section="overview">
           <div class="stats" id="stats"></div>
+          <article class="panel" aria-labelledby="budget-title">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">DAILY ATTEMPT BUDGET</p>
+                <h2 id="budget-title">Know your remaining capacity</h2>
+              </div>
+              <span class="badge">Europe/London</span>
+            </div>
+            <div id="daily-usage"></div>
+            <small
+              >Reserved attempts count towards the limit, including interrupted
+              or uncertain submissions. The budget resets at midnight in
+              London.</small
+            >
+          </article>
           <div class="panel">
             <div class="section-heading">
               <div>
@@ -275,6 +290,43 @@
           </div>
           <article class="panel">
             <h2>Application queue</h2>
+            <div class="queue-tools">
+              <label
+                >Search opportunities<input
+                  id="queue-search"
+                  type="search"
+                  placeholder="Role, company or location"
+                  maxlength="200"
+              /></label>
+              <label
+                >Application status<select
+                  id="queue-state"
+                  aria-label="Application status"
+                >
+                  <option value="all">All statuses</option>
+                  <option value="ready">Ready</option>
+                  <option value="review">For review</option>
+                  <option value="skipped">Not prioritised</option>
+                  <option value="submitting">Submitting</option>
+                  <option value="submitted">Submitted</option>
+                  <option value="uncertain">Needs reconciliation</option>
+                </select></label
+              >
+              <label
+                >Sort opportunities<select
+                  id="queue-sort"
+                  aria-label="Sort opportunities"
+                >
+                  <option value="recent">Newest first</option>
+                  <option value="fit">Highest fit first</option>
+                  <option value="company">Company A–Z</option>
+                </select></label
+              >
+              <button id="queue-clear" class="secondary" type="button">
+                Clear filters
+              </button>
+            </div>
+            <p id="queue-count" class="mb-4 text-sm" role="status"></p>
             <div id="application-list"></div>
           </article>
           <article class="panel" id="application-detail" hidden></article>

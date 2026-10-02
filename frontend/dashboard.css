@@ -303,6 +303,57 @@
   .skip-link {
     @apply absolute -top-20 left-4 z-50 rounded-lg bg-white p-3 focus:top-4;
   }
+  .queue-tools {
+    @apply mb-2 grid items-end gap-x-4 sm:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_auto];
+  }
+  .queue-tools button {
+    @apply mb-5;
+  }
+  progress {
+    @apply mb-4 block h-2 w-full overflow-hidden rounded-full border-0 bg-slate-100 accent-accent;
+  }
+  progress::-webkit-progress-bar {
+    @apply rounded-full bg-slate-100;
+  }
+  progress::-webkit-progress-value {
+    @apply rounded-full bg-accent;
+  }
+  progress::-moz-progress-bar {
+    @apply rounded-full bg-accent;
+  }
+  .preflight {
+    @apply mt-6 rounded-xl border border-violet-100 bg-slate-50 p-4 sm:p-5;
+  }
+  .preflight h3 {
+    @apply mb-2 text-lg;
+  }
+  .preflight > p {
+    @apply mb-2;
+  }
+  .checklist {
+    @apply my-5 space-y-3;
+  }
+  .checklist li {
+    @apply flex items-start gap-3 border-b border-slate-200 pb-3 last:border-0;
+  }
+  .checklist .badge {
+    @apply min-w-20 shrink-0 justify-center;
+  }
+  .checklist p {
+    @apply mt-1 text-sm break-words;
+  }
+  .checklist strong {
+    @apply text-sm font-semibold;
+  }
+  .timeline {
+    @apply mt-6 border-t border-slate-200 pt-5;
+  }
+  .timeline summary {
+    @apply mb-3 cursor-pointer text-base font-semibold text-accent;
+  }
+  .timeline summary:focus-visible {
+    @apply rounded outline-3 outline-offset-4 outline-accent;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

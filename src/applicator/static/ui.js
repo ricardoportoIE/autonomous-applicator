@@ -73,3 +73,32 @@ export function linkedinIdentity(value) {
     ? match[1]
     : null;
 }
+
+export function filterApplications(
+  rows,
+  { query = "", state = "all", sort = "recent" } = {},
+) {
+  const terms = query
+    .trim()
+    .toLocaleLowerCase("en-GB")
+    .split(/\s+/)
+    .filter(Boolean);
+  const filtered = rows.filter((row) => {
+    const text = [row.job.title, row.job.company, row.job.location]
+      .join(" ")
+      .toLocaleLowerCase("en-GB");
+    return (
+      (state === "all" || row.state === state) &&
+      terms.every((term) => text.includes(term))
+    );
+  });
+  return filtered.sort((a, b) => {
+    if (sort === "fit")
+      return (
+        (b.evaluation.score ?? -1) - (a.evaluation.score ?? -1) || b.id - a.id
+      );
+    if (sort === "company")
+      return a.job.company.localeCompare(b.job.company, "en-GB") || b.id - a.id;
+    return b.id - a.id;
+  });
+}

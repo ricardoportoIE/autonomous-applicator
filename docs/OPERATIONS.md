@@ -10,7 +10,7 @@ uv run python -m applicator.cli serve
 
 Use `http://127.0.0.1:8765` and the access token printed in the terminal. The application automatically uses an installed Microsoft Edge on Windows; otherwise install Chromium with `uv run python -m playwright install chromium`. Set `APPLICATOR_BROWSER_CHANNEL` to `chrome`, `msedge` or `chromium` if needed.
 
-The readiness strip shows the saved LinkedIn authorisation, profile confirmation and daily limit. A scope declaration is separate from enabling application automation or networking. Use **Lock workspace** to clear credentials and visible candidate information from this tab; locking the tab does not pause the background agent. Use **Pause all automation** to stop new attempts.
+The readiness strip shows the saved LinkedIn authorisation, profile confirmation and remaining daily attempts. A scope declaration is separate from enabling application automation or networking. Use **Lock workspace** to clear credentials and visible candidate information from this tab; locking the tab does not pause the background agent. Use **Pause all automation** to stop new attempts.
 
 The dashboard detects stale profile edits using a revision precondition. If another tab changes the record, reload before saving rather than overwriting the newer facts. Pending operations disable workspace controls, while pause remains available. The dashboard uses committed, locally compiled Tailwind CSS. To change its styling, use Node.js 24, `npm ci` and `npm run build:css`.
 
@@ -29,6 +29,18 @@ uv run python -m applicator.cli import-profile data/my-profile.json
 ```
 
 Edits invalidate pending documents. Reprepare before sending. Documents from confirmed submissions remain available as historical records after profile edits. Use **Edit job details** to update the same opportunity after a description change; submitted and uncertain records are immutable. Unknown salary, availability, work authorisation or screening answers must be supplied explicitly. Store exact approved LinkedIn question answers using `question:` followed by the lower-case label with normalised spaces. Required questions discovered during a safe pre-submission stop appear on the application detail for approval.
+
+## Reviewing the queue
+
+Use **Search opportunities** to match role, company and location. Multiple words must all match. Combine the search with **Application status** and sort by newest, highest fit or company. Unevaluated opportunities sort below scored opportunities when sorting by fit. Filters stay in place when records refresh; **Clear filters** resets them. Locking the workspace clears the filters as well as candidate content.
+
+Open an application to see **Submission readiness**. This read-only inspection checks current permissions, attempt capacity, status, integration, LinkedIn scope and identity, candidate confirmation, policy, profile revision, required answers and document integrity. A required cover letter must have a valid PDF. **Recheck readiness** refreshes the inspection without creating materials or consuming an attempt. Manual sources without an integration remain manual hand-offs.
+
+The inspection is an advisory snapshot. Passing it does not prove that the browser is signed in or that the provider still shows the same vacancy and questions. The actual submission repeats all authoritative gates and checks the live provider. A setting or profile change after inspection can still prevent submission.
+
+Expand **Activity for this application** for its latest 200 journal entries, newest first. This includes imports, preparation, reservations, confirmed receipts and outcome changes; unrelated applications and global settings do not appear.
+
+The overview budget counts durable application reservations, including interrupted or uncertain attempts. Safe pre-submission provider stops also consume an attempt once reserved. Manual receipts do not create automatic attempts. The count resets at midnight in Europe/London, including British Summer Time. Lowering a limit below today's usage leaves zero remaining capacity and preserves the actual count. Networking retains its separate limit.
 
 ## Browser session
 

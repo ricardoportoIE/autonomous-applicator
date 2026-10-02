@@ -22,6 +22,14 @@ Every line of the authored runtime modules, dashboard HTML, JavaScript and styli
 | Question controls had ambiguous labels and values | Use explicit accessible labels and constrained choices; sensitive questions show a manual-handling message. |
 | Policy labels could diverge from saved settings | Render the configured thresholds. |
 | Contrast and responsive hierarchy needed improvement | Use compiled Tailwind styling, prioritise the queue, and check six views with axe, three viewport sizes, keyboard navigation and enlarged text. |
+| A ready badge did not explain current operational blockers | Add a read-only local preflight with current policy, scope, target identity, quota, questions and document checks. Actual submission repeats the authoritative gates. |
+| A required cover letter could be missing from the manifest | Require the cover PDF before reservation, as well as validating its recorded hash. |
+| Invalid LinkedIn targets consumed a reservation before being rejected | Validate the approved job URL and stored identifier before reserving; repeat the browser-side check. |
+| Queue listing opened a connection per application | Fetch and decode records in one query and connection. A regression verifies this property. |
+| Global activity could bury an individual application's events | Provide an indexed, application-specific journal query, independent of the latest global 200 entries. |
+| Saved outcomes were not selected when reopening a record | Initialise the outcome control from the stored outcome. |
+
+The post-test improvement pass reviewed every changed source and test line. New diagnostics use authenticated GET requests, perform no browser or paid model calls, generate no documents and write no journal entries. Additional regressions verify these properties, daily accounting, tampered materials, filter composition and local/mock submission journeys.
 
 ## Module inspection
 
