@@ -1,11 +1,12 @@
 """Orchestration that keeps irreversible actions behind deterministic gates."""
 
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
 
 from .browser import ReviewRequired
 from .documents import generate, validate_manifest
-from .models import Job, State
+from .models import Job, Preflight, State, SubmissionCheck
 from .policy import answer_questions, evaluate, select_evidence
 from .store import Store
 
@@ -18,6 +19,117 @@ class Service:
     def __init__(self, store: Store, data: Path, adapters: dict[str, Adapter] | None = None):
         self.store, self.data = store, data
         self.adapters = adapters or {}
+
+    def preflight(self, app_id: int, sources: set[str] | None = None) -> Preflight:
+        """Inspect current local gates without reserving, browsing or generating documents.
+
+        This is an advisory snapshot. Submission always repeats the authoritative checks.
+        Provider sign-in, changed descriptions and newly discovered questions require the
+        live adapter and cannot be promised by a local inspection.
+        """
+        row = self.store.application(app_id)
+        job = Job.model_validate(row["job"])
+        settings = self.store.settings()
+        usage = self.store.daily_usage()
+        checks: list[SubmissionCheck] = []
+
+        def check(code: str, label: str, passed: bool, detail: str) -> None:
+            checks.append(SubmissionCheck(code=code, label=label, passed=passed, detail=detail))
+
+        check(
+            "automation",
+            "Automation permission",
+            settings.automation_enabled,
+            "Automation is enabled." if settings.automation_enabled else "Automation is paused.",
+        )
+        check(
+            "quota",
+            "Daily attempt budget",
+            usage.remaining > 0,
+            f"{usage.used}/{usage.limit} attempts used on {usage.day} (Europe/London); {usage.remaining} remaining.",
+        )
+        check(
+            "state",
+            "Application status",
+            row["state"] == State.READY,
+            "Prepared and ready."
+            if row["state"] == State.READY
+            else "Prepare pending records; reconcile uncertain attempts. Submitted records cannot be retried.",
+        )
+        permitted = job.source in (sources if sources is not None else self.adapters.keys())
+        check(
+            "adapter",
+            "Submission integration",
+            permitted,
+            "A submission integration is configured."
+            if permitted
+            else "No submission integration; use manual hand-off.",
+        )
+        scope = job.source != "linkedin" or settings.linkedin_authorised
+        check(
+            "scope",
+            "LinkedIn authorisation",
+            scope,
+            "Scope configured or not required for this source."
+            if scope
+            else "Configure the declared LinkedIn authorisation scope first.",
+        )
+        evaluation = None
+        try:
+            profile, revision = self.store.profile()
+        except ValueError as exc:
+            check("profile", "Candidate record", False, str(exc))
+        else:
+            check(
+                "profile",
+                "Candidate record",
+                profile.confirmed,
+                "Candidate facts confirmed."
+                if profile.confirmed
+                else "Confirm the candidate facts first.",
+            )
+            evaluation = evaluate(job, profile, settings)
+            check(
+                "policy",
+                "Current fit and eligibility",
+                evaluation.state == State.READY,
+                f"Fit {evaluation.score}/100; route: {evaluation.state}. "
+                + " ".join(evaluation.blockers),
+            )
+            check(
+                "revision",
+                "Prepared profile version",
+                row["revision"] == revision,
+                f"Prepared revision {row['revision']}; current revision {revision}.",
+            )
+            _, unresolved = answer_questions(job, profile)
+            check(
+                "questions",
+                "Required questionnaire answers",
+                not unresolved,
+                "All known required questions have approved answers."
+                if not unresolved
+                else "Approve answers for: " + ", ".join(unresolved),
+            )
+            try:
+                validate_manifest(row["manifest"], self.data / "documents" / str(app_id), revision)
+                if job.cover_letter_required and "cover_pdf" not in row["manifest"]["files"]:
+                    raise ValueError("Generate the required cover letter before submission")
+            except (ValueError, OSError) as exc:
+                check("documents", "Document integrity", False, str(exc))
+            else:
+                check(
+                    "documents",
+                    "Document integrity",
+                    True,
+                    "Current document files match their recorded hashes.",
+                )
+        return Preflight(
+            checked_at=datetime.now(UTC).isoformat(),
+            can_submit=all(item.passed for item in checks),
+            evaluation=evaluation,
+            checks=checks,
+        )
 
     def prepare(self, app_id: int, selected: list[str] | None = None) -> None:
         row = self.store.application(app_id)
@@ -57,6 +169,8 @@ class Service:
             raise ValueError("LinkedIn authorisation scope must be configured")
         folder = self.data / "documents" / str(app_id)
         validate_manifest(row["manifest"], folder, revision)
+        if job.cover_letter_required and "cover_pdf" not in row["manifest"]["files"]:
+            raise ValueError("Generate the required cover letter before submission")
         answers, unresolved = answer_questions(job, profile)
         if unresolved:
             raise ValueError("Required questions remain unanswered")

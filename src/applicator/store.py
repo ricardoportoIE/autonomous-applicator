@@ -11,7 +11,7 @@ from typing import Any
 from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
-from .models import Evidence, Job, Profile, Question, Settings, State
+from .models import DailyUsage, Evidence, Job, Profile, Question, Settings, State
 
 
 def day_key(now: datetime | None = None) -> str:
@@ -37,6 +37,8 @@ class Store:
                 CREATE TABLE IF NOT EXISTS events (
                     id INTEGER PRIMARY KEY, application_id INTEGER, kind TEXT NOT NULL,
                     detail TEXT NOT NULL, created TEXT NOT NULL);
+                CREATE INDEX IF NOT EXISTS events_application ON events(application_id, id DESC);
+                CREATE INDEX IF NOT EXISTS attempts_day ON attempts(day);
             """)
             db.execute(
                 "INSERT OR IGNORE INTO config VALUES ('settings', ?)",
@@ -191,10 +193,23 @@ class Store:
 
     def applications(self) -> list[dict[str, Any]]:
         with self.connect() as db:
-            ids = [
-                int(row[0]) for row in db.execute("SELECT id FROM applications ORDER BY id DESC")
-            ]
-        return [self.application(app_id) for app_id in ids]
+            rows = [dict(row) for row in db.execute("SELECT * FROM applications ORDER BY id DESC")]
+        for row in rows:
+            for key in ("job", "evaluation", "manifest"):
+                row[key] = json.loads(row[key])
+        return rows
+
+    def daily_usage(self) -> DailyUsage:
+        # Read the limit and reservations in one SQLite statement/snapshot.
+        day = day_key()
+        with self.connect() as db:
+            row = db.execute(
+                "SELECT value, (SELECT COUNT(*) FROM attempts WHERE day=?) AS used FROM config WHERE key='settings'",
+                (day,),
+            ).fetchone()
+        limit = Settings.model_validate_json(row["value"]).daily_limit
+        used = int(row["used"])
+        return DailyUsage(day=day, used=used, limit=limit, remaining=max(0, limit - used))
 
     def prepare(
         self, app_id: int, revision: int, evaluation: str, state: State, manifest: dict[str, Any]
@@ -337,8 +352,18 @@ class Store:
             db.execute("UPDATE applications SET outcome=? WHERE id=?", (outcome, app_id))
             self.event(db, "outcome_recorded", outcome, app_id)
 
-    def events(self) -> list[dict[str, Any]]:
+    def events(self, app_id: int | None = None) -> list[dict[str, Any]]:
         with self.connect() as db:
+            if app_id is not None:
+                if not db.execute("SELECT 1 FROM applications WHERE id=?", (app_id,)).fetchone():
+                    raise KeyError(app_id)
+                return [
+                    dict(row)
+                    for row in db.execute(
+                        "SELECT * FROM events WHERE application_id=? ORDER BY id DESC LIMIT 200",
+                        (app_id,),
+                    )
+                ]
             return [
                 dict(row) for row in db.execute("SELECT * FROM events ORDER BY id DESC LIMIT 200")
             ]

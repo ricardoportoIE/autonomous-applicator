@@ -135,4 +135,26 @@ class Advice(Contract):
     explanation: str = Field(max_length=1500)
 
 
+class DailyUsage(Contract):
+    day: str
+    timezone: Literal["Europe/London"] = "Europe/London"
+    used: int = Field(ge=0)
+    limit: int = Field(ge=1)
+    remaining: int = Field(ge=0)
+
+
+class SubmissionCheck(Contract):
+    code: str
+    label: str
+    passed: bool
+    detail: str
+
+
+class Preflight(Contract):
+    checked_at: str
+    can_submit: bool
+    evaluation: Evaluation | None = None
+    checks: list[SubmissionCheck]
+
+
 PositiveId = Annotated[int, Field(gt=0)]

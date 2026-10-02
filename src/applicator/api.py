@@ -19,7 +19,7 @@ from .adviser import advise
 from .browser import LinkedInBrowser
 from .discovery import greenhouse
 from .documents import validate_manifest
-from .models import Contract, Evidence, Job, Profile, Settings, State
+from .models import Contract, DailyUsage, Evidence, Job, Preflight, Profile, Settings, State
 from .networking import Networking
 from .service import Service
 from .store import Store
@@ -240,6 +240,18 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
     @app.get("/api/applications/{app_id}", dependencies=auth)
     def application(app_id: int) -> dict[str, Any]:
         return store.application(app_id)
+
+    @app.get("/api/usage", dependencies=auth)
+    def usage() -> DailyUsage:
+        return store.daily_usage()
+
+    @app.get("/api/applications/{app_id}/preflight", dependencies=auth)
+    def preflight(app_id: int) -> Preflight:
+        return service.preflight(app_id, {"linkedin"})
+
+    @app.get("/api/applications/{app_id}/events", dependencies=auth)
+    def application_events(app_id: int) -> list[dict[str, Any]]:
+        return store.events(app_id)
 
     @app.post("/api/jobs", dependencies=auth)
     def add_job(job: Job) -> dict[str, Any]:
