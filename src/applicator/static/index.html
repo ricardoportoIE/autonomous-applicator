@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Autonomous Applicator</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script defer src="/app.js"></script>
+  </head>
+  <body>
+    <aside>
+      <a class="brand" href="/"
+        >A<span>Autonomous<br />Applicator</span></a
+      >
+      <p class="eyebrow">LOCAL WORKSPACE</p>
+      <nav aria-label="Main navigation">
+        <button data-view="overview" class="active">Overview</button
+        ><button data-view="applications">Applications</button
+        ><button data-view="profile">Candidate profile</button
+        ><button data-view="networking">Networking</button
+        ><button data-view="settings">Agent settings</button
+        ><button data-view="activity">Activity log</button>
+      </nav>
+      <div class="local">
+        <i></i> Your data stays local<br /><small
+          >Evidence-led. Candidate-controlled.</small
+        >
+      </div>
+    </aside>
+    <main>
+      <header>
+        <div>
+          <p class="eyebrow">CAREER WORKBENCH / IRELAND &amp; UK</p>
+          <h1 id="page-title">Overview</h1>
+        </div>
+        <button id="pause" class="danger">Pause all automation</button>
+      </header>
+      <div id="notice" role="status" aria-live="polite"></div>
+      <section id="login" class="panel">
+        <h2>Connect to your local workspace</h2>
+        <p>Enter the access token printed by <code>applicator serve</code>.</p>
+        <form id="token-form">
+          <label
+            >Access token<input
+              id="token"
+              type="password"
+              required
+              autocomplete="off" /></label
+          ><button>Unlock workspace</button>
+        </form>
+      </section>
+      <div id="workspace" hidden>
+        <section data-section="overview">
+          <div class="stats" id="stats"></div>
+          <div class="two">
+            <article class="panel">
+              <p class="eyebrow">YOUR APPLICATION POLICY</p>
+              <h2>Relevant opportunities.<br />Defensible applications.</h2>
+              <p>
+                The agent matches job requirements to your verified evidence.
+                Every submission keeps a receipt and a history.
+              </p>
+              <div class="bands">
+                <p><b>80–100</b> Automatic, when every gate passes</p>
+                <p><b>50–79</b> Candidate review</p>
+                <p><b>0–49</b> Not prioritised</p>
+              </div>
+              <small
+                >Fit measures evidence alignment. It is not a hiring probability
+                or an ATS score.</small
+              >
+            </article>
+            <article class="panel">
+              <p class="eyebrow">OUTCOME OBSERVATIONS</p>
+              <h2>Learn from the record</h2>
+              <div id="insights"></div>
+              <p>
+                Suggestions never change your qualifications, immigration
+                answers or submission permissions automatically.
+              </p>
+              <button id="tick">Run agent cycle</button>
+            </article>
+          </div>
+          <div class="panel">
+            <h2>Recent applications</h2>
+            <div id="recent"></div>
+          </div>
+        </section>
+        <section data-section="applications" hidden>
+          <div class="two">
+            <form id="job-form" class="panel">
+              <h2>Add an opportunity</h2>
+              <label>Job title<input name="title" required /></label
+              ><label>Company<input name="company" required /></label
+              ><label
+                >Location<input
+                  name="location"
+                  required
+                  placeholder="Dublin, Ireland" /></label
+              ><label>Job URL<input name="url" type="url" required /></label
+              ><label
+                >Job description<textarea
+                  name="description"
+                  rows="5"
+                  required
+                ></textarea></label
+              ><label
+                >Required technologies, comma-separated<input
+                  name="requirements"
+                  placeholder="Python, FastAPI, PostgreSQL" /></label
+              ><label
+                >Sponsorship<select name="sponsorship">
+                  <option value="unknown">Not stated</option>
+                  <option value="available">Available</option>
+                  <option value="unavailable">Explicitly unavailable</option>
+                </select></label
+              ><label class="check"
+                ><input name="cover_letter_required" type="checkbox" /> Cover
+                letter required</label
+              ><button>Save opportunity</button>
+            </form>
+            <article class="panel">
+              <h2>Discover jobs</h2>
+              <p>
+                Use an employer's public Greenhouse board identifier or your
+                configured LinkedIn search.
+              </p>
+              <form id="board-form">
+                <label
+                  >Greenhouse board<input
+                    name="board"
+                    required
+                    placeholder="Employer board identifier" /></label
+                ><button>Import board jobs</button>
+              </form>
+              <hr />
+              <button id="linkedin-search">Search LinkedIn</button>
+              <p>
+                Sign in locally first with
+                <code>applicator browser-login</code>. Discovery does not submit
+                applications.
+              </p>
+            </article>
+          </div>
+          <article class="panel">
+            <h2>Application queue</h2>
+            <div id="application-list"></div>
+          </article>
+          <article class="panel" id="application-detail" hidden></article>
+        </section>
+        <section data-section="profile" hidden>
+          <div class="panel">
+            <h2>Your candidate record</h2>
+            <p>
+              Confirm facts before enabling automation. Editing the profile
+              invalidates earlier documents.
+            </p>
+            <form id="profile-form">
+              <div class="grid">
+                <label>Professional name<input name="name" required /></label
+                ><label
+                  >E-mail<input name="email" type="email" required /></label
+                ><label>Phone<input name="phone" /></label
+                ><label>Location<input name="location" required /></label>
+              </div>
+              <label
+                >Professional summary (approved wording)<textarea
+                  name="summary"
+                  rows="3"
+                ></textarea></label
+              ><label
+                >Professional links, one per line<textarea
+                  name="links"
+                  rows="3"
+                ></textarea></label
+              ><label class="check"
+                ><input name="sponsorship_required" type="checkbox" />
+                Sponsorship required</label
+              ><label class="check"
+                ><input name="confirmed" type="checkbox" /> I have reviewed and
+                confirmed the candidate facts</label
+              ><label
+                >Approved form answers (JSON object)<textarea
+                  name="answers"
+                  rows="5"
+                  spellcheck="false"
+                  placeholder='{"question:will you require sponsorship?":"Yes"}'
+                ></textarea></label
+              ><small
+                >Use an exact question label prefixed with “question:”, in lower
+                case. Unknown answers pause the application.</small
+              >
+              <p><button>Save candidate profile</button></p>
+            </form>
+          </div>
+          <div class="two">
+            <form id="evidence-form" class="panel">
+              <h2>Add or update evidence</h2>
+              <label
+                >Evidence identifier<input
+                  name="id"
+                  required
+                  pattern="[a-zA-Z0-9_-]{1,64}" /></label
+              ><label
+                >Category<select name="category" aria-label="Category">
+                  <option value="skill">Skill</option>
+                  <option value="project">
+                    Independent / academic project
+                  </option>
+                  <option value="experience">Work experience</option>
+                  <option value="education">Qualification</option>
+                  <option value="language">Language</option>
+                  <option value="award">Award</option>
+                </select></label
+              ><label>Title<input name="title" required /></label
+              ><label
+                >Factual description<textarea
+                  name="text"
+                  rows="4"
+                  required
+                ></textarea></label
+              ><label>Dates as confirmed<input name="dates" /></label
+              ><label
+                >Technology tags, comma-separated<input name="tags" /></label
+              ><label>Evidence source<input name="source" required /></label
+              ><label class="check"
+                ><input name="verified" type="checkbox" /> Reviewed and approved
+                for applications</label
+              ><button>Save evidence</button>
+            </form>
+            <article class="panel">
+              <h2>Qualifications and evidence</h2>
+              <div id="evidence-list"></div>
+            </article>
+          </div>
+        </section>
+        <section data-section="networking" hidden>
+          <div class="two">
+            <form id="connection-form" class="panel">
+              <h2>Queue a professional connection</h2>
+              <p>
+                Select a relevant European recruiter or hiring contact. The
+                agent verifies the identity, role and location before sending an
+                invitation without a note.
+              </p>
+              <label
+                >LinkedIn profile URL<input
+                  name="url"
+                  type="url"
+                  required /></label
+              ><label
+                >Member's displayed name<input name="name" required /></label
+              ><label
+                >Displayed role / headline<input name="role" required /></label
+              ><label
+                >Displayed European location<input
+                  name="location"
+                  required /></label
+              ><button>Queue contact</button>
+            </form>
+            <article class="panel">
+              <h2>Networking controls</h2>
+              <p>
+                Networking has a separate daily limit and enable switch in Agent
+                settings. The global pause stops both queues.
+              </p>
+              <p>
+                No public profile edits are supported. An uncertain invitation
+                is held for manual reconciliation.
+              </p>
+            </article>
+          </div>
+          <article class="panel">
+            <h2>Connection queue</h2>
+            <div id="connections"></div>
+          </article>
+        </section>
+        <section data-section="settings" hidden>
+          <form id="settings-form" class="panel narrow">
+            <h2>Agent controls</h2>
+            <label class="check"
+              ><input name="automation_enabled" type="checkbox" /> Enable
+              application automation</label
+            ><label class="check"
+              ><input name="linkedin_authorised" type="checkbox" /> My declared
+              LinkedIn authorisation covers discovery and Easy Apply</label
+            ><label class="check"
+              ><input name="discovery_enabled" type="checkbox" /> Discover and
+              prepare new LinkedIn opportunities each cycle</label
+            ><label
+              >Daily application attempt limit<input
+                name="daily_limit"
+                type="number"
+                min="1"
+                max="50"
+                required
+            /></label>
+            <div class="grid">
+              <label
+                >Automatic threshold<input
+                  name="auto_threshold"
+                  type="number"
+                  min="80"
+                  max="100"
+                  required /></label
+              ><label
+                >Review threshold<input
+                  name="review_threshold"
+                  type="number"
+                  min="50"
+                  max="79"
+                  required
+              /></label>
+            </div>
+            <label
+              >Target countries, comma-separated<input
+                name="allowed_countries"
+                required /></label
+            ><label
+              >Agent interval (seconds)<input
+                name="poll_seconds"
+                type="number"
+                min="10"
+                max="3600"
+                required /></label
+            ><label
+              >LinkedIn search keywords<input
+                name="search_keywords"
+                required /></label
+            ><label
+              >LinkedIn search location<input
+                name="search_location"
+                required /></label
+            ><label class="check"
+              ><input name="connections_enabled" type="checkbox" /> Enable
+              queued networking invitations</label
+            ><label
+              >Daily connection attempt limit<input
+                name="daily_connection_limit"
+                type="number"
+                min="1"
+                max="10"
+                required /></label
+            ><button>Save agent settings</button>
+          </form>
+        </section>
+        <section data-section="activity" hidden>
+          <article class="panel">
+            <h2>Durable activity log</h2>
+            <div id="events"></div>
+          </article>
+        </section>
+      </div>
+      <footer>Autonomous Applicator · Local edition · British English</footer>
+    </main>
+  </body>
+</html>

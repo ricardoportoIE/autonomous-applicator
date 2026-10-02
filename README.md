@@ -20,20 +20,21 @@ The fit score is a transparent heuristic, not an ATS score or a hiring probabili
 ## Local setup
 
 ```powershell
-uv sync --extra dev
-uv run playwright install chromium
+uv sync --extra dev --python 3.14
+# Uses installed Edge on Windows; otherwise install Chromium:
+uv run python -m playwright install chromium
 Copy-Item .env.example .env
 # Set a fresh OPENAI_API_KEY locally only if enabling the optional AI adviser.
-uv run applicator serve
+uv run python -m applicator.cli serve
 ```
 
 Open `http://127.0.0.1:8765`. The first run generates a local access token. The command prints the token required by the dashboard. Keep the server bound to loopback.
 
 ```powershell
-uv run ruff check .
-uv run mypy src
-uv run pytest
-uv run pip-audit
+uv run python -m ruff check .
+uv run python -m mypy src
+uv run python -m pytest
+uv run python -m pip_audit
 ```
 
 ## Documentation
@@ -48,4 +49,4 @@ uv run pip-audit
 
 The optional adviser uses the OpenAI Responses API with `gpt-6.1-sol`, structured output and `store=False`. It selects existing evidence identifiers rather than inventing candidate history. Unknown form answers require candidate input. No hidden chain of thought is stored; the application records concise explanations and evidence references.
 
-LinkedIn prohibits unauthorised automated access under its [User Agreement](https://www.linkedin.com/legal/user-agreement). The initial LinkedIn integration is a manual hand-off. Browser automation is tested on a local fixture; live sites require an explicitly configured, permitted adapter.
+LinkedIn prohibits unauthorised automated access under its [User Agreement](https://www.linkedin.com/legal/user-agreement). The candidate has declared specific authorisation for discovery, Easy Apply and networking. Enable that scope explicitly after local sign-in. The adapter performs bounded browser actions and holds unknown questions or changed job details for review. Fixture tests do not certify the current live LinkedIn interface. Other employer portals use manual hand-off unless a permitted adapter is configured.

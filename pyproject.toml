@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<10", "pytest-cov>=6,<8", "hypothesis>=6,<7", "ruff>=0.11,<1", "mypy>=1.15,<2", "pip-audit>=2.8,<3", "pymupdf>=1.25,<2"]
+dev = ["pytest>=8,<10", "pytest-cov>=6,<8", "hypothesis>=6,<7", "ruff>=0.11,<1", "mypy>=1.15,<3", "pip-audit>=2.8,<3", "pymupdf>=1.25,<2"]
 
 [project.scripts]
 applicator = "applicator.cli:main"
@@ -43,4 +43,3 @@ ignore = ["E501", "S101"]
 python_version = "3.12"
 strict = true
 ignore_missing_imports = true
-

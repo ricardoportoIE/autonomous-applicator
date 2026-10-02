@@ -29,4 +29,4 @@ Preserve these distinctions: Military Police Officer, Sep 2012–Apr 2026, with 
 
 ## Questions awaiting candidate decisions
 
-LinkedIn automation authorisation/desired hand-off, repository visibility, daily submission limit, current profile/contact confirmation, salary expectations, availability and permitted live providers.
+Resolved: public `ricardoportoIE/autonomous-applicator` repository; ten daily application attempts; candidate-declared LinkedIn scope for discovery, Easy Apply and invitations; no public profile changes. Remaining setup: current profile/contact confirmation, salary expectations, availability, local browser sign-in, a rotated API key and initial live selector validation.

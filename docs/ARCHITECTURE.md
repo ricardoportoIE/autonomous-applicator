@@ -6,11 +6,11 @@ FastAPI serves a same-origin dashboard and a token-protected API. SQLite persist
 
 The deterministic policy engine owns score thresholds and submission gates. An optional OpenAI adviser selects evidence for a job. Model output never grants browser or submission permissions. Web pages and attached documents are untrusted content rather than executable instructions.
 
-The renderer copies approved evidence into tailored PDF/DOCX documents. Questions are matched to explicit candidate-approved answer keys. A browser adapter can use only a declared origin and form contract. LinkedIn is a manual hand-off pending an appropriate permitted integration.
+The renderer copies approved evidence into tailored PDF/DOCX documents. Questions are matched to explicit candidate-approved answer keys. The LinkedIn adapter uses a dedicated local browser session and the candidate's declared authorisation scope. It verifies job identity and description, bounds the number of steps, rejects unsupported fields and requires a visible confirmation. Its selectors are tested on intercepted fixtures and still require live account validation. No adapter modifies the public profile.
 
 ## Submission invariants
 
-An immediate SQLite transaction reserves an attempt after checking automation, profile revision, documents, questions, fit, daily limit and provider capability. The attempt is committed before external activity. Success needs a provider receipt. Failure or a crash after reservation results in uncertainty, not an automatic retry. A separate confirmed manual outcome can reconcile the attempt.
+An immediate SQLite transaction reserves an attempt after checking automation, profile revision, documents, questions, fit, daily limit and provider capability. The attempt is committed before external activity. Success needs a provider receipt. A known pre-submission stop becomes review and records unknown question labels; failure after attempting the irreversible action becomes uncertain. A separate confirmed manual outcome can reconcile the attempt.
 
 The worker checks the kill switch before each attempt. It cannot undo a submission already in flight. One application per canonical source identifier prevents duplicates. Editing evidence changes the revision and requires regenerating materials. Settings changes do not manufacture eligibility.
 
