@@ -52,3 +52,8 @@ ignore = ["E501", "S101"]
 python_version = "3.12"
 strict = true
 ignore_missing_imports = true
+
+[tool.coverage.run]
+# Playwright switches greenlets; explicitly trace both greenlets and API worker threads.
+core = "ctrace"
+concurrency = ["greenlet", "thread"]

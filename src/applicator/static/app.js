@@ -73,6 +73,7 @@ function view(name) {
     settings: "Agent settings",
     activity: "Activity log",
   }[name];
+  window.scrollTo({ top: 0, left: 0, behavior: "instant" });
 }
 all("[data-view]").forEach(
   (button) => (button.onclick = () => view(button.dataset.view)),

@@ -119,6 +119,7 @@ def test_dashboard_full_journey(data, profile, tmp_path):
         page.get_by_role("button", name="Save agent settings").click()
         page.get_by_text("Agent settings saved.").wait_for()
         page.get_by_role("button", name="Overview", exact=True).click()
+        page.evaluate("window.scrollTo({top:0,left:0,behavior:'instant'})")
         page.screenshot(path=str(tmp_path / "dashboard.png"), full_page=True)
         assert not errors
         browser.close()
