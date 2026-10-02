@@ -13,6 +13,7 @@ Version 0.3.0 reviewed and locally validated on 2 October 2026. Repository: [ric
 - Transparent job fit and 80/50 routing, sponsorship exclusions, mandatory-condition review and stale-material invalidation.
 - Manual and Greenhouse imports; LinkedIn discovery, bounded Easy Apply, approved text/select/radio answers, document uploads and confirmation checks.
 - European recruiter discovery and controlled invitations; no public profile edits.
+- Current semantic and legacy LinkedIn profile cards, primary-result link selection, exact invitation identity checks and readable browser-error diagnostics.
 - Ten daily application attempts and three daily networking attempts by default, pause controls, durable attempt journalling, deduplication, uncertain-state recovery and outcome recording.
 - A4, single-column, selectable-text PDF CVs, optional cover letters and editable DOCX versions, with job-specific evidence selection and document hash checks.
 - Optional `gpt-6.1-sol` adviser using structured evidence identifiers. No factual generation or private chain-of-thought logging.
@@ -21,16 +22,16 @@ Version 0.3.0 reviewed and locally validated on 2 October 2026. Repository: [ric
 
 | Check | Result |
 | --- | --- |
-| Python tests | 165 passed, including backend and real-browser integration tests |
+| Python tests | 187 passed, including backend and real-browser integration tests |
 | JavaScript unit tests | 8 passed |
-| Python statement coverage | 98.65% (1,244 / 1,261 statements) |
-| Python branch coverage | 96.05% (340 / 354 branches) |
-| Combined statement/branch coverage | 98.08%; CI minimum 90% |
-| Dashboard JavaScript browser line coverage | 98.49% (918 / 932 lines), across app.js and ui.js |
-| Dashboard JavaScript browser branch coverage | 95.71% (246 / 257 branches) |
-| Dashboard JavaScript browser function coverage | 98.00% (49 / 50 functions) |
+| Python statement coverage | 98.61% (1,280 / 1,298 statements) |
+| Python branch coverage | 95.97% (357 / 372 branches) |
+| Combined statement/branch coverage | 98.02%; CI minimum 90% |
+| Dashboard JavaScript browser line coverage | 98.92% (922 / 932 lines), across app.js and ui.js |
+| Dashboard JavaScript browser branch coverage | 96.13% (249 / 259 branches) |
+| Dashboard JavaScript browser function coverage | 100% (50 / 50 functions) |
 | Helper unit coverage | 100% lines, branches and functions in ui.js |
-| Frontend journeys | 38 scenarios, including 14 axe scans across six views and application detail at desktop and mobile widths |
+| Frontend journeys | 39 scenarios, including 14 axe scans across six views and application detail at desktop and mobile widths |
 | Responsive checks | 390, 768 and 1,440 pixels; keyboard navigation and 200% text enlargement |
 | Ruff | Passed |
 | Frontend checks | ESLint and Prettier passed |
@@ -46,13 +47,15 @@ The improvement pass adds 22 Python regressions and three JavaScript helper test
 
 Browser coverage uses precise V8 ranges from the actual local application, converted with v8-to-istanbul. Helper unit coverage is reported separately. The browser report gate requires 90% lines and 80% branches. Python coverage explicitly traces Playwright greenlets and API worker threads using the C tracing core, following the [Coverage.py configuration guidance](https://coverage.readthedocs.io/en/latest/config.html).
 
-The [complete source review](CODE_REVIEW.md) records the line-by-line inspection and regression findings. The CI matrix checks Linux and Windows with Python 3.12 and 3.14, using Node.js 24. It also rebuilds the committed Tailwind CSS and verifies unchanged output, runs frontend checks, audits dependencies and publishes coverage reports. [Remote CI passed in all four combinations](https://github.com/ricardoportoIE/autonomous-applicator/actions/runs/37010315681) for version 0.3.0 implementation commit `2f5ebcf`: Linux and Windows, each with Python 3.12 and 3.14. The preceding diagnostics commit `6eadf53` also passed all four combinations. This final record changes documentation only. The [improvement assessment](IMPROVEMENTS.md) distinguishes delivered capabilities from proposed next priorities.
+The [complete source review](CODE_REVIEW.md) records the line-by-line inspection and regression findings. The CI matrix checks Linux and Windows with Python 3.12 and 3.14, using Node.js 24. It also rebuilds the committed Tailwind CSS and verifies unchanged output, runs frontend checks, audits dependencies and publishes coverage reports. [Remote CI passed in all four combinations](https://github.com/ricardoportoIE/autonomous-applicator/actions/runs/37058265254) for current implementation commit `77a7be6`: Linux and Windows, each with Python 3.12 and 3.14. The earlier browser-login correction `aa35892` and version 0.3.0 implementation `2f5ebcf` also passed their complete matrices. This final record changes documentation only. The [improvement assessment](IMPROVEMENTS.md) distinguishes delivered capabilities from proposed next priorities.
 
 ## Required live setup and limits
 
-The coverage measurements and full-suite counts above refer to implementation commit `2f5ebcf`. A subsequent CLI correction handles a browser window closed after manual sign-in confirmation; six CLI/networking tests passed, including three new cases that distinguish expected cleanup from navigation and unrelated cleanup failures. The complete non-browser suite was then repeated: 113 passed. Ruff and strict mypy also passed for that change.
+The current coverage measurements and full-suite counts above refer to implementation commit `77a7be6`, including the browser-login cleanup correction and recruiter-discovery repair. The login correction has three tests distinguishing expected window closure from setup or unrelated failures. The discovery repair adds 19 regressions covering semantic/deeply wrapped/legacy cards, ambiguous or incomplete identity, wrong contact-information links, result scoping, canonical deduplication, bounded discovery, sanitised API errors and frontend recovery. Invitation checks require the same primary profile identity, role and location; redirects stop before examining invitation controls.
 
 Manual LinkedIn sign-in was completed in the dedicated local profile on 2 October 2026. A separate read-only check reopened that saved profile headlessly and reached both the authenticated feed and the configured job search. It imported no records and sent no applications or invitations. This verifies session reuse and search access; Easy Apply uploads and submission selectors still need live validation.
+
+Recruiter discovery was subsequently checked against the authenticated account and observed profile layout. The actual local discovery endpoint returned HTTP 200 with three matching European recruiters, retained as queued contacts in the ignored database. Their invitation attempt dates and receipts remain empty, and automation remains paused. No invitation was sent. Live member identities and browser snapshots were not published.
 
 The candidate-declared LinkedIn scope for discovery, Easy Apply and networking is configured in the local workspace. The initial adapter still requires validation against the authenticated account and current live selectors. All LinkedIn traffic in the automated tests is intercepted; tests send no real applications or invitations. A missing visible confirmation after a submission click is explicitly tested as uncertain, without automatic retry.
 
