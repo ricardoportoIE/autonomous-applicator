@@ -22,6 +22,10 @@ Review the Candidate profile tab. The private working copy has a profile transla
 
 Confirm contacts, qualifications, work authorisation facts and approved answers. An evidence item's approved flag means approved by the candidate for use, not independently audited. The accounting specialisation remains unapproved because its original certificate has not been visually checked. Exact portfolio metrics and unverified equivalences are omitted.
 
+LinkedIn sign-in and local candidate confirmation are separate steps. Both application submissions and networking invitations require a confirmed local candidate record. In **Candidate profile**, review the saved facts, tick **I have reviewed and confirmed the candidate facts**, then choose **Save candidate profile**. Networking shows an explanation and a **Review candidate profile** shortcut while this confirmation is missing. Saving confirmation does not enable networking or lift the global pause.
+
+Each connection queue entry includes **Open LinkedIn profile**, which opens the stored member URL in a separate tab. The link remains available for queued, sent and uncertain contacts. Opening it does not submit an invitation or change the queue state. **Send queued invitation** still checks the current local confirmation, permissions, daily limit and live member identity.
+
 To import a prepared local profile:
 
 ```powershell

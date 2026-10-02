@@ -269,8 +269,10 @@ def test_evidence_update_and_removal_invalidate_documents(dashboard):
 
 
 @pytest.mark.browser
-def test_networking_form_queues_a_contact_and_paused_send_is_held(dashboard):
+@pytest.mark.parametrize("width", [390, 1440])
+def test_networking_form_queues_a_contact_and_paused_send_is_held(dashboard, width, tmp_path):
     page, app, _ = dashboard
+    page.set_viewport_size({"width": width, "height": 1000})
     page.get_by_role("button", name="Networking", exact=True).click()
     for label, value in [
         ("LinkedIn profile URL", "https://www.linkedin.com/in/example-recruiter/"),
@@ -282,9 +284,85 @@ def test_networking_form_queues_a_contact_and_paused_send_is_held(dashboard):
     page.get_by_role("button", name="Queue contact", exact=True).click()
     expect(page.locator("#notice")).to_contain_text("Contact queued")
     expect(page.locator("#connections")).to_contain_text("Example Recruiter")
+    link = page.get_by_role("link", name=re.compile("^Open LinkedIn profile for Example Recruiter"))
+    expect(link).to_have_attribute("href", "https://www.linkedin.com/in/example-recruiter/")
+    expect(link).to_have_attribute("target", "_blank")
+    expect(link).to_have_attribute("rel", "noopener noreferrer")
+    page.context.route(
+        "https://www.linkedin.com/**",
+        lambda route: route.fulfill(content_type="text/html", body="<h1>Fictional member</h1>"),
+    )
+    with page.expect_popup() as waiting:
+        link.click()
+    popup = waiting.value
+    expect(popup.get_by_role("heading")).to_have_text("Fictional member")
+    assert popup.evaluate("window.opener === null && document.referrer === ''")
+    popup.close()
+    assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+    page.screenshot(path=str(tmp_path / f"networking-{width}.png"), full_page=True)
+    axe = Path("node_modules/axe-core/axe.min.js").read_text(encoding="utf-8")
+    page.route(
+        "**/__test/axe.js", lambda route: route.fulfill(content_type="text/javascript", body=axe)
+    )
+    page.add_script_tag(url=page.url + "__test/axe.js")
+    result = page.evaluate(
+        "async () => await axe.run(document, {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa']}})"
+    )
+    assert not result["violations"]
     page.get_by_role("button", name="Send queued invitation", exact=True).click()
     expect(page.locator("#notice")).to_contain_text("Networking is paused")
     assert app.state.network.list()[0]["state"] == "queued"
+    assert app.state.network.list()[0]["day"] is None
+
+
+@pytest.mark.browser
+def test_networking_profile_review_explains_and_resolves_local_confirmation(dashboard):
+    page, app, _ = dashboard
+    candidate, _ = app.state.store.profile()
+    candidate.confirmed = False
+    app.state.store.save_profile(candidate)
+    app.state.network.add(
+        "https://www.linkedin.com/in/example-recruiter/",
+        "Example Recruiter",
+        "Technical Recruiter",
+        "Dublin, Ireland",
+    )
+    page.reload()
+    page.get_by_role("button", name="Networking", exact=True).click()
+    explanation = page.locator("#networking-profile-review")
+    expect(explanation).to_be_visible()
+    expect(explanation).to_contain_text("Signing in to LinkedIn does not confirm this record")
+    page.get_by_role("button", name="Send queued invitation", exact=True).click()
+    expect(page.locator("#notice")).to_contain_text("Confirm the candidate profile first")
+    assert app.state.network.list()[0]["day"] is None
+    page.get_by_role("button", name="Review candidate profile", exact=True).click()
+    confirmation = page.get_by_label("I have reviewed and confirmed the candidate facts", exact=True)
+    expect(confirmation).to_be_focused()
+    confirmation.check()
+    page.get_by_role("button", name="Save candidate profile", exact=True).click()
+    expect(page.locator("#notice")).to_contain_text("Profile saved")
+    page.get_by_role("button", name="Networking", exact=True).click()
+    expect(explanation).to_be_hidden()
+    page.get_by_role("button", name="Send queued invitation", exact=True).click()
+    expect(page.locator("#notice")).to_contain_text("Networking is paused")
+    assert app.state.network.list()[0]["state"] == "queued"
+    assert app.state.network.list()[0]["day"] is None
+
+
+@pytest.mark.browser
+def test_connection_profile_links_remain_available_after_send_or_uncertainty(dashboard):
+    page, app, _ = dashboard
+    for slug, receipt in [("sent-example", "fixture:pending"), ("uncertain-example", None)]:
+        app.state.network.add(
+            f"https://www.linkedin.com/in/{slug}/", slug, "Recruiter", "Dublin, Ireland"
+        )
+        app.state.network.finish(app.state.network.list()[0]["id"], receipt)
+    page.reload()
+    page.get_by_role("button", name="Networking", exact=True).click()
+    for slug in ["sent-example", "uncertain-example"]:
+        link = page.get_by_role("link", name=re.compile(f"^Open LinkedIn profile for {slug}"))
+        expect(link).to_have_attribute("href", f"https://www.linkedin.com/in/{slug}/")
+    expect(page.get_by_role("button", name="Send queued invitation", exact=True)).to_have_count(0)
 
 
 @pytest.mark.browser

@@ -268,6 +268,7 @@ async function refresh() {
   const events = await api("/events");
   renderEvents(events, $("#events"));
   const connections = await api("/connections");
+  $("#networking-profile-review").hidden = Boolean(profile?.confirmed);
   $("#connections").replaceChildren();
   if (!connections.length)
     $("#connections").append(
@@ -284,6 +285,16 @@ async function refresh() {
       node("p", item.role + " · " + item.location),
       node("span", stateLabel(item.state), "badge " + item.state),
     );
+    const controls = node("div", undefined, "connection-actions");
+    const link = node("a", "Open LinkedIn profile", "profile-link secondary");
+    link.href = item.url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.setAttribute(
+      "aria-label",
+      `Open LinkedIn profile for ${item.name} (opens in a new tab)`,
+    );
+    controls.append(link);
     if (item.state === "queued") {
       const button = node("button", "Send queued invitation", "secondary");
       button.onclick = () =>
@@ -292,8 +303,9 @@ async function refresh() {
           message("Invitation confirmed.");
           await refresh();
         });
-      el.append(button);
+      controls.append(button);
     }
+    el.append(controls);
     $("#connections").append(el);
   }
   $("#pause").textContent = settings.automation_enabled
@@ -813,6 +825,10 @@ $("#lock").onclick = () => {
   message("Workspace locked on this tab.");
 };
 $("#view-queue").onclick = () => view("applications");
+$("#review-networking-profile").onclick = () => {
+  view("profile");
+  $("#profile-form input[name='confirmed']").focus();
+};
 $("#cancel-job-edit").onclick = () => {
   editingJob = null;
   $("#job-form").reset();

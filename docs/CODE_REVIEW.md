@@ -17,6 +17,7 @@ Every line of the authored runtime modules, dashboard HTML, JavaScript and styli
 | Empty discovery settings were accepted | Validate non-empty search values and bounded, deduplicated country names. |
 | Mutated model objects could bypass validation | Revalidate before saving; invalid profiles leave the original revision intact. |
 | Frontend errors exposed raw validation structures | Format field errors, explain invalid JSON and handle non-JSON server failures. |
+| Networking entries lacked profile links and did not explain local confirmation | Add accessible member links in every state, separate the status from action controls, and show a review shortcut for unconfirmed candidate facts. Browser regressions check isolated new tabs, mobile/desktop accessibility, unchanged attempt state when blocked, and the explicit confirmation/save flow. |
 | Duplicate actions could race | Disable workspace controls while an operation runs; retain the global pause control. |
 | Session locking could retain private content | Clear local credentials, records and form fields; reject responses from an older session. |
 | Question controls had ambiguous labels and values | Use explicit accessible labels and constrained choices; sensitive questions show a manual-handling message. |
