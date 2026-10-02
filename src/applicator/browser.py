@@ -48,6 +48,57 @@ def ensure_linkedin(page: Page) -> None:
         raise ValueError("Complete login or verification manually using browser-login")
 
 
+def member_details(page: Page) -> dict[str, str]:
+    """Read only the primary profile card, using explicit legacy or semantic contracts."""
+    ensure_linkedin(page)
+    profile_path = urlsplit(page.url).path.rstrip("/")
+    if not re.fullmatch(r"/in/[a-zA-Z0-9%_-]+", profile_path):
+        raise ReviewRequired("Expected a LinkedIn member profile before reading identity")
+    main = page.get_by_role("main")
+    main.locator("h1, h2").first.wait_for(timeout=10000)
+    details = main.evaluate(
+        r"""(main, profilePath) => {
+      const text = el => el?.textContent.trim() || '';
+      const name = main.querySelector('h1');
+      const role = main.querySelector('.text-body-medium.break-words');
+      const location = main.querySelector('.text-body-small.inline.t-black--light.break-words');
+      if (name && role && location && main.querySelectorAll('h1').length===1
+          && main.querySelectorAll('.text-body-medium.break-words').length===1
+          && main.querySelectorAll('.text-body-small.inline.t-black--light.break-words').length===1)
+        return {name:text(name), role:text(role), location:text(location)};
+      if (name) return null;
+      // The current profile card has an h2, direct headline paragraphs and a
+      // separate location row anchored by its contact-information overlay link.
+      // Generated CSS classes vary per request; do not bind to those classes.
+      const heading = main.querySelector('h2');
+      if (!heading) return null;
+      let card = heading.parentElement;
+      for (let depth=0; card && card!==main && depth<12; depth++,card=card.parentElement) {
+        if (card.querySelectorAll('h1,h2').length!==1) continue;
+        const headline = [...card.children].find(el=>el.tagName==='P' && text(el));
+        const rows = [...card.children].filter(el=>el.tagName==='DIV' && [...el.querySelectorAll('a[href*="/overlay/contact-info/"]')].some(link=>
+          new URL(link.href).pathname.replace(/\/$/,'')===profilePath+'/overlay/contact-info'));
+        if (!headline || rows.length!==1) continue;
+        const locations = [...rows[0].children].filter(el=>el.tagName==='P' && text(el) && !el.querySelector('a') && !/^[·•|]$/.test(text(el)));
+        if (locations.length===1) return {name:text(heading),role:text(headline),location:text(locations[0])};
+      }
+      return null;
+    }""",
+        profile_path,
+    )
+    if not details or any(
+        not isinstance(details.get(key), str)
+        or not details[key].strip()
+        or len(details[key]) > maximum
+        for key, maximum in (("name", 150), ("role", 300), ("location", 150))
+    ):
+        raise ReviewRequired(
+            "LinkedIn profile details are unavailable or the layout is unsupported. "
+            "Review the profile manually or queue a contact with its displayed name, role and location."
+        )
+    return {key: str(details[key]).strip() for key in ("name", "role", "location")}
+
+
 def approved_answer(label: str, profile: Profile) -> str | None:
     # Exact approved label answers take precedence; never infer legal eligibility from a score.
     key = "question:" + " ".join(label.casefold().split())
@@ -183,6 +234,8 @@ class LinkedInBrowser:
     def contacts(self, location: str, limit: int = 3) -> list[dict[str, str]]:
         from .networking import european_location, target_url
 
+        if not 1 <= limit <= 10:
+            raise ValueError("Recruiter discovery limit must be between 1 and 10")
         contacts: list[dict[str, str]] = []
         with sync_playwright() as playwright, self.context(playwright) as context:
             page = context.new_page()
@@ -192,30 +245,40 @@ class LinkedInBrowser:
                 wait_until="domcontentloaded",
             )
             ensure_linkedin(page)
-            page.locator('a[href*="/in/"]').first.wait_for(timeout=15000)
-            links = page.locator('a[href*="/in/"]').evaluate_all("nodes => nodes.map(n=>n.href)")
-            for url in list(dict.fromkeys(links))[:limit]:
-                url = target_url(url)
+            main = page.get_by_role("main")
+            main.locator('a[href*="/in/"]').first.wait_for(timeout=15000)
+            cards = main.locator('[role="listitem"]')
+            if cards.count():
+                # Each result card can also link to mutual connections. Only its
+                # primary member link belongs to the searched result.
+                links = cards.evaluate_all(
+                    "cards => cards.map(card=>card.querySelector('a[href*=\"/in/\"]')?.href).filter(Boolean)"
+                )
+            else:
+                links = main.locator('a[href*="/in/"]').evaluate_all(
+                    "nodes => nodes.map(n=>n.href)"
+                )
+            urls: list[str] = []
+            for link in links:
+                try:
+                    url = target_url(link)
+                except ValueError:
+                    continue
+                if url not in urls:
+                    urls.append(url)
+            for url in urls[:limit]:
                 page.goto(url, wait_until="domcontentloaded")
                 ensure_linkedin(page)
-                main = page.get_by_role("main")
-                name = main.locator("h1").first.inner_text(timeout=10000).strip()
-                role = (
-                    main.locator(".text-body-medium.break-words")
-                    .first.inner_text(timeout=10000)
-                    .strip()
-                )
-                actual_location = (
-                    main.locator(".text-body-small.inline.t-black--light.break-words")
-                    .first.inner_text(timeout=10000)
-                    .strip()
-                )
+                if target_url(page.url) != url:
+                    raise ReviewRequired(
+                        "LinkedIn member identity changed; review the search result"
+                    )
+                details = member_details(page)
+                role, actual_location = details["role"], details["location"]
                 if any(
                     term in role.casefold() for term in ("recruit", "talent", "hiring")
                 ) and european_location(actual_location):
-                    contacts.append(
-                        {"url": url, "name": name, "role": role, "location": actual_location}
-                    )
+                    contacts.append({"url": url, **details})
         return contacts
 
     def submit(self, job: Job, answers: dict[str, str], folder: Path) -> str:

@@ -3,6 +3,7 @@ from unittest.mock import Mock
 import httpx
 import pytest
 from fastapi.testclient import TestClient
+from playwright.sync_api import Error as BrowserError
 
 from applicator.api import create_app, local_token
 from applicator.models import Advice, State
@@ -163,3 +164,34 @@ def test_lifespan_recovers_crash(data, profile, job):
     store.reserve(app_id, 1)
     with session:
         assert store.application(app_id)["state"] == State.UNCERTAIN
+
+
+@pytest.mark.parametrize("operation", ["contacts", "jobs", "invitation"])
+def test_browser_errors_are_actionable_json_without_raw_provider_details(
+    data, profile, monkeypatch, operation
+):
+    import applicator.api as module
+
+    app, session = client(data)
+    session.put("/api/profile", json=profile.model_dump())
+    settings = session.get("/api/settings").json()
+    settings["linkedin_authorised"] = True
+    session.put("/api/settings", json=settings)
+    failure = Mock(side_effect=BrowserError("private-provider-diagnostic-cookie-and-member-url"))
+    if operation == "contacts":
+        monkeypatch.setattr(module.LinkedInBrowser, "contacts", failure)
+        path = "/api/discover/contacts"
+    elif operation == "jobs":
+        monkeypatch.setattr(module.LinkedInBrowser, "search", failure)
+        path = "/api/discover/linkedin"
+    else:
+        monkeypatch.setattr(app.state.network, "send", failure)
+        path = "/api/connections/1/send"
+    response = session.post(path)
+    assert response.status_code == 502
+    assert "browser could not" in response.json()["detail"]
+    assert "uncertain applications or invitations" in response.json()["detail"]
+    assert "private-provider" not in response.text
+    assert response.headers["cache-control"] == "no-store"
+    assert app.state.network.list() == []
+    assert app.state.store.daily_usage().used == 0

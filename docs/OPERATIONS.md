@@ -60,6 +60,8 @@ Enable discovery, application automation and the declared scope only after profi
 
 Networking is a separate queue for European recruiters or hiring contacts, with three attempts per day by default. Contacts can be queued manually or discovered through the networking search. When networking and discovery are both enabled, the worker reviews up to three recruiter profiles per cycle and queues matching European contacts while daily capacity remains. Identity, displayed role and location are checked again before an invitation without a note. Duplicate invitations and uncertain attempts are held.
 
+Recruiter discovery reads the primary member link from each search-result card, excludes navigation and mutual-connection links, and canonicalises duplicates before applying the profile-review limit. Profile reading supports the legacy header and the current semantic card with its member-specific contact-information link. Generated LinkedIn CSS classes are not used for the current card. Incomplete, ambiguous or changed identities stop for review. Discovery queues matching contacts locally; it does not send invitations. Browser failures return a readable diagnostic rather than a generic 500 response. Check login and the current layout, and reconcile uncertain attempts before retrying an external action.
+
 Pause all automation stops new attempts. A request already in flight may finish. A restart converts interrupted submission states to uncertain; reconcile against actual LinkedIn application history before recording a manual receipt. Never guess that a failed request was rejected.
 
 ## Documents

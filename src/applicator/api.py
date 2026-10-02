@@ -13,6 +13,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from openai import OpenAI
+from playwright.sync_api import Error as BrowserError
 from pydantic import Field
 
 from .adviser import advise
@@ -192,6 +193,17 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
     @app.exception_handler(KeyError)
     async def key_error(_request: Request, _exc: KeyError) -> JSONResponse:
         return JSONResponse({"detail": "Application or evidence not found"}, status_code=404)
+
+    @app.exception_handler(BrowserError)
+    async def browser_error(_request: Request, _exc: BrowserError) -> JSONResponse:
+        return JSONResponse(
+            {
+                "detail": "The browser could not read or complete the LinkedIn operation. "
+                "Check the dedicated browser session and the current page layout. "
+                "Review any uncertain applications or invitations before retrying."
+            },
+            status_code=502,
+        )
 
     @app.get("/api/health")
     def health() -> dict[str, str]:

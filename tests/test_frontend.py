@@ -563,3 +563,32 @@ def test_empty_queue_and_activity_states_are_explained(dashboard):
     expect(page.locator("#queue-count")).to_have_text("0 of 0 opportunities shown")
     page.get_by_role("button", name="Activity log", exact=True).click()
     expect(page.locator("#events")).to_contain_text("No activity recorded yet.")
+
+
+@pytest.mark.browser
+def test_recruiter_discovery_displays_browser_failure_and_recovers(dashboard, monkeypatch):
+    from playwright.sync_api import Error as BrowserError
+
+    import applicator.api as module
+
+    page, app, _ = dashboard
+    discover = Mock(side_effect=BrowserError("Internal provider timeout"))
+    monkeypatch.setattr(module.LinkedInBrowser, "contacts", discover)
+    page.get_by_role("button", name="Networking", exact=True).click()
+    page.get_by_role("button", name="Find European recruiters", exact=True).click()
+    expect(page.locator("#notice")).to_contain_text("The browser could not read or complete")
+    expect(page.locator("#notice")).not_to_contain_text("Internal provider timeout")
+    discover.side_effect = None
+    discover.return_value = [
+        {
+            "url": "https://www.linkedin.com/in/example/",
+            "name": "Example Recruiter",
+            "role": "Technical Recruiter",
+            "location": "Dublin, Ireland",
+        }
+    ]
+    page.get_by_role("button", name="Find European recruiters", exact=True).click()
+    expect(page.locator("#notice")).to_have_text("Reviewed 1 European hiring contacts.")
+    expect(page.locator("#connections")).to_contain_text("Example Recruiter")
+    assert app.state.network.list()[0]["state"] == "queued"
+    assert app.state.network.list()[0]["receipt"] is None

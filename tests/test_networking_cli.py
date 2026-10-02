@@ -63,21 +63,32 @@ def test_networking_browser_receipt_and_failure(data, profile, monkeypatch):
     page = context.__enter__.return_value.new_page.return_value
     page.url = "https://www.linkedin.com/in/example/"
     main = page.get_by_role.return_value
-    main.locator.return_value.first.inner_text.return_value = "Alex"
-    main.inner_text.return_value = "Alex Recruiter Ireland"
     main.get_by_role.return_value.count.return_value = 1
     monkeypatch.setattr(module.LinkedInBrowser, "context", Mock(return_value=context))
+    monkeypatch.setattr(
+        module,
+        "member_details",
+        Mock(return_value={"name": "Alex", "role": "Recruiter", "location": "Ireland"}),
+    )
     assert network.send(1) == "linkedin:invitation-pending"
     network.add("https://www.linkedin.com/in/another/", "Another", "Recruiter", "Ireland")
+    page.url = "https://www.linkedin.com/in/another/"
     with pytest.raises(ValueError, match="identity"):
         network.send(2)
     network.add("https://www.linkedin.com/in/alex2/", "Alex", "Recruiter", "Germany")
+    page.url = "https://www.linkedin.com/in/alex2/"
     with pytest.raises(ValueError, match="location"):
         network.send(3)
     network.add("https://www.linkedin.com/in/alex3/", "Alex", "Recruiter", "Ireland")
+    page.url = "https://www.linkedin.com/in/alex3/"
     main.get_by_role.return_value.count.return_value = 2
     with pytest.raises(ValueError, match="ambiguous"):
         network.send(4)
+    network.add("https://www.linkedin.com/in/redirected/", "Alex", "Recruiter", "Ireland")
+    button_checks = main.get_by_role.call_count
+    with pytest.raises(ValueError, match="identity"):
+        network.send(5)
+    assert main.get_by_role.call_count == button_checks
 
 
 def test_cli_import_serve_loopback_and_login(data, profile, monkeypatch):

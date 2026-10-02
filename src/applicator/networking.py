@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 
 from playwright.sync_api import sync_playwright
 
-from .browser import LinkedInBrowser, ensure_linkedin
+from .browser import LinkedInBrowser, ensure_linkedin, member_details
 from .store import Store, day_key
 
 EUROPE = (
@@ -144,11 +144,16 @@ class Networking:
                 page = context.new_page()
                 page.goto(row["url"], wait_until="domcontentloaded")
                 ensure_linkedin(page)
-                main = page.get_by_role("main")
-                if main.locator("h1").first.inner_text(timeout=10000).strip() != row["name"]:
+                if target_url(page.url) != row["url"]:
                     raise ValueError("Member identity changed; review the target")
-                text = main.inner_text(timeout=10000).casefold()
-                if row["role"].casefold() not in text or row["location"].casefold() not in text:
+                main = page.get_by_role("main")
+                details = member_details(page)
+                if details["name"] != row["name"]:
+                    raise ValueError("Member identity changed; review the target")
+                if (
+                    details["role"].casefold() != row["role"].casefold()
+                    or details["location"].casefold() != row["location"].casefold()
+                ):
                     raise ValueError("Member role or location did not match the reviewed target")
                 button = main.get_by_role(
                     "button", name=re.compile(r"^Connect$|^Invite .+ to connect$")

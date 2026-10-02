@@ -28,6 +28,10 @@ Every line of the authored runtime modules, dashboard HTML, JavaScript and styli
 | Queue listing opened a connection per application | Fetch and decode records in one query and connection. A regression verifies this property. |
 | Global activity could bury an individual application's events | Provide an indexed, application-specific journal query, independent of the latest global 200 entries. |
 | Saved outcomes were not selected when reopening a record | Initialise the outcome control from the stored outcome. |
+| The live recruiter profile no longer used the legacy `h1` and CSS classes | Add a shared profile reader for the observed semantic card, bounded heading ancestry and member-specific contact-information link. Retain strict legacy support; reject ambiguous/incomplete fields. |
+| Search cards included links to mutual connections | Read only each card's primary member link. Exclude navigation and unrelated links; canonicalise duplicates before the limit. |
+| Playwright failures became an opaque HTTP 500 | Return a sanitised JSON 502 diagnostic without provider traces. A frontend regression verifies the message and a successful subsequent discovery. |
+| Invitation checks could match a role elsewhere on the page | Re-read the primary profile card and require exact reviewed identity, headline and location. Profile redirects stop before checking invitation controls. |
 
 The post-test improvement pass reviewed every changed source and test line. New diagnostics use authenticated GET requests, perform no browser or paid model calls, generate no documents and write no journal entries. Additional regressions verify these properties, daily accounting, tampered materials, filter composition and local/mock submission journeys.
 
