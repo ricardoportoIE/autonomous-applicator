@@ -59,7 +59,10 @@ def local_token(data: Path) -> str:
     path = data / "access-token"
     if not path.exists():
         path.write_text(secrets.token_urlsafe(32), encoding="utf-8")
-    return path.read_text(encoding="utf-8").strip()
+    saved = path.read_text(encoding="utf-8").strip()
+    if len(saved) < 32:
+        raise ValueError("The saved local access token must contain at least 32 characters")
+    return saved
 
 
 def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
@@ -150,7 +153,9 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
     app.state.store, app.state.service, app.state.network = store, service, network
 
     def authenticate(authorization: Annotated[str | None, Header()] = None) -> None:
-        if not authorization or not secrets.compare_digest(authorization, f"Bearer {token}"):
+        if not authorization or not secrets.compare_digest(
+            authorization.encode(), f"Bearer {token}".encode()
+        ):
             raise HTTPException(401, "A valid local access token is required")
 
     @app.middleware("http")
@@ -160,11 +165,15 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
         expected = f"{request.url.scheme}://{request.headers.get('host', '')}"
         if host not in {"127.0.0.1", "localhost", "testserver"} or (origin and origin != expected):
             return JSONResponse({"detail": "Untrusted Host or Origin"}, status_code=403)
-        if (
-            request.headers.get("content-length", "0").isdigit()
-            and int(request.headers.get("content-length", "0")) > 500_000
-        ):
-            return JSONResponse({"detail": "Request too large"}, status_code=413)
+        # Enforce the actual body size, including chunked requests and dishonest headers.
+        chunks = []
+        size = 0
+        async for chunk in request.stream():
+            size += len(chunk)
+            if size > 500_000:
+                return JSONResponse({"detail": "Request too large"}, status_code=413)
+            chunks.append(chunk)
+        request._body = b"".join(chunks)
         response = await call_next(request)
         response.headers.update(
             {
@@ -196,22 +205,24 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
         return {"profile": profile.model_dump(), "revision": revision}
 
     @app.put("/api/profile", dependencies=auth)
-    def put_profile(profile: Profile) -> dict[str, int]:
-        return {"revision": store.save_profile(profile)}
+    def put_profile(
+        profile: Profile, if_match: Annotated[int | None, Header(ge=0)] = None
+    ) -> dict[str, int]:
+        return {"revision": store.save_profile(profile, if_match)}
 
     @app.post("/api/evidence", dependencies=auth)
     def add_evidence(evidence: Evidence) -> dict[str, int]:
-        profile, _ = store.profile()
-        profile.evidence.append(evidence)
-        return {"revision": store.save_profile(Profile.model_validate(profile.model_dump()))}
+        return {"revision": store.edit_evidence(evidence, evidence.id, create_only=True)}
+
+    @app.put("/api/evidence/{evidence_id}", dependencies=auth)
+    def update_evidence(evidence_id: str, evidence: Evidence) -> dict[str, int]:
+        if evidence.id != evidence_id:
+            raise ValueError("Evidence identifier must match the requested record")
+        return {"revision": store.edit_evidence(evidence, evidence_id)}
 
     @app.delete("/api/evidence/{evidence_id}", dependencies=auth)
     def remove_evidence(evidence_id: str) -> dict[str, int]:
-        profile, _ = store.profile()
-        if not any(item.id == evidence_id for item in profile.evidence):
-            raise KeyError(evidence_id)
-        profile.evidence = [item for item in profile.evidence if item.id != evidence_id]
-        return {"revision": store.save_profile(profile)}
+        return {"revision": store.edit_evidence(None, evidence_id)}
 
     @app.get("/api/settings", dependencies=auth)
     def get_settings() -> Settings:

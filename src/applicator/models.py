@@ -46,7 +46,7 @@ class Profile(Contract):
 class Question(Contract):
     id: str = Field(pattern=r"^[a-zA-Z0-9_-]{1,64}$")
     label: str = Field(min_length=1, max_length=500)
-    answer_key: str = Field(default="", max_length=100)
+    answer_key: str = Field(default="", max_length=1000)
     required: bool = True
     choices: list[str] = Field(default_factory=list, max_length=100)
     sensitive: bool = False
@@ -90,14 +90,25 @@ class Settings(Contract):
     daily_limit: int = Field(default=10, ge=1, le=50)
     auto_threshold: int = Field(default=80, ge=80, le=100)
     review_threshold: int = Field(default=50, ge=50, le=79)
-    allowed_countries: list[str] = Field(default_factory=lambda: ["Ireland", "United Kingdom"])
+    allowed_countries: list[str] = Field(
+        default_factory=lambda: ["Ireland", "United Kingdom"], min_length=1, max_length=30
+    )
     poll_seconds: int = Field(default=60, ge=10, le=3600)
     linkedin_authorised: bool = False
     connections_enabled: bool = False
     discovery_enabled: bool = False
     daily_connection_limit: int = Field(default=3, ge=1, le=10)
-    search_keywords: str = Field(default="Python Backend Engineer", max_length=200)
-    search_location: str = Field(default="Ireland", max_length=200)
+    search_keywords: str = Field(default="Python Backend Engineer", min_length=1, max_length=200)
+    search_location: str = Field(default="Ireland", min_length=1, max_length=200)
+
+    @field_validator("allowed_countries")
+    @classmethod
+    def nonempty_countries(cls, values: list[str]) -> list[str]:
+        if any(not value.strip() or len(value) > 150 for value in values):
+            raise ValueError(
+                "Target countries must contain non-empty names of at most 150 characters"
+            )
+        return list(dict.fromkeys(value.strip() for value in values))
 
 
 class State(StrEnum):

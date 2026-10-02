@@ -39,13 +39,22 @@ def target_url(url: str) -> str:
     parsed = urlsplit(url)
     if (
         parsed.scheme != "https"
-        or parsed.hostname != "www.linkedin.com"
+        or parsed.netloc != "www.linkedin.com"
         or parsed.username
         or parsed.password
         or not re.fullmatch(r"/in/[a-zA-Z0-9%_-]+/?", parsed.path)
     ):
         raise ValueError("Expected a LinkedIn member profile URL")
     return "https://www.linkedin.com" + parsed.path.rstrip("/") + "/"
+
+
+def european_location(location: str) -> bool:
+    text = location.casefold()
+    if re.search(
+        r"\b(?:australia|new south wales|united states|canada|new zealand|papua new guinea)\b", text
+    ):
+        return False
+    return any(re.search(rf"\b{re.escape(country)}\b", text) for country in EUROPE)
 
 
 class Networking:
@@ -62,7 +71,7 @@ class Networking:
         url = target_url(url)
         if not any(term in role.casefold() for term in ("recruit", "talent", "hiring")):
             raise ValueError("Initial networking scope prioritises recruiters and hiring contacts")
-        if not any(country in location.casefold() for country in EUROPE):
+        if not european_location(location):
             raise ValueError("Confirm a supported European location")
         with self.store.connect(True) as db:
             db.execute(

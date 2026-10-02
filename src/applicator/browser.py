@@ -35,14 +35,14 @@ def browser_options() -> BrowserOptions:
 def linkedin_job_id(url: str) -> str:
     parsed = urlsplit(url)
     match = re.fullmatch(r"/jobs/view/(\d+)/?", parsed.path)
-    if parsed.scheme != "https" or parsed.hostname != "www.linkedin.com" or not match:
+    if parsed.scheme != "https" or parsed.netloc != "www.linkedin.com" or not match:
         raise ValueError("Expected an exact LinkedIn job URL")
     return match[1]
 
 
 def ensure_linkedin(page: Page) -> None:
     parsed = urlsplit(page.url)
-    if parsed.scheme != "https" or parsed.hostname != "www.linkedin.com":
+    if parsed.scheme != "https" or parsed.netloc != "www.linkedin.com":
         raise ValueError("Browser left the approved LinkedIn origin")
     if any(term in parsed.path for term in ("login", "checkpoint", "authwall")):
         raise ValueError("Complete login or verification manually using browser-login")
@@ -92,7 +92,7 @@ def fill_questions(page: Page, profile: Profile) -> None:
             if not group or not field["group_choices"]:
                 raise ValueError("Unlabelled radio group requires manual review")
             value = approved_answer(group, profile)
-            if value is None:
+            if not value or not value.strip():
                 raise ValueError(f"Approve an exact answer for: {group}")
             if value not in field["group_choices"]:
                 raise ValueError(f"Approved answer does not match available choices: {group}")
@@ -105,7 +105,7 @@ def fill_questions(page: Page, profile: Profile) -> None:
                 continue
             raise ValueError(f"Explicit selection or consent requires manual review: {label}")
         value = approved_answer(label, profile)
-        if value is None:
+        if not value or not value.strip():
             # Existing values also need validation; never assume a prefilled legal answer is correct.
             if field["required"] or field["value"]:
                 raise ValueError(f"Approve an exact answer for: {label}")
@@ -181,7 +181,7 @@ class LinkedInBrowser:
         return jobs
 
     def contacts(self, location: str, limit: int = 3) -> list[dict[str, str]]:
-        from .networking import EUROPE, target_url
+        from .networking import european_location, target_url
 
         contacts: list[dict[str, str]] = []
         with sync_playwright() as playwright, self.context(playwright) as context:
@@ -210,9 +210,9 @@ class LinkedInBrowser:
                     .first.inner_text(timeout=10000)
                     .strip()
                 )
-                if any(term in role.casefold() for term in ("recruit", "talent", "hiring")) and any(
-                    country in actual_location.casefold() for country in EUROPE
-                ):
+                if any(
+                    term in role.casefold() for term in ("recruit", "talent", "hiring")
+                ) and european_location(actual_location):
                     contacts.append(
                         {"url": url, "name": name, "role": role, "location": actual_location}
                     )
@@ -230,7 +230,8 @@ class LinkedInBrowser:
     def _submit(
         self, job: Job, answers: dict[str, str], folder: Path, progress: dict[str, bool]
     ) -> str:
-        linkedin_job_id(job.url)
+        if linkedin_job_id(job.url) != job.source_id:
+            raise ValueError("LinkedIn job identifier does not match the reviewed opportunity")
         with sync_playwright() as playwright, self.context(playwright) as context:
             page = context.new_page()
             page.goto(job.url, wait_until="domcontentloaded")

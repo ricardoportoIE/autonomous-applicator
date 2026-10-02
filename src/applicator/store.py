@@ -11,7 +11,7 @@ from typing import Any
 from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
-from .models import Job, Profile, Question, Settings, State
+from .models import Evidence, Job, Profile, Question, Settings, State
 
 
 def day_key(now: datetime | None = None) -> str:
@@ -91,23 +91,46 @@ class Store:
             )
             return Profile.model_validate_json(row[0]), revision
 
-    def save_profile(self, profile: Profile) -> int:
+    def save_profile(self, profile: Profile, expected_revision: int | None = None) -> int:
         with self.connect(True) as db:
-            revision = (
-                int(db.execute("SELECT value FROM config WHERE key='revision'").fetchone()[0]) + 1
-            )
-            db.execute(
-                "INSERT OR REPLACE INTO config VALUES ('profile', ?)", (profile.model_dump_json(),)
-            )
-            db.execute("UPDATE config SET value=? WHERE key='revision'", (str(revision),))
-            db.execute(
-                "UPDATE applications SET state=?, manifest='{}' WHERE state IN (?, ?, ?)",
-                (State.REVIEW, State.READY, State.REVIEW, State.SKIPPED),
-            )
-            self.event(
-                db, "profile_updated", f"Revision {revision}; previous materials invalidated."
-            )
-            return revision
+            return self._save_profile(db, profile, expected_revision)
+
+    def _save_profile(
+        self, db: sqlite3.Connection, profile: Profile, expected_revision: int | None = None
+    ) -> int:
+        profile = Profile.model_validate(profile.model_dump())
+        current = int(db.execute("SELECT value FROM config WHERE key='revision'").fetchone()[0])
+        if expected_revision is not None and current != expected_revision:
+            raise ValueError("Candidate profile changed. Reload before saving your edits.")
+        revision = current + 1
+        db.execute(
+            "INSERT OR REPLACE INTO config VALUES ('profile', ?)", (profile.model_dump_json(),)
+        )
+        db.execute("UPDATE config SET value=? WHERE key='revision'", (str(revision),))
+        db.execute(
+            "UPDATE applications SET state=?, manifest='{}' WHERE state IN (?, ?, ?)",
+            (State.REVIEW, State.READY, State.REVIEW, State.SKIPPED),
+        )
+        self.event(db, "profile_updated", f"Revision {revision}; previous materials invalidated.")
+        return revision
+
+    def edit_evidence(
+        self, evidence: Evidence | None, evidence_id: str, *, create_only: bool = False
+    ) -> int:
+        with self.connect(True) as db:
+            row = db.execute("SELECT value FROM config WHERE key='profile'").fetchone()
+            if not row:
+                raise ValueError("Configure a candidate profile first")
+            profile = Profile.model_validate_json(row[0])
+            exists = any(item.id == evidence_id for item in profile.evidence)
+            if create_only and exists:
+                raise ValueError("Evidence identifier already exists")
+            if evidence is None and not exists:
+                raise KeyError(evidence_id)
+            profile.evidence = [item for item in profile.evidence if item.id != evidence_id]
+            if evidence is not None:
+                profile.evidence.append(evidence)
+            return self._save_profile(db, profile)
 
     def add_job(self, job: Job) -> tuple[int, bool]:
         with self.connect(True) as db:
@@ -225,6 +248,11 @@ class Store:
                 db.execute("SELECT value FROM config WHERE key='profile'").fetchone()[0]
             )
             evaluation = evaluate(Job.model_validate_json(application["job"]), profile, settings)
+            if (
+                Job.model_validate_json(application["job"]).source == "linkedin"
+                and not settings.linkedin_authorised
+            ):
+                raise ValueError("LinkedIn authorisation scope must be configured")
             if evaluation.state != State.READY or not json.loads(application["manifest"]).get(
                 "files"
             ):
@@ -246,6 +274,12 @@ class Store:
 
     def finish(self, app_id: int, attempt: int, receipt: str | None) -> None:
         with self.connect(True) as db:
+            row = db.execute(
+                "SELECT a.state FROM applications a JOIN attempts t ON t.application_id=a.id WHERE a.id=? AND t.id=? AND t.id=(SELECT MAX(id) FROM attempts WHERE application_id=a.id)",
+                (app_id, attempt),
+            ).fetchone()
+            if not row or row[0] != State.SUBMITTING:
+                raise ValueError("Only the reserved submission attempt can be finished")
             state = State.SUBMITTED if receipt else State.UNCERTAIN
             db.execute(
                 "UPDATE attempts SET receipt=? WHERE id=? AND application_id=?",
@@ -268,6 +302,8 @@ class Store:
     def hold(self, app_id: int, detail: str) -> None:
         with self.connect(True) as db:
             row = db.execute("SELECT job FROM applications WHERE id=?", (app_id,)).fetchone()
+            if not row:
+                raise KeyError(app_id)
             job = Job.model_validate_json(row[0])
             prefix = "Approve an exact answer for: "
             if detail.startswith(prefix):
