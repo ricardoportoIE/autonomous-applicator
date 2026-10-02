@@ -3,42 +3,148 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Autonomous Applicator</title>
+    <title>Autonomous Applicator | Career workspace</title>
+    <meta
+      name="description"
+      content="Your local workspace for evidence-led applications, tailored documents and professional connections."
+    />
     <link rel="stylesheet" href="/style.css" />
-    <script defer src="/app.js"></script>
+    <script type="module" src="/app.js"></script>
   </head>
   <body>
-    <aside>
-      <a class="brand" href="/"
-        >A<span>Autonomous<br />Applicator</span></a
+    <a class="skip-link" href="#main-content">Skip to workspace</a>
+    <aside class="sidebar">
+      <a class="brand" href="/" aria-label="Autonomous Applicator home"
+        ><span class="brand-mark">a.</span
+        ><span>Autonomous<br />Applicator</span></a
       >
-      <p class="eyebrow">LOCAL WORKSPACE</p>
+      <p class="eyebrow">Your workspace</p>
       <nav aria-label="Main navigation">
-        <button data-view="overview" class="active">Overview</button
-        ><button data-view="applications">Applications</button
-        ><button data-view="profile">Candidate profile</button
-        ><button data-view="networking">Networking</button
-        ><button data-view="settings">Agent settings</button
-        ><button data-view="activity">Activity log</button>
+        <button data-view="overview" class="active" aria-current="page">
+          <svg
+            class="nav-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            aria-hidden="true"
+          >
+            <rect x="3" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" />
+            <rect x="14" y="14" width="7" height="7" rx="1" /></svg
+          >Overview
+        </button>
+        <button data-view="applications">
+          <svg
+            class="nav-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            aria-hidden="true"
+          >
+            <rect x="3" y="7" width="18" height="14" rx="2" />
+            <path
+              d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M10 12v3h4v-3"
+            /></svg
+          >Applications
+        </button>
+        <button data-view="profile">
+          <svg
+            class="nav-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 21v-2a8 8 0 0 1 16 0v2" /></svg
+          >Candidate profile
+        </button>
+        <button data-view="networking">
+          <svg
+            class="nav-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            aria-hidden="true"
+          >
+            <circle cx="6" cy="6" r="3" />
+            <circle cx="18" cy="6" r="3" />
+            <circle cx="12" cy="18" r="3" />
+            <path d="m8 8 3 7m5-7-3 7M9 6h6" /></svg
+          >Networking
+        </button>
+        <button data-view="settings">
+          <svg
+            class="nav-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            aria-hidden="true"
+          >
+            <path d="M4 6h16M4 12h16M4 18h16" />
+            <circle cx="9" cy="6" r="2" />
+            <circle cx="16" cy="12" r="2" />
+            <circle cx="8" cy="18" r="2" /></svg
+          >Agent settings
+        </button>
+        <button data-view="activity">
+          <svg
+            class="nav-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            aria-hidden="true"
+          >
+            <path d="M4 4v16h16M7 13l4-5 4 7 5-5" /></svg
+          >Activity log
+        </button>
       </nav>
-      <div class="local">
-        <i></i> Your data stays local<br /><small
-          >Evidence-led. Candidate-controlled.</small
+      <div class="sidebar-bottom local">
+        <p class="text-slate-200">Built around your evidence.</p>
+        <small
+          >Private workspace on this computer.<br />Ireland &amp; United
+          Kingdom</small
         >
       </div>
     </aside>
-    <main>
-      <header>
+    <main id="main-content" class="main" tabindex="-1">
+      <header class="topbar">
         <div>
-          <p class="eyebrow">CAREER WORKBENCH / IRELAND &amp; UK</p>
+          <p class="eyebrow">CAREER WORKSPACE / LOCAL EDITION</p>
           <h1 id="page-title">Overview</h1>
         </div>
-        <button id="pause" class="danger">Pause all automation</button>
+        <div class="topbar-actions">
+          <button id="lock" class="secondary" hidden>Lock workspace</button
+          ><button id="pause" class="danger" disabled>
+            Pause all automation
+          </button>
+        </div>
       </header>
       <div id="notice" role="status" aria-live="polite"></div>
-      <section id="login" class="panel">
+      <section id="login" class="panel lock-panel">
+        <div class="lock-icon" aria-hidden="true">
+          <svg
+            class="size-7"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+          >
+            <rect x="5" y="10" width="14" height="11" rx="2" />
+            <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+          </svg>
+        </div>
         <h2>Connect to your local workspace</h2>
-        <p>Enter the access token printed by <code>applicator serve</code>.</p>
+        <p class="mb-6">
+          Enter your local access token to open your application workspace.
+        </p>
         <form id="token-form">
           <label
             >Access token<input
@@ -49,18 +155,39 @@
           ><button>Unlock workspace</button>
         </form>
       </section>
-      <div id="workspace" hidden>
+      <fieldset id="workspace" class="min-w-0" hidden>
+        <legend class="sr-only">Application workspace</legend>
+        <div
+          id="readiness"
+          class="readiness"
+          aria-label="Agent readiness"
+        ></div>
         <section data-section="overview">
           <div class="stats" id="stats"></div>
+          <div class="panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">APPLICATION PIPELINE</p>
+                <h2>Recent opportunities</h2>
+              </div>
+              <button id="view-queue" class="secondary">
+                View application queue
+              </button>
+            </div>
+            <div id="recent"></div>
+          </div>
           <div class="two">
-            <article class="panel">
+            <article class="panel policy-panel">
               <p class="eyebrow">YOUR APPLICATION POLICY</p>
-              <h2>Relevant opportunities.<br />Defensible applications.</h2>
+              <h2>Your application policy</h2>
               <p>
-                The agent matches job requirements to your verified evidence.
-                Every submission keeps a receipt and a history.
+                Every application must match approved evidence and pass the
+                submission checks.
               </p>
-              <div class="bands">
+              <div class="policy-scale" aria-hidden="true">
+                <span></span><span></span><span></span>
+              </div>
+              <div class="bands" id="policy-bands">
                 <p><b>80–100</b> Automatic, when every gate passes</p>
                 <p><b>50–79</b> Candidate review</p>
                 <p><b>0–49</b> Not prioritised</p>
@@ -80,10 +207,6 @@
               </p>
               <button id="tick">Run agent cycle</button>
             </article>
-          </div>
-          <div class="panel">
-            <h2>Recent applications</h2>
-            <div id="recent"></div>
           </div>
         </section>
         <section data-section="applications" hidden>
@@ -117,7 +240,15 @@
               ><label class="check"
                 ><input name="cover_letter_required" type="checkbox" /> Cover
                 letter required</label
-              ><button>Save opportunity</button>
+              ><button>Save opportunity</button
+              ><button
+                id="cancel-job-edit"
+                type="button"
+                class="secondary"
+                hidden
+              >
+                Cancel editing
+              </button>
             </form>
             <article class="panel">
               <h2>Discover jobs</h2>
@@ -278,13 +409,19 @@
         </section>
         <section data-section="settings" hidden>
           <form id="settings-form" class="panel narrow">
+            <p class="eyebrow">AUTOMATION &amp; PERMISSIONS</p>
             <h2>Agent controls</h2>
+            <p class="mb-6">
+              Choose where the agent searches and when it can act. Every
+              application still needs approved evidence and answers.
+            </p>
             <label class="check"
               ><input name="automation_enabled" type="checkbox" /> Enable
               application automation</label
             ><label class="check"
               ><input name="linkedin_authorised" type="checkbox" /> My declared
-              LinkedIn authorisation covers discovery and Easy Apply</label
+              LinkedIn authorisation covers discovery, Easy Apply and connection
+              invitations</label
             ><label class="check"
               ><input name="discovery_enabled" type="checkbox" /> Discover and
               prepare new LinkedIn opportunities each cycle</label
@@ -351,8 +488,11 @@
             <div id="events"></div>
           </article>
         </section>
-      </div>
-      <footer>Autonomous Applicator · Local edition · British English</footer>
+      </fieldset>
+      <footer class="footer">
+        <span>Autonomous Applicator</span
+        ><span>Local edition · English (UK)</span>
+      </footer>
     </main>
   </body>
 </html>

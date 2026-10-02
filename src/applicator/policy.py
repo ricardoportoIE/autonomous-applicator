@@ -78,7 +78,8 @@ def answer_questions(job: Job, profile: Profile) -> tuple[dict[str, str], list[s
         **profile.answers,
     }
     for question in job.questions:
-        value = known.get(question.answer_key, "")
+        key = question.answer_key or "question:" + " ".join(question.label.casefold().split())
+        value = known.get(key, "")
         if question.sensitive or not value or (question.choices and value not in question.choices):
             if question.required:
                 unresolved.append(question.id)

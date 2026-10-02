@@ -1,0 +1,27 @@
+{
+  "name": "autonomous-applicator-ui",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:css": "tailwindcss -i ./frontend/dashboard.css -o ./src/applicator/static/style.css --minify",
+    "watch:css": "tailwindcss -i ./frontend/dashboard.css -o ./src/applicator/static/style.css --watch",
+    "coverage:browser": "node frontend/report-coverage.js",
+    "lint": "eslint src/applicator/static/*.js frontend/*.js tests/frontend/*.js eslint.config.js",
+    "test": "node --test --experimental-test-coverage --test-coverage-include=src/applicator/static/ui.js --test-coverage-lines=100 --test-coverage-branches=100 tests/frontend/*.test.js",
+    "format:check": "prettier --check src/applicator/static/*.html src/applicator/static/*.js frontend tests/frontend package.json eslint.config.js"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@tailwindcss/cli": "4.3.3",
+    "axe-core": "4.13.0",
+    "eslint": "10.11.0",
+    "globals": "17.13.0",
+    "istanbul-lib-coverage": "3.2.2",
+    "istanbul-lib-report": "3.0.1",
+    "istanbul-reports": "3.2.0",
+    "prettier": "3.9.9",
+    "tailwindcss": "4.3.3",
+    "v8-to-istanbul": "9.3.0"
+  }
+}

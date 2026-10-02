@@ -35,7 +35,11 @@ Open `http://127.0.0.1:8765`. The first run generates a local access token. The 
 ```powershell
 uv run python -m ruff check .
 uv run python -m mypy src
+npm ci
+npm run build:css
+npm test
 uv run python -m pytest
+npm run coverage:browser
 uv run python -m pip_audit
 ```
 
@@ -46,6 +50,23 @@ uv run python -m pip_audit
 - [Security and privacy](docs/SECURITY.md)
 - [Operating guide](docs/OPERATIONS.md)
 - [Delivery and validation record](docs/STATUS.md)
+- [Complete source review and regression findings](docs/CODE_REVIEW.md)
+
+## Frontend development and testing
+
+The dashboard uses locally compiled [Tailwind CSS](https://tailwindcss.com/docs/installation/tailwind-cli). Node.js is required for frontend development and the full test suite. Running the installed application uses the committed CSS and needs no Node.js process or CDN.
+
+```powershell
+npm ci
+npm run build:css
+npm run lint
+npm run format:check
+npm test
+uv run python -m pytest
+npm run coverage:browser
+```
+
+Frontend unit tests cover presentation and parsing helpers. Real-browser tests cover the dashboard and collect V8 coverage for `app.js` and `ui.js`. Reports are saved under the ignored `test-results/frontend-report` directory. The suite also runs local axe scans and verifies mobile/tablet/desktop layouts, keyboard use, enlarged text, stale edits, token expiry and request concurrency. The Content Security Policy stays enabled during these checks.
 
 ## AI integration
 

@@ -9,6 +9,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from playwright.sync_api import sync_playwright
+from ui_coverage import save_coverage, start_coverage
 
 from applicator.api import create_app
 from applicator.browser import (
@@ -73,6 +74,7 @@ def test_dashboard_full_journey(data, profile, tmp_path):
     with server(app) as origin, sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True, **browser_options())
         page = browser.new_page(viewport={"width": 1440, "height": 1000})
+        coverage = start_coverage(page)
         errors = []
         page.on("pageerror", lambda error: errors.append(str(error)))
         page.goto(origin)
@@ -110,7 +112,9 @@ def test_dashboard_full_journey(data, profile, tmp_path):
         ):
             page.locator("#job-form").get_by_label(label, exact=True).fill(value)
         page.get_by_role("button", name="Save opportunity").click()
-        page.get_by_role("button", name="Open", exact=True).first.click()
+        page.get_by_role(
+            "button", name="Open Backend Engineer at Example Employer", exact=True
+        ).first.click()
         page.get_by_role("button", name="Prepare documents", exact=True).click()
         page.get_by_text("Documents prepared from approved evidence.").wait_for()
         assert app.state.store.applications()[0]["evaluation"]["score"] == 100
@@ -122,6 +126,7 @@ def test_dashboard_full_journey(data, profile, tmp_path):
         page.evaluate("window.scrollTo({top:0,left:0,behavior:'instant'})")
         page.screenshot(path=str(tmp_path / "dashboard.png"), full_page=True)
         assert not errors
+        save_coverage(coverage, "dashboard_full_journey")
         browser.close()
 
 

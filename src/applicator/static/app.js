@@ -1,8 +1,17 @@
 "use strict";
+import {
+  errorDetail,
+  linkedinIdentity,
+  parseAnswers,
+  splitList,
+  stateLabel,
+} from "./ui.js";
 const $ = (selector) => document.querySelector(selector);
 const all = (selector) => [...document.querySelectorAll(selector)];
 let token = sessionStorage.getItem("applicator-token") || "";
 let editingJob = null;
+let profileRevision = 0;
+let pending = false;
 let profile = null,
   settings = null,
   applications = [];
@@ -17,29 +26,47 @@ function message(text, error = false) {
   $("#notice").className = error ? "error" : "";
 }
 async function api(path, method = "GET", body) {
+  const requestToken = token;
   const response = await fetch("/api" + path, {
     method,
     headers: {
       Authorization: "Bearer " + token,
       "Content-Type": "application/json",
+      ...(path === "/profile" && method === "PUT"
+        ? { "If-Match": String(profileRevision) }
+        : {}),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(
-      typeof error.detail === "string"
-        ? error.detail
-        : JSON.stringify(error.detail),
-    );
+    if (response.status === 401) lockWorkspace();
+    const error = await response.json().catch(() => null);
+    throw new Error(errorDetail(error, response.status));
   }
-  return response.json();
+  const result = await response.json();
+  if (requestToken !== token)
+    throw new Error("Workspace locked. Unlock it before continuing.");
+  return result;
 }
-async function action(callback) {
+async function action(callback, allowDuringBusy = false) {
+  if (pending && !allowDuringBusy) return;
+  const ownsPending = !pending;
+  if (ownsPending) {
+    pending = true;
+    $("#workspace").setAttribute("aria-busy", "true");
+  }
   try {
-    await callback();
+    const result = callback();
+    if (ownsPending) $("#workspace").disabled = true;
+    await result;
   } catch (error) {
     message(error.message, true);
+  } finally {
+    if (ownsPending) {
+      pending = false;
+      $("#workspace").removeAttribute("aria-busy");
+      $("#workspace").disabled = false;
+    }
   }
 }
 function read(form) {
@@ -62,9 +89,11 @@ function view(name) {
   all("[data-section]").forEach(
     (el) => (el.hidden = el.dataset.section !== name),
   );
-  all("[data-view]").forEach((el) =>
-    el.classList.toggle("active", el.dataset.view === name),
-  );
+  all("[data-view]").forEach((el) => {
+    el.classList.toggle("active", el.dataset.view === name);
+    if (el.dataset.view === name) el.setAttribute("aria-current", "page");
+    else el.removeAttribute("aria-current");
+  });
   $("#page-title").textContent = {
     overview: "Overview",
     applications: "Applications",
@@ -79,6 +108,7 @@ all("[data-view]").forEach(
   (button) => (button.onclick = () => view(button.dataset.view)),
 );
 function applicationTable(rows, target) {
+  target.classList.add("table-wrap");
   target.replaceChildren();
   if (!rows.length) {
     target.append(
@@ -91,7 +121,10 @@ function applicationTable(rows, target) {
   ["Opportunity", "Fit", "Status", ""].forEach((text) =>
     head.append(node("th", text)),
   );
-  table.append(head);
+  const thead = node("thead"),
+    tbody = node("tbody");
+  thead.append(head);
+  table.append(thead, tbody);
   for (const row of rows) {
     const tr = node("tr"),
       job = node("td");
@@ -108,14 +141,18 @@ function applicationTable(rows, target) {
       ),
     );
     const status = node("td");
-    status.append(node("span", row.state, "badge " + row.state));
+    status.append(node("span", stateLabel(row.state), "badge " + row.state));
     tr.append(status);
     const cell = node("td"),
       button = node("button", "Open", "secondary");
+    button.setAttribute(
+      "aria-label",
+      "Open " + row.job.title + " at " + row.job.company,
+    );
     button.onclick = () => action(() => detail(row.id));
     cell.append(button);
     tr.append(cell);
-    table.append(tr);
+    tbody.append(tr);
   }
   target.append(table);
 }
@@ -123,9 +160,13 @@ async function refresh() {
   settings = await api("/settings");
   applications = await api("/applications");
   try {
-    profile = (await api("/profile")).profile;
+    const record = await api("/profile");
+    profile = record.profile;
+    profileRevision = record.revision;
     fill($("#profile-form"), profile);
   } catch (error) {
+    if (!error.message.includes("Configure a candidate profile first"))
+      throw error;
     profile = null;
   }
   fill($("#settings-form"), settings);
@@ -146,6 +187,37 @@ async function refresh() {
   renderEvidence();
   const insights = await api("/insights");
   $("#insights").replaceChildren(node("p", insights.suggestion));
+  const outcomes = node("div", undefined, "grid grid-cols-3 gap-3 mt-5 mb-5");
+  for (const [key, label] of [
+    ["interview", "Interviews"],
+    ["offer", "Offers"],
+    ["rejected", "Rejections"],
+  ]) {
+    const metric = node("div", undefined, "rounded-xl bg-slate-50 p-3");
+    metric.append(
+      node(
+        "strong",
+        insights.outcomes[key],
+        "block text-2xl font-semibold tabular-nums",
+      ),
+      node("small", label),
+    );
+    outcomes.append(metric);
+  }
+  $("#insights").append(outcomes);
+  $("#policy-bands").replaceChildren();
+  for (const [range, label] of [
+    [settings.auto_threshold + "–100", "Automatic, when every gate passes"],
+    [
+      settings.review_threshold + "–" + (settings.auto_threshold - 1),
+      "Candidate review",
+    ],
+    ["0–" + (settings.review_threshold - 1), "Not prioritised"],
+  ]) {
+    const band = node("p");
+    band.append(node("b", range), node("span", label));
+    $("#policy-bands").append(band);
+  }
   const events = await api("/events");
   $("#events").replaceChildren();
   for (const event of events) {
@@ -159,12 +231,20 @@ async function refresh() {
   }
   const connections = await api("/connections");
   $("#connections").replaceChildren();
+  if (!connections.length)
+    $("#connections").append(
+      node(
+        "p",
+        "No contacts queued yet. Add a recruiter or use discovery to begin.",
+        "empty",
+      ),
+    );
   for (const item of connections) {
     const el = node("div", undefined, "entry");
     el.append(
       node("strong", item.name),
       node("p", item.role + " · " + item.location),
-      node("span", item.state, "badge " + item.state),
+      node("span", stateLabel(item.state), "badge " + item.state),
     );
     if (item.state === "queued") {
       const button = node("button", "Send queued invitation", "secondary");
@@ -181,10 +261,43 @@ async function refresh() {
   $("#pause").textContent = settings.automation_enabled
     ? "Pause all automation"
     : "Automation paused";
+  $("#pause").disabled = false;
+  $("#lock").hidden = false;
+  $("#readiness").replaceChildren(
+    node(
+      "strong",
+      settings.automation_enabled ? "Agent enabled" : "Agent paused",
+    ),
+    node(
+      "span",
+      settings.linkedin_authorised
+        ? "LinkedIn scope configured"
+        : "LinkedIn scope needed",
+      "badge " + (settings.linkedin_authorised ? "ready" : "review"),
+    ),
+    node(
+      "span",
+      profile?.confirmed ? "Profile confirmed" : "Profile review needed",
+      "badge " + (profile?.confirmed ? "ready" : "review"),
+    ),
+    node(
+      "span",
+      "Limit: " + settings.daily_limit + " applications / day",
+      "badge",
+    ),
+  );
 }
 function renderEvidence() {
   const target = $("#evidence-list");
   target.replaceChildren();
+  if (!profile?.evidence.length)
+    target.append(
+      node(
+        "p",
+        "Add a qualification, skill or project to build your candidate record.",
+        "empty",
+      ),
+    );
   for (const item of profile?.evidence || []) {
     const el = node("div", undefined, "entry");
     el.append(
@@ -200,7 +313,10 @@ function renderEvidence() {
       ),
     );
     const edit = node("button", "Edit", "secondary");
-    edit.onclick = () => fill($("#evidence-form"), item);
+    edit.onclick = () => {
+      fill($("#evidence-form"), item);
+      $("#evidence-form").scrollIntoView({ behavior: "smooth" });
+    };
     const remove = node("button", "Remove", "danger");
     remove.onclick = () =>
       action(async () => {
@@ -241,12 +357,30 @@ async function detail(id) {
     );
   }
   for (const question of row.job.questions || []) {
+    if (question.sensitive) {
+      target.append(node("p", question.label + ": requires manual handling."));
+      continue;
+    }
+    const answerKey =
+      question.answer_key ||
+      "question:" + question.label.toLowerCase().trim().replace(/\s+/g, " ");
     const form = node("form"),
       label = node("label", question.label),
-      input = node("input"),
+      input = node(question.choices?.length ? "select" : "input"),
       button = node("button", "Approve answer", "secondary");
+    if (question.choices?.length) {
+      const placeholder = node("option", "Choose an approved answer");
+      placeholder.value = "";
+      input.append(placeholder);
+      for (const choice of question.choices) {
+        const option = node("option", choice);
+        option.value = choice;
+        input.append(option);
+      }
+    }
     input.required = true;
-    input.value = profile?.answers[question.answer_key] || "";
+    input.setAttribute("aria-label", question.label);
+    input.value = profile?.answers[answerKey] || "";
     label.append(input);
     form.append(label, button);
     form.onsubmit = (event) => {
@@ -255,7 +389,7 @@ async function detail(id) {
         if (!profile) throw new Error("Configure the candidate profile first.");
         await api("/profile", "PUT", {
           ...profile,
-          answers: { ...profile.answers, [question.answer_key]: input.value },
+          answers: { ...profile.answers, [answerKey]: input.value },
         });
         await refresh();
         await detail(id);
@@ -271,6 +405,7 @@ async function detail(id) {
       editingJob = row;
       fill($("#job-form"), row.job);
       $("#job-form button").textContent = "Save updated opportunity";
+      $("#cancel-job-edit").hidden = false;
       $("#job-form").scrollIntoView({ behavior: "smooth" });
     };
     actions.append(edit);
@@ -294,6 +429,7 @@ async function detail(id) {
   }
   if (row.state === "ready") {
     const submit = node("button", "Run authorised submission");
+    submit.disabled = !settings.automation_enabled;
     submit.onclick = () =>
       action(async () => {
         await api("/applications/" + id + "/submit", "POST");
@@ -353,6 +489,7 @@ async function detail(id) {
   if (row.state === "submitted") {
     const label = node("label", "Record outcome"),
       select = node("select");
+    select.setAttribute("aria-label", "Record outcome");
     for (const value of [
       "interview",
       "offer",
@@ -387,6 +524,7 @@ $("#token-form").onsubmit = (event) => {
     $("#login").hidden = true;
     $("#workspace").hidden = false;
     await refresh();
+    $("#token").value = "";
     message("Local workspace unlocked.");
   });
 };
@@ -395,11 +533,8 @@ $("#profile-form").onsubmit = (event) => {
   action(async () => {
     const form = event.target,
       obj = read(form);
-    obj.links = obj.links
-      .split("\n")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    obj.answers = JSON.parse(obj.answers || "{}");
+    obj.links = splitList(obj.links, "\n");
+    obj.answers = parseAnswers(obj.answers);
     obj.confirmed = form.elements.confirmed.checked;
     obj.sponsorship_required = form.elements.sponsorship_required.checked;
     obj.evidence = profile?.evidence || [];
@@ -413,16 +548,9 @@ $("#evidence-form").onsubmit = (event) => {
   action(async () => {
     if (!profile) throw new Error("Save your candidate profile first.");
     const obj = read(event.target);
-    obj.tags = obj.tags
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    obj.tags = splitList(obj.tags);
     obj.verified = event.target.elements.verified.checked;
-    const updated = {
-      ...profile,
-      evidence: [...profile.evidence.filter((item) => item.id !== obj.id), obj],
-    };
-    await api("/profile", "PUT", updated);
+    await api("/evidence/" + encodeURIComponent(obj.id), "PUT", obj);
     event.target.reset();
     await refresh();
     message("Evidence saved.");
@@ -432,16 +560,10 @@ $("#job-form").onsubmit = (event) => {
   event.preventDefault();
   action(async () => {
     const obj = read(event.target);
-    obj.requirements = obj.requirements
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    obj.requirements = splitList(obj.requirements);
     obj.cover_letter_required =
       event.target.elements.cover_letter_required.checked;
-    const linkedin = new URL(obj.url);
-    const match =
-      linkedin.hostname === "www.linkedin.com" &&
-      linkedin.pathname.match(/^\/jobs\/view\/(\d+)\/?$/);
+    const match = linkedinIdentity(obj.url);
     obj.source = editingJob
       ? editingJob.job.source
       : match
@@ -450,7 +572,7 @@ $("#job-form").onsubmit = (event) => {
     obj.source_id = editingJob
       ? editingJob.job.source_id
       : match
-        ? match[1]
+        ? match
         : Array.from(
             new Uint8Array(
               await crypto.subtle.digest(
@@ -466,6 +588,7 @@ $("#job-form").onsubmit = (event) => {
       await api("/applications/" + editingJob.id + "/job", "PUT", obj);
     else await api("/jobs", "POST", obj);
     editingJob = null;
+    $("#cancel-job-edit").hidden = true;
     $("#job-form button").textContent = "Save opportunity";
     event.target.reset();
     await refresh();
@@ -525,10 +648,7 @@ $("#settings-form").onsubmit = (event) => {
       "daily_connection_limit",
     ])
       obj[key] = Number(obj[key]);
-    obj.allowed_countries = obj.allowed_countries
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    obj.allowed_countries = splitList(obj.allowed_countries);
     await api("/settings", "PUT", obj);
     await refresh();
     message("Agent settings saved.");
@@ -546,13 +666,57 @@ $("#pause").onclick = () =>
     message(
       "Automation paused. An external action already in flight may finish.",
     );
-  });
+  }, true);
 $("#tick").onclick = () =>
   action(async () => {
     const result = await api("/worker/tick", "POST");
     await refresh();
     message("Agent cycle completed: " + JSON.stringify(result));
   });
+function lockWorkspace() {
+  token = "";
+  sessionStorage.removeItem("applicator-token");
+  profile = null;
+  profileRevision = 0;
+  settings = null;
+  applications = [];
+  $("#workspace").hidden = true;
+  $("#login").hidden = false;
+  $("#pause").disabled = true;
+  $("#lock").hidden = true;
+  $("#profile-form").reset();
+  $("#evidence-form").reset();
+  $("#job-form").reset();
+  $("#connection-form").reset();
+  $("#settings-form").reset();
+  editingJob = null;
+  $("#job-form button").textContent = "Save opportunity";
+  $("#cancel-job-edit").hidden = true;
+  [
+    "#recent",
+    "#application-list",
+    "#application-detail",
+    "#evidence-list",
+    "#connections",
+    "#events",
+    "#insights",
+    "#readiness",
+    "#stats",
+  ].forEach((selector) => $(selector).replaceChildren());
+  $("#token").value = "";
+  view("overview");
+}
+$("#lock").onclick = () => {
+  lockWorkspace();
+  message("Workspace locked on this tab.");
+};
+$("#view-queue").onclick = () => view("applications");
+$("#cancel-job-edit").onclick = () => {
+  editingJob = null;
+  $("#job-form").reset();
+  $("#job-form button").textContent = "Save opportunity";
+  $("#cancel-job-edit").hidden = true;
+};
 if (token)
   action(async () => {
     await api("/settings");

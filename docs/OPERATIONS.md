@@ -10,6 +10,10 @@ uv run python -m applicator.cli serve
 
 Use `http://127.0.0.1:8765` and the access token printed in the terminal. The application automatically uses an installed Microsoft Edge on Windows; otherwise install Chromium with `uv run python -m playwright install chromium`. Set `APPLICATOR_BROWSER_CHANNEL` to `chrome`, `msedge` or `chromium` if needed.
 
+The readiness strip shows the saved LinkedIn authorisation, profile confirmation and daily limit. A scope declaration is separate from enabling application automation or networking. Use **Lock workspace** to clear credentials and visible candidate information from this tab; locking the tab does not pause the background agent. Use **Pause all automation** to stop new attempts.
+
+The dashboard detects stale profile edits using a revision precondition. If another tab changes the record, reload before saving rather than overwriting the newer facts. Pending operations disable workspace controls, while pause remains available. The dashboard uses committed, locally compiled Tailwind CSS. To change its styling, use Node.js 24, `npm ci` and `npm run build:css`.
+
 The module commands avoid unsigned console launchers sometimes blocked by Windows Application Control. If a compiled mypy installation is blocked, install the same locked mypy version from source with `uv pip install --reinstall --no-binary mypy mypy==<locked-version>`. Do not disable Windows security policy.
 
 ## Candidate setup

@@ -9,8 +9,9 @@ from pydantic import ValidationError
 
 from applicator.api import create_app, local_token
 from applicator.browser import LinkedInBrowser, ReviewRequired, ensure_linkedin, linkedin_job_id
-from applicator.models import Evidence, Settings, State
+from applicator.models import Evidence, Question, Settings, State
 from applicator.networking import european_location, target_url
+from applicator.policy import answer_questions
 from applicator.service import Service
 from applicator.store import Store
 
@@ -211,3 +212,12 @@ def test_mutated_invalid_profile_cannot_bypass_validation(data, profile):
     with pytest.raises(ValidationError):
         store.save_profile(profile)
     assert store.profile()[1] == 1
+
+
+def test_question_without_explicit_key_uses_approved_exact_label(profile, job):
+    job.questions = [
+        Question(id="salary", label="Expected salary?", choices=["To be discussed", "50000"])
+    ]
+    assert answer_questions(job, profile)[1] == ["salary"]
+    profile.answers["question:expected salary?"] = "To be discussed"
+    assert answer_questions(job, profile) == ({"salary": "To be discussed"}, [])

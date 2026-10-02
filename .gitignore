@@ -18,4 +18,5 @@ playwright-report/
 *.sqlite*
 *.log
 dist/
+node_modules/
 *.egg-info/

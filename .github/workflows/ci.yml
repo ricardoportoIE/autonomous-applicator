@@ -17,6 +17,17 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run build:css
+      - run: git diff --exit-code -- src/applicator/static/style.css
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm test
+      - run: npm audit --audit-level=low
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
@@ -27,9 +38,12 @@ jobs:
       - run: uv run python scripts/check_repository_hygiene.py
       - run: uv run python -m mypy src
       - run: uv run python -m pytest
+      - run: npm run coverage:browser
       - run: uv run python -m pip_audit
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage-${{ matrix.os }}-${{ matrix.python }}
-          path: coverage.xml
+          path: |
+            coverage.xml
+            test-results/frontend-report
