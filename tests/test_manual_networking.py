@@ -83,7 +83,13 @@ def test_manual_invitation_uses_only_connect_and_selected_profile(data, monkeypa
       const pending=document.createElement('button'); pending.textContent='Pending';
       document.querySelector('article').append(pending);
     }
-    </script><div id="dialog" role="dialog" aria-label="Invitation" hidden><button onclick="sendInvitation()">Send without a note</button></div>"""
+    </script>
+    <div id="dialog" role="dialog" aria-labelledby="invitation-heading" hidden>
+      <h2 id="invitation-heading">Add a note to your invitation?</h2>
+      <p>Personalise your invitation to Example Recruiter by adding a note.</p>
+      <button onclick="console.log('action:add-note')">Add a note</button>
+      <button onclick="sendInvitation()">Send without a note</button>
+    </div>"""
     if case == "no_dialog":
         script = script.replace("document.querySelector('#dialog').hidden=false;", "")
     if case == "no_receipt":
@@ -154,6 +160,7 @@ def test_manual_invitation_uses_only_connect_and_selected_profile(data, monkeypa
         if case not in {"no_dialog", "no_receipt"}:
             assert not actions
     assert "action:follow" not in actions
+    assert "action:add-note" not in actions
     assert visited[0] == "https://www.linkedin.com/in/example/"
     assert all("/jobs/" not in url and "/search/" not in url for url in visited)
     assert modes == [False]
