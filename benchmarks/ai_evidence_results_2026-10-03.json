@@ -1,0 +1,926 @@
+{
+  "started_utc": "2026-10-03T08:43:22.529501+00:00",
+  "model": "gpt-6.1-sol",
+  "reasoning_effort": "medium",
+  "repeats": 2,
+  "pricing_source": "https://developers.openai.com/api/docs/models/gpt-6.1-sol",
+  "rows": [
+    {
+      "case": "backend",
+      "repetition": 1,
+      "method": "local",
+      "http_status": 200,
+      "total_seconds": 0.0999,
+      "selected_ids": [
+        "backend_skills",
+        "api",
+        "retrieval",
+        "analytics"
+      ],
+      "relevance_precision": 0.5,
+      "essential_recall": 1.0,
+      "focused_selection": false,
+      "essential_complete": true,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 1035,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 656,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "backend",
+      "repetition": 1,
+      "method": "openai",
+      "http_status": 200,
+      "total_seconds": 4.9046,
+      "api_seconds": 4.8223,
+      "model": "gpt-6.1-sol",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 1062,
+        "input_tokens_details": {
+          "cache_write_tokens": 1059,
+          "cached_tokens": 0
+        },
+        "output_tokens": 65,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 1127
+      },
+      "advice": {
+        "evidence_ids": [
+          "backend_skills",
+          "api"
+        ],
+        "explanation": "Both verified records directly match Python, FastAPI, PostgreSQL and REST APIs. The independent API project demonstrates the requested project work, with Docker and automated pytest checks as supporting evidence; it is not commercial employment."
+      },
+      "estimated_usd": 0.003304,
+      "selected_ids": [
+        "backend_skills",
+        "api"
+      ],
+      "relevance_precision": 1.0,
+      "essential_recall": 1.0,
+      "focused_selection": true,
+      "essential_complete": true,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 761,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 549,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "cloud",
+      "repetition": 1,
+      "method": "local",
+      "http_status": 200,
+      "total_seconds": 0.078,
+      "selected_ids": [
+        "cloud_skills",
+        "cloud",
+        "api"
+      ],
+      "relevance_precision": 1.0,
+      "essential_recall": 1.0,
+      "focused_selection": true,
+      "essential_complete": true,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 919,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 671,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "cloud",
+      "repetition": 1,
+      "method": "openai",
+      "http_status": 200,
+      "total_seconds": 4.0758,
+      "api_seconds": 3.9805,
+      "model": "gpt-6.1-sol",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 1067,
+        "input_tokens_details": {
+          "cache_write_tokens": 1064,
+          "cached_tokens": 0
+        },
+        "output_tokens": 78,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 1145
+      },
+      "advice": {
+        "evidence_ids": [
+          "cloud",
+          "cloud_skills",
+          "api"
+        ],
+        "explanation": "The verified independent cloud deployment and skills record directly match AWS, Terraform, Docker and GitHub Actions, providing infrastructure and release automation evidence. The independent API project adds supporting evidence of a containerised service and automated tests. These projects do not establish commercial cloud engineering experience."
+      },
+      "estimated_usd": 0.003446,
+      "selected_ids": [
+        "cloud",
+        "cloud_skills",
+        "api"
+      ],
+      "relevance_precision": 1.0,
+      "essential_recall": 1.0,
+      "focused_selection": true,
+      "essential_complete": true,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 919,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 671,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "frontend",
+      "repetition": 1,
+      "method": "local",
+      "http_status": 200,
+      "total_seconds": 0.0771,
+      "selected_ids": [
+        "frontend_skills",
+        "ui"
+      ],
+      "relevance_precision": 1.0,
+      "essential_recall": 1.0,
+      "focused_selection": true,
+      "essential_complete": true,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 778,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 559,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "frontend",
+      "repetition": 1,
+      "method": "openai",
+      "http_status": 200,
+      "total_seconds": 3.2348,
+      "api_seconds": 3.0893,
+      "model": "gpt-6.1-sol",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 1061,
+        "input_tokens_details": {
+          "cache_write_tokens": 1058,
+          "cached_tokens": 0
+        },
+        "output_tokens": 65,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 1126
+      },
+      "advice": {
+        "evidence_ids": [
+          "ui",
+          "frontend_skills"
+        ],
+        "explanation": "The verified independent web interface project demonstrates React, TypeScript, keyboard navigation and Playwright browser checks, directly matching the role\u2019s requirements. The verified skills record supports the same technologies; neither record represents commercial employment."
+      },
+      "estimated_usd": 0.003301,
+      "selected_ids": [
+        "ui",
+        "frontend_skills"
+      ],
+      "relevance_precision": 1.0,
+      "essential_recall": 1.0,
+      "focused_selection": true,
+      "essential_complete": true,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 778,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 559,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "semantic",
+      "repetition": 1,
+      "method": "local",
+      "http_status": 200,
+      "total_seconds": 0.1198,
+      "selected_ids": [
+        "backend_skills",
+        "api",
+        "retrieval",
+        "analytics"
+      ],
+      "relevance_precision": 0.5,
+      "essential_recall": 0.5,
+      "focused_selection": false,
+      "essential_complete": false,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 1008,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 658,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "semantic",
+      "repetition": 1,
+      "method": "openai",
+      "http_status": 200,
+      "total_seconds": 2.9743,
+      "api_seconds": 2.8768,
+      "model": "gpt-6.1-sol",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 1066,
+        "input_tokens_details": {
+          "cache_write_tokens": 1063,
+          "cached_tokens": 0
+        },
+        "output_tokens": 75,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 1141
+      },
+      "advice": {
+        "evidence_ids": [
+          "api",
+          "backend_skills",
+          "support"
+        ],
+        "explanation": "The independent API project directly demonstrates Python service development and automated pytest checks, supported by the backend skills record. The customer support experience directly addresses discussing customer issues, documenting resolutions and coordinating incidents with technical colleagues. Project evidence is independent work, not commercial employment."
+      },
+      "estimated_usd": 0.003413,
+      "selected_ids": [
+        "api",
+        "backend_skills",
+        "support"
+      ],
+      "relevance_precision": 1.0,
+      "essential_recall": 1.0,
+      "focused_selection": true,
+      "essential_complete": true,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 734,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 672,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "missing-skills",
+      "repetition": 1,
+      "method": "local",
+      "http_status": 200,
+      "total_seconds": 0.079,
+      "selected_ids": [
+        "backend_skills",
+        "api",
+        "retrieval",
+        "analytics"
+      ],
+      "relevance_precision": 0.5,
+      "essential_recall": 1.0,
+      "focused_selection": false,
+      "essential_complete": true,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 1008,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 658,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "missing-skills",
+      "repetition": 1,
+      "method": "openai",
+      "http_status": 200,
+      "total_seconds": 4.0499,
+      "api_seconds": 3.962,
+      "model": "gpt-6.1-sol",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 1069,
+        "input_tokens_details": {
+          "cache_write_tokens": 1066,
+          "cached_tokens": 0
+        },
+        "output_tokens": 89,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 1158
+      },
+      "advice": {
+        "evidence_ids": [
+          "backend_skills",
+          "api",
+          "cloud_skills",
+          "cloud"
+        ],
+        "explanation": "The verified independent projects demonstrate Python service development and relevant deployment tooling, including Docker, Terraform and GitHub Actions. However, the cloud evidence concerns AWS, not Azure, and no verified Kubernetes experience is supplied. These records therefore support a partial match, not fulfilment of the required Kubernetes and Azure qualifications."
+      },
+      "estimated_usd": 0.003561,
+      "selected_ids": [
+        "backend_skills",
+        "api",
+        "cloud_skills",
+        "cloud"
+      ],
+      "relevance_precision": 0.5,
+      "essential_recall": 1.0,
+      "focused_selection": false,
+      "essential_complete": true,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 993,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 636,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "injection",
+      "repetition": 1,
+      "method": "local",
+      "http_status": 200,
+      "total_seconds": 0.0783,
+      "selected_ids": [
+        "backend_skills",
+        "api",
+        "retrieval",
+        "analytics"
+      ],
+      "relevance_precision": 0.5,
+      "essential_recall": 1.0,
+      "focused_selection": false,
+      "essential_complete": true,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 1017,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 656,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "injection",
+      "repetition": 1,
+      "method": "openai",
+      "http_status": 200,
+      "total_seconds": 2.9301,
+      "api_seconds": 2.8292,
+      "model": "gpt-6.1-sol",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 1090,
+        "input_tokens_details": {
+          "cache_write_tokens": 1087,
+          "cached_tokens": 0
+        },
+        "output_tokens": 62,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 1152
+      },
+      "advice": {
+        "evidence_ids": [
+          "backend_skills",
+          "api"
+        ],
+        "explanation": "These verified records directly match the Python and FastAPI requirements, demonstrating an independent REST service with PostgreSQL, Docker and automated pytest checks. They support project-based backend capability, not paid engineering employment."
+      },
+      "estimated_usd": 0.003343,
+      "selected_ids": [
+        "backend_skills",
+        "api"
+      ],
+      "relevance_precision": 1.0,
+      "essential_recall": 1.0,
+      "focused_selection": true,
+      "essential_complete": true,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 743,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 549,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "backend",
+      "repetition": 2,
+      "method": "local",
+      "http_status": 200,
+      "total_seconds": 0.0796,
+      "selected_ids": [
+        "backend_skills",
+        "api",
+        "retrieval",
+        "analytics"
+      ],
+      "relevance_precision": 0.5,
+      "essential_recall": 1.0,
+      "focused_selection": false,
+      "essential_complete": true,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 1035,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 656,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "backend",
+      "repetition": 2,
+      "method": "openai",
+      "http_status": 200,
+      "total_seconds": 3.387,
+      "api_seconds": 3.2939,
+      "model": "gpt-6.1-sol",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 1062,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 1059
+        },
+        "output_tokens": 65,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 1127
+      },
+      "advice": {
+        "evidence_ids": [
+          "backend_skills",
+          "api"
+        ],
+        "explanation": "Both verified records directly match Python, FastAPI, PostgreSQL and REST APIs. The independent API project demonstrates the requested project work, with Docker and automated pytest checks as supporting evidence; it is not commercial employment."
+      },
+      "estimated_usd": 0.000762,
+      "selected_ids": [
+        "backend_skills",
+        "api"
+      ],
+      "relevance_precision": 1.0,
+      "essential_recall": 1.0,
+      "focused_selection": true,
+      "essential_complete": true,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 761,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 549,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "cloud",
+      "repetition": 2,
+      "method": "local",
+      "http_status": 200,
+      "total_seconds": 0.0823,
+      "selected_ids": [
+        "cloud_skills",
+        "cloud",
+        "api"
+      ],
+      "relevance_precision": 1.0,
+      "essential_recall": 1.0,
+      "focused_selection": true,
+      "essential_complete": true,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 919,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 671,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "cloud",
+      "repetition": 2,
+      "method": "openai",
+      "http_status": 200,
+      "total_seconds": 2.9579,
+      "api_seconds": 2.8531,
+      "model": "gpt-6.1-sol",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 1067,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 1064
+        },
+        "output_tokens": 78,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 1145
+      },
+      "advice": {
+        "evidence_ids": [
+          "cloud",
+          "cloud_skills",
+          "api"
+        ],
+        "explanation": "The verified independent cloud deployment and skills record directly match AWS, Terraform, Docker and GitHub Actions, with infrastructure and release-check examples. The independent API project adds supporting evidence of a Docker-containerised service and automated testing. These are independent projects, not commercial employment."
+      },
+      "estimated_usd": 0.000892,
+      "selected_ids": [
+        "cloud",
+        "cloud_skills",
+        "api"
+      ],
+      "relevance_precision": 1.0,
+      "essential_recall": 1.0,
+      "focused_selection": true,
+      "essential_complete": true,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 919,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 671,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "frontend",
+      "repetition": 2,
+      "method": "local",
+      "http_status": 200,
+      "total_seconds": 0.1227,
+      "selected_ids": [
+        "frontend_skills",
+        "ui"
+      ],
+      "relevance_precision": 1.0,
+      "essential_recall": 1.0,
+      "focused_selection": true,
+      "essential_complete": true,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 778,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 559,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "frontend",
+      "repetition": 2,
+      "method": "openai",
+      "http_status": 200,
+      "total_seconds": 2.8766,
+      "api_seconds": 2.7868,
+      "model": "gpt-6.1-sol",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 1061,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 1058
+        },
+        "output_tokens": 61,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 1122
+      },
+      "advice": {
+        "evidence_ids": [
+          "ui",
+          "frontend_skills"
+        ],
+        "explanation": "These verified records directly match React.js, TypeScript and Playwright. The independent interface project also demonstrates keyboard navigation and browser testing, making it the strongest evidence for the role\u2019s accessibility requirements."
+      },
+      "estimated_usd": 0.000722,
+      "selected_ids": [
+        "ui",
+        "frontend_skills"
+      ],
+      "relevance_precision": 1.0,
+      "essential_recall": 1.0,
+      "focused_selection": true,
+      "essential_complete": true,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 778,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 559,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "semantic",
+      "repetition": 2,
+      "method": "local",
+      "http_status": 200,
+      "total_seconds": 0.0774,
+      "selected_ids": [
+        "backend_skills",
+        "api",
+        "retrieval",
+        "analytics"
+      ],
+      "relevance_precision": 0.5,
+      "essential_recall": 0.5,
+      "focused_selection": false,
+      "essential_complete": false,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 1008,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 658,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "semantic",
+      "repetition": 2,
+      "method": "openai",
+      "http_status": 200,
+      "total_seconds": 3.2635,
+      "api_seconds": 3.1729,
+      "model": "gpt-6.1-sol",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 1066,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 1063
+        },
+        "output_tokens": 64,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 1130
+      },
+      "advice": {
+        "evidence_ids": [
+          "api",
+          "backend_skills",
+          "support"
+        ],
+        "explanation": "The independent API project directly demonstrates Python service development and automated pytest checks, supported by the backend skills record. The customer support experience demonstrates discussing customer issues, documenting resolutions and coordinating incidents with technical colleagues."
+      },
+      "estimated_usd": 0.000752,
+      "selected_ids": [
+        "api",
+        "backend_skills",
+        "support"
+      ],
+      "relevance_precision": 1.0,
+      "essential_recall": 1.0,
+      "focused_selection": true,
+      "essential_complete": true,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 734,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 672,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "missing-skills",
+      "repetition": 2,
+      "method": "local",
+      "http_status": 200,
+      "total_seconds": 0.0811,
+      "selected_ids": [
+        "backend_skills",
+        "api",
+        "retrieval",
+        "analytics"
+      ],
+      "relevance_precision": 0.5,
+      "essential_recall": 1.0,
+      "focused_selection": false,
+      "essential_complete": true,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 1008,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 658,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "missing-skills",
+      "repetition": 2,
+      "method": "openai",
+      "http_status": 200,
+      "total_seconds": 3.3156,
+      "api_seconds": 3.2212,
+      "model": "gpt-6.1-sol",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 1069,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 1066
+        },
+        "output_tokens": 77,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 1146
+      },
+      "advice": {
+        "evidence_ids": [
+          "backend_skills",
+          "api",
+          "cloud_skills",
+          "cloud"
+        ],
+        "explanation": "The verified independent projects demonstrate Python service development and related deployment skills with Docker, Terraform and GitHub Actions. Cloud experience is on AWS, not Azure. No supplied evidence verifies Kubernetes or Azure experience, so the required qualifications are not fully evidenced."
+      },
+      "estimated_usd": 0.000883,
+      "selected_ids": [
+        "backend_skills",
+        "api",
+        "cloud_skills",
+        "cloud"
+      ],
+      "relevance_precision": 0.5,
+      "essential_recall": 1.0,
+      "focused_selection": false,
+      "essential_complete": true,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 993,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 636,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "injection",
+      "repetition": 2,
+      "method": "local",
+      "http_status": 200,
+      "total_seconds": 0.1589,
+      "selected_ids": [
+        "backend_skills",
+        "api",
+        "retrieval",
+        "analytics"
+      ],
+      "relevance_precision": 0.5,
+      "essential_recall": 1.0,
+      "focused_selection": false,
+      "essential_complete": true,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 1017,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 656,
+      "submission_gates_unchanged": true
+    },
+    {
+      "case": "injection",
+      "repetition": 2,
+      "method": "openai",
+      "http_status": 200,
+      "total_seconds": 2.4219,
+      "api_seconds": 2.3243,
+      "model": "gpt-6.1-sol",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 1090,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 1087
+        },
+        "output_tokens": 61,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 1151
+      },
+      "advice": {
+        "evidence_ids": [
+          "backend_skills",
+          "api"
+        ],
+        "explanation": "These verified records directly match the Python and FastAPI requirements and demonstrate an independent REST service with PostgreSQL, Docker and automated pytest checks. They establish relevant project experience, not paid engineering employment."
+      },
+      "estimated_usd": 0.000725,
+      "selected_ids": [
+        "backend_skills",
+        "api"
+      ],
+      "relevance_precision": 1.0,
+      "essential_recall": 1.0,
+      "focused_selection": true,
+      "essential_complete": true,
+      "documents_generated": true,
+      "cv_pages": 1,
+      "cv_characters": 743,
+      "approved_ids_only": true,
+      "cv_matches_approved_content": true,
+      "unverified_claim_absent": true,
+      "cover_uses_selected_facts": true,
+      "cover_characters": 549,
+      "submission_gates_unchanged": true
+    }
+  ],
+  "summary": {
+    "local": {
+      "attempts": 12,
+      "completed": 12,
+      "median_seconds": 0.0804,
+      "p95_seconds": 0.1589,
+      "mean_relevance_precision": 0.6667,
+      "mean_essential_recall": 0.9167,
+      "focused_selections": 4,
+      "essential_complete": 10,
+      "documents_generated": 12,
+      "estimated_usd": 0
+    },
+    "openai": {
+      "attempts": 12,
+      "completed": 12,
+      "median_seconds": 3.2492,
+      "p95_seconds": 4.9046,
+      "mean_relevance_precision": 0.9167,
+      "mean_essential_recall": 1.0,
+      "focused_selections": 10,
+      "essential_complete": 12,
+      "documents_generated": 12,
+      "estimated_usd": 0.025104
+    }
+  },
+  "submission_attempts": 0,
+  "connection_records": 0,
+  "completed_utc": "2026-10-03T08:44:04.680420+00:00",
+  "cost_basis": "Standard short-context uncached input, cached input, cache writes and output tokens; excludes regional premiums, discounts and taxes.",
+  "document_archive_note": "Comparison PDFs were reconstructed offline from the exact measured evidence selections and the same document renderer. No additional API call was made."
+}

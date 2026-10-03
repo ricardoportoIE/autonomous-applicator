@@ -55,6 +55,7 @@ uv run python -m pip_audit
 - [Operating guide](docs/OPERATIONS.md)
 - [Delivery and validation record](docs/STATUS.md)
 - [Complete source review and regression findings](docs/CODE_REVIEW.md)
+- [Live OpenAI performance and evidence-selection comparison](docs/AI_BENCHMARK.md)
 - [Improvements and next priorities](docs/IMPROVEMENTS.md)
 
 ## Frontend development and testing
