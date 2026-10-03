@@ -22,6 +22,7 @@ from .discovery import greenhouse
 from .documents import validate_manifest
 from .models import Contract, DailyUsage, Evidence, Job, Preflight, Profile, Settings, State
 from .networking import Networking
+from .photos import stored_photo
 from .service import Service
 from .store import Store
 
@@ -180,7 +181,7 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
         response = await call_next(request)
         response.headers.update(
             {
-                "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-ancestors 'none'; object-src 'none'",
+                "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; frame-ancestors 'none'; object-src 'none'",
                 "X-Content-Type-Options": "nosniff",
                 "Referrer-Policy": "no-referrer",
                 "Cache-Control": "no-store",
@@ -382,6 +383,14 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
     @app.get("/api/connections", dependencies=auth)
     def connections() -> list[dict[str, Any]]:
         return network.list()
+
+    @app.get("/api/connections/{connection_id}/photo", dependencies=auth)
+    def connection_photo(connection_id: int) -> FileResponse:
+        row = network.status(connection_id)
+        path = stored_photo(data, row["url"])
+        if path is None:
+            raise HTTPException(404, "No local profile photo is available for this contact")
+        return FileResponse(path, media_type="image/png")
 
     @app.post("/api/discover/contacts", dependencies=auth)
     def discover_contacts() -> dict[str, int]:

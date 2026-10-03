@@ -1006,3 +1006,121 @@ def test_lock_during_contact_search_discards_the_late_response(dashboard):
     expect(page.locator("#contact-search")).not_to_have_attribute("aria-busy", "true")
     assert page.locator("#connections").inner_html() == ""
     assert page.locator("#archived-connections").inner_html() == ""
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("width", [390, 1440])
+def test_contact_photos_are_private_cached_and_location_is_highlighted(dashboard, width, tmp_path):
+    from test_contact_photos import example_photo
+
+    from applicator.photos import save_photo
+
+    page, app, _ = dashboard
+    page.set_viewport_size({"width": width, "height": 1000})
+    for index in range(1, 4):
+        url = f"https://www.linkedin.com/in/photo-example-{index}/"
+        app.state.network.add(
+            url, f"Example Recruiter {index}", "Technical Recruiter", "Dublin, Ireland"
+        )
+        if index < 3:
+            assert save_photo(app.state.network.data, url, example_photo())
+        if index == 2:
+            app.state.network.finish(index, "fixture:pending")
+    requested = []
+    page.on(
+        "request",
+        lambda request: requested.append(request) if request.url.endswith("/photo") else None,
+    )
+    page.add_init_script(
+        "window.revokedPhotos=[]; const original=URL.revokeObjectURL; URL.revokeObjectURL=url=>{window.revokedPhotos.push(url);original.call(URL,url)}"
+    )
+    page.reload()
+    page.get_by_role("button", name="Networking", exact=True).click()
+    first = page.locator('[data-connection-id="1"]')
+    image = first.get_by_role("img", name="Profile photo of Example Recruiter 1", exact=True)
+    expect(image).to_be_visible()
+    expect(image).to_have_attribute("src", re.compile("^blob:"))
+    expect(first.locator(".contact-initials")).to_be_hidden()
+    expect(first.locator(".contact-location")).to_have_text("Dublin, Ireland")
+    expect(first.locator(".contact-role")).to_have_text("Technical Recruiter")
+    assert image.bounding_box()["width"] == image.bounding_box()["height"] == 64
+    assert (
+        first.locator(".contact-location").evaluate("el => Number(getComputedStyle(el).fontWeight)")
+        >= 600
+    )
+    expect(page.locator('[data-connection-id="3"] .contact-initials')).to_be_visible()
+    assert len(requested) == 1
+    assert requested[0].headers["authorization"] == "Bearer " + TOKEN
+    blob_url = image.get_attribute("src")
+    page.get_by_role("tab", name="Archived (1)", exact=True).click()
+    expect(
+        page.get_by_role("img", name="Profile photo of Example Recruiter 2", exact=True)
+    ).to_be_visible()
+    assert len(requested) == 2
+    assert_networking_accessibility(page)
+    page.screenshot(path=str(tmp_path / f"contact-photo-archive-{width}.png"), full_page=True)
+    page.get_by_role("tab", name="Active (2)", exact=True).click()
+    expect(image).to_be_visible()
+    assert len(requested) == 2
+    page.get_by_role("button", name="Lock workspace", exact=True).click()
+    assert page.evaluate("url=>window.revokedPhotos.includes(url)", blob_url)
+    assert page.locator("#connections img, #archived-connections img").count() == 0
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize(
+    "failure", ["missing", "wrong_type", "oversized", "corrupt", "unauthorised"]
+)
+def test_contact_photo_failure_keeps_initials_or_locks_invalid_auth(dashboard, failure):
+    from test_contact_photos import example_photo
+
+    from applicator.photos import save_photo
+
+    page, app, _ = dashboard
+    url = "https://www.linkedin.com/in/photo-example/"
+    app.state.network.add(url, "Example Recruiter", "Recruiter", "Ireland")
+    assert save_photo(app.state.network.data, url, example_photo())
+    page.route(
+        "**/api/connections/1/photo",
+        lambda route: route.fulfill(
+            status=401 if failure == "unauthorised" else 404 if failure == "missing" else 200,
+            content_type="text/plain" if failure == "wrong_type" else "image/png",
+            body=b"x" * 512001
+            if failure == "oversized"
+            else b"not an image"
+            if failure == "corrupt"
+            else example_photo(),
+        ),
+    )
+    page.reload()
+    if failure == "unauthorised":
+        expect(page.locator("#workspace")).to_be_hidden()
+        assert page.locator("#connections img").count() == 0
+    else:
+        page.get_by_role("button", name="Networking", exact=True).click()
+        expect(page.locator(".contact-initials")).to_be_visible()
+        expect(page.locator(".contact-avatar img")).to_be_hidden()
+        expect(page.locator("#connections")).to_contain_text("Example Recruiter")
+        assert_networking_accessibility(page)
+
+
+@pytest.mark.browser
+def test_lock_during_photo_download_discards_the_late_image(dashboard):
+    from test_contact_photos import example_photo
+
+    from applicator.photos import save_photo
+
+    page, app, _ = dashboard
+    url = "https://www.linkedin.com/in/photo-example/"
+    app.state.network.add(url, "Example Recruiter", "Recruiter", "Ireland")
+    assert save_photo(app.state.network.data, url, example_photo())
+    held = []
+    page.route("**/api/connections/1/photo", lambda route: held.append(route))
+    page.reload()
+    page.get_by_role("button", name="Networking", exact=True).click()
+    expect(page.locator(".contact-initials")).to_be_visible()
+    assert len(held) == 1
+    page.get_by_role("button", name="Lock workspace", exact=True).click()
+    held[0].fulfill(content_type="image/png", body=example_photo())
+    expect(page.locator("#workspace")).to_be_hidden()
+    assert page.locator("#connections img, #archived-connections img").count() == 0

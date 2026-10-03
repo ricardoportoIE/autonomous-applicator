@@ -18,6 +18,7 @@ from .browser import (
     member_details,
     pending_invitation_action,
 )
+from .photos import stored_photo
 from .store import Store, day_key
 
 EUROPE = (
@@ -114,7 +115,10 @@ class Networking:
 
     def list(self) -> list[dict[str, Any]]:
         with self.store.connect() as db:
-            return [dict(row) for row in db.execute("SELECT * FROM connections ORDER BY id DESC")]
+            return [
+                {**dict(row), "photo_available": stored_photo(self.data, row["url"]) is not None}
+                for row in db.execute("SELECT * FROM connections ORDER BY id DESC")
+            ]
 
     def remaining(self) -> int:
         with self.store.connect() as db:
@@ -130,7 +134,7 @@ class Networking:
             row = db.execute("SELECT * FROM connections WHERE id=?", (connection_id,)).fetchone()
             if row is None:
                 raise KeyError(connection_id)
-            return dict(row)
+            return {**dict(row), "photo_available": stored_photo(self.data, row["url"]) is not None}
 
     def progress(self, connection_id: int, run_id: str, message: str) -> None:
         with self.store.connect(True) as db:

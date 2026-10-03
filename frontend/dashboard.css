@@ -273,6 +273,28 @@
   .connection-actions {
     @apply mt-4 flex flex-wrap items-center gap-2;
   }
+  .contact-header {
+    @apply flex items-start gap-4;
+  }
+  .contact-avatar {
+    @apply flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-violet-50 text-lg font-semibold text-violet-900 ring-1 ring-violet-100;
+  }
+  .contact-avatar img {
+    @apply size-16 object-cover;
+  }
+  .contact-identity {
+    @apply min-w-0 flex-1;
+  }
+  .entry .contact-role {
+    @apply mt-1 mb-2 text-slate-600;
+  }
+  .entry .contact-location {
+    @apply my-2 inline-flex max-w-full rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-sm font-semibold text-emerald-900;
+  }
+  .contact-location::before {
+    content: "";
+    @apply mt-1.5 mr-2 size-2 shrink-0 rounded-full bg-emerald-600;
+  }
   .connection-tabs {
     @apply mt-4 mb-5 flex flex-wrap gap-2 border-b border-slate-200 pb-3;
   }

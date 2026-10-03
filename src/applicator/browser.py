@@ -7,9 +7,11 @@ from typing import Any, TypedDict
 from urllib.parse import urlencode, urlsplit
 
 from playwright.sync_api import BrowserContext, Locator, Page, Playwright, sync_playwright
+from playwright.sync_api import Error as BrowserError
 
 from .documents import filename_stem
 from .models import Job, Profile, Question
+from .photos import save_photo
 
 
 class BrowserOptions(TypedDict, total=False):
@@ -159,6 +161,60 @@ def member_action_scope(page: Page, details: dict[str, str]) -> Locator:
     raise ReviewRequired(
         "The primary member's connection controls are unavailable. Review this profile."
     )
+
+
+def capture_member_photo(page: Page, data: Path, url: str, details: dict[str, str]) -> bool:
+    """Capture one square portrait in the verified primary member section only."""
+    try:
+        ensure_linkedin(page)
+        if page.url.rstrip("/") != url.rstrip("/"):
+            return False
+        main = page.get_by_role("main")
+        card = main.locator("h1, h2").first
+        for _depth in range(12):
+            card = card.locator("xpath=..")
+            if card.evaluate("el => el.tagName === 'MAIN'"):
+                break
+            if card.locator("h1, h2").count() != 1:
+                continue
+            headings = card.locator("h1, h2")
+            if headings.first.inner_text().strip() != details["name"]:
+                continue
+            text = " ".join(card.inner_text().casefold().split())
+            if not all(
+                " ".join(details[key].casefold().split()) in text for key in ("role", "location")
+            ):
+                continue
+            images = card.locator("img").filter(visible=True)
+            candidates = []
+            for index in range(images.count()):
+                image = images.nth(index)
+                size = image.bounding_box()
+                if (
+                    size
+                    and 56 <= size["width"] <= 512
+                    and 56 <= size["height"] <= 512
+                    and abs(size["width"] - size["height"]) <= 2
+                ):
+                    candidates.append(image)
+            if len(candidates) > 1:
+                return False
+            if len(candidates) == 1:
+                image = candidates[0]
+                if not image.evaluate("image => image.complete"):
+                    page.wait_for_function(
+                        "image => image.complete",
+                        arg=image.element_handle(),
+                        timeout=2000,
+                    )
+                if not image.evaluate("image => image.complete && image.naturalWidth > 0"):
+                    return False
+                return save_photo(
+                    data, url, image.screenshot(type="png", timeout=3000, animations="disabled")
+                )
+    except (BrowserError, ValueError, OSError):
+        return False
+    return False
 
 
 def approved_answer(label: str, profile: Profile) -> str | None:
@@ -345,6 +401,7 @@ class LinkedInBrowser:
                     term in role.casefold() for term in ("recruit", "talent", "hiring")
                 ) and european_location(actual_location):
                     contacts.append({"url": url, **details})
+                    capture_member_photo(page, self.data, url, details)
                     if len(contacts) >= limit:
                         break
         return contacts

@@ -20,6 +20,8 @@ let profile = null,
 let activeInvitation = null;
 let connectionTab = "active";
 const invitationFeedback = new Map();
+const contactPhotoUrls = new Map();
+const contactPhotoRequests = new Map();
 function node(tag, text, cls) {
   const el = document.createElement(tag);
   if (text !== undefined) el.textContent = text;
@@ -289,6 +291,68 @@ function updateConnectionTabs() {
     tab.tabIndex = selected ? 0 : -1;
     $("#" + tab.getAttribute("aria-controls")).hidden = !selected;
   }
+  loadContactPhotos();
+}
+
+function loadContactPhotos() {
+  all(`#connections-${connectionTab}-panel img[data-photo-id]`).forEach(
+    (image) => {
+      if (image.dataset.requested) return;
+      image.dataset.requested = "true";
+      void loadContactPhoto(image);
+    },
+  );
+}
+async function loadContactPhoto(image) {
+  const id = image.dataset.photoId;
+  const requestToken = token;
+  let request = contactPhotoRequests.get(id);
+  try {
+    if (!contactPhotoUrls.has(id)) {
+      if (!request) {
+        request = fetch(`/api/connections/${id}/photo`, {
+          headers: { Authorization: "Bearer " + requestToken },
+        }).then(async (response) => {
+          if (response.status === 401 && token === requestToken)
+            lockWorkspace();
+          if (
+            !response.ok ||
+            response.headers.get("Content-Type") !== "image/png"
+          )
+            throw new Error("Profile photo unavailable");
+          const blob = await response.blob();
+          if (!blob.size || blob.size > 512000)
+            throw new Error("Profile photo unavailable");
+          return blob;
+        });
+        contactPhotoRequests.set(id, request);
+      }
+      const blob = await request;
+      if (token !== requestToken || !image.isConnected) return;
+      if (!contactPhotoUrls.has(id))
+        contactPhotoUrls.set(id, URL.createObjectURL(blob));
+    }
+    if (token !== requestToken || !image.isConnected) return;
+    const url = contactPhotoUrls.get(id);
+    image.onload = () => {
+      image.hidden = false;
+      image.parentElement.querySelector(".contact-initials").hidden = true;
+    };
+    image.onerror = () => {
+      image.hidden = true;
+      image.parentElement.querySelector(".contact-initials").hidden = false;
+      if (contactPhotoUrls.get(id) === url) {
+        URL.revokeObjectURL(url);
+        contactPhotoUrls.delete(id);
+      }
+    };
+    image.src = url;
+  } catch {
+    // Missing or unavailable optional photos leave the initials visible.
+  } finally {
+    if (request && contactPhotoRequests.get(id) === request)
+      contactPhotoRequests.delete(id);
+  }
 }
 all("[data-connection-tab]").forEach((tab) => {
   tab.onclick = () => {
@@ -331,11 +395,38 @@ function renderConnections() {
   for (const item of connections) {
     const el = node("div", undefined, "entry");
     el.dataset.connectionId = item.id;
-    el.append(
+    const header = node("div", undefined, "contact-header");
+    const avatar = node("div", undefined, "contact-avatar");
+    const initials =
+      item.name
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0])
+        .join("")
+        .toUpperCase() || "?";
+    const fallback = node("span", initials, "contact-initials");
+    fallback.setAttribute("aria-hidden", "true");
+    avatar.append(fallback);
+    if (item.photo_available) {
+      const image = node("img");
+      image.alt = `Profile photo of ${item.name}`;
+      image.width = 64;
+      image.height = 64;
+      image.hidden = true;
+      image.dataset.photoId = item.id;
+      avatar.append(image);
+    }
+    const identity = node("div", undefined, "contact-identity");
+    identity.append(
       node("strong", item.name),
-      node("p", item.role + " · " + item.location),
+      node("p", item.role, "contact-role"),
+      node("p", item.location, "contact-location"),
       node("span", stateLabel(item.state), "badge " + item.state),
     );
+    header.append(avatar, identity);
+    el.append(header);
     const controls = node("div", undefined, "connection-actions");
     const link = node("a", "Open LinkedIn profile", "profile-link secondary");
     link.href = item.url;
@@ -363,6 +454,7 @@ function renderConnections() {
     );
     renderInvitationProgress(item);
   }
+  loadContactPhotos();
   const running = connections.find((item) => item.state === "sending");
   if (running && !activeInvitation) void sendInvitation(running.id, true);
 }
@@ -974,6 +1066,9 @@ function lockWorkspace() {
   clearTimeout(activeInvitation?.timer);
   activeInvitation = null;
   invitationFeedback.clear();
+  contactPhotoUrls.forEach((url) => URL.revokeObjectURL(url));
+  contactPhotoUrls.clear();
+  contactPhotoRequests.clear();
   $("#workspace").hidden = true;
   $("#login").hidden = false;
   $("#pause").disabled = true;

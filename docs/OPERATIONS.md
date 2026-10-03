@@ -26,6 +26,8 @@ LinkedIn sign-in and local candidate confirmation are separate steps. Applicatio
 
 Each connection queue entry includes **Open LinkedIn profile**, which opens the stored member URL in a separate tab. The link remains available for queued, sent, failed and uncertain contacts. Opening it does not submit an invitation or change the queue state.
 
+Contact cards show a circular 64-pixel portrait, a separate role/headline and a highlighted location. Discovery captures only one visible square portrait from the verified primary profile section; covers, small company logos and recommended members' images are excluded. Missing, ambiguous or unavailable portraits leave initials visible. Portrait PNGs are kept in the ignored local `data/contact-photos` directory and delivered through a token-protected endpoint. The dashboard loads images only for the selected queue tab, does not request LinkedIn image URLs directly and releases its image URLs when locked. Existing contacts can retain their cached portraits after archiving.
+
 **Find European recruiters** uses the saved **Daily connection attempt limit** as the maximum number of new matching contacts per manual search. With a limit of five, discovery aims for five new contacts rather than a fixed three. Existing contacts in every state are excluded. The provider adapter checks at most ten new primary results from the available search page, continuing past unsuitable roles or locations until the target is met; fewer matches can be returned when suitable results are exhausted. Searches do not consume invitation attempts. Background discovery uses the remaining invitation quota as its target.
 
 While discovery runs, the button displays **Searching…**, an activity indicator and an accessible status message. Duplicate clicks cannot start another search. Completion, no matching results and failure are explained before the button returns to **Find European recruiters**.
@@ -96,7 +98,9 @@ Stop the server before copying the entire ignored `data` directory, including SQ
 
 ## AI and feedback
 
-Set a newly issued `OPENAI_API_KEY` in `.env`; the credential supplied in chat must be rotated. The optional adviser is mocked in automated tests and does not incur API charges during testing. The application records outcome counts and observations. It does not train itself or silently change the candidate's facts or permissions.
+The OpenAI integration is optional. Copy `.env.example` to the repository root as `.env`, then set a newly issued `OPENAI_API_KEY` locally and retain `OPENAI_MODEL=gpt-6.1-sol`. Restart the server after changing this file. The credential previously supplied in chat must be rotated. Both `.env` and private runtime files are excluded from Git. This follows the [OpenAI developer quickstart](https://developers.openai.com/api/docs/quickstart), where the SDK reads the key from the server environment.
+
+Open an application and choose **Select evidence with GPT-6.1 Sol** to invoke the adviser. It selects approved evidence identifiers for that job; it does not invent candidate facts or authorise submissions. Without a configured key, this action explains how to enable the adviser; ordinary networking, deterministic scoring and document preparation remain available. The optional adviser is mocked in automated tests and does not incur API charges during testing. The application records outcome counts and observations. It does not train itself or silently change the candidate's facts or permissions.
 
 ## Validation limits
 
