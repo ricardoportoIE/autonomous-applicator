@@ -162,6 +162,42 @@
           class="readiness"
           aria-label="Agent readiness"
         ></div>
+        <article
+          class="panel border-l-4 border-l-teal-600"
+          aria-labelledby="processing-title"
+        >
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">LIVE APPLICATION PROCESSING</p>
+              <h2 id="processing-title">One opportunity at a time</h2>
+            </div>
+            <span class="badge">FIFO</span>
+          </div>
+          <p>
+            Opportunities are processed in order of arrival. Each CV,
+            questionnaire and submission completes before the next vacancy
+            starts. Holds require review.
+          </p>
+          <div
+            id="worker-status"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          ></div>
+          <p id="worker-clock" class="text-sm text-slate-500 break-all"></p>
+          <details class="mt-5">
+            <summary>Recent application results</summary>
+            <small
+              >Latest 50 processed records across runs; failure stages remain
+              available after an empty cycle.</small
+            >
+            <div
+              id="worker-results"
+              role="region"
+              aria-label="Recent application results"
+            ></div>
+          </details>
+        </article>
         <section data-section="overview">
           <div class="stats" id="stats"></div>
           <article class="panel" aria-labelledby="budget-title">

@@ -4,6 +4,9 @@ Version 0.3.0 reviewed and locally validated on 3 October 2026. Repository: [ric
 
 ## Implemented
 
+- FIFO completion of each vacancy's preparation and submission, durable operation ownership, live opportunity/stage/timing feedback and correlated failure history.
+- Workspace ownership covering initial migrations and recovery, interrupted-preparation review holds, current browser candidate snapshots and graceful shutdown without taking another vacancy.
+
 - Current and legacy LinkedIn job detail readers, exact job redirect checks, bounded canonical discovery and visible job-search progress/outcomes.
 - Native/ARIA Easy Apply dialogues, grounded phone country components, verified CV chooser selection, custom screening radios and stopped-step detection.
 - Configurable default GPT-6.1 Sol preparation for ordinary and worker flows, visible model provenance, candidate/job fingerprints and review after API failures without local fallback.
@@ -25,6 +28,12 @@ Version 0.3.0 reviewed and locally validated on 3 October 2026. Repository: [ric
 - Optional `gpt-6.1-sol` adviser using structured evidence identifiers. No factual generation or private chain-of-thought logging.
 
 ## Local validation
+
+### Sequential application queue follow-up, 4 October 2026
+
+The previous worker prepared all pending documents before submitting ready applications, in newest-first listing order. The shared service now completes each eligible vacancy in arrival order, from preparation through confirmed submission or a durable hold. A read-only live status endpoint and dashboard monitor show the selected vacancy, current or failed stage, timing and run identifier. Recent per-vacancy outcomes remain available after empty cycles.
+
+Twenty-three backend queue cases and nine browser scenarios were added. They cover exact end-to-end order, ready/unprepared mixtures, no fallback or automatic retries, exact required-answer holds, quota before the next model call, pauses during preparation and after a receipt, shutdown boundaries, slow status observation, immediate competing-request conflicts, run-correlated journals, current browser facts, interruption and exclusive server ownership. Browser coverage adds live AI/form stages, failure persistence, reload observation, pause, status failure/recovery and session clearing. The intercepted native-dialogue test now asserts the actual browser stage sequence. No real applications or invitations are sent by these fixtures.
 
 ### Default AI CV preparation follow-up
 

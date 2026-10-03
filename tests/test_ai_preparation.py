@@ -52,7 +52,7 @@ def test_normal_prepare_uses_declared_model_and_records_actual_provider_trace(
     assert metadata["input_tokens"] == 123 and metadata["output_tokens"] == 45
     assert metadata["profile_fingerprint"] == fingerprint(profile)
     assert metadata["job_fingerprint"] == fingerprint(job)
-    assert factory.call_args.kwargs == {"timeout": 30, "max_retries": 0}
+    assert factory.call_args.kwargs == {"timeout": 180, "max_retries": 0}
     params = sdk.responses.parse.call_args.kwargs
     assert params["model"] == "gpt-6.1-sol" and params["store"] is False
     assert profile.email not in params["input"] and profile.phone not in params["input"]

@@ -47,7 +47,11 @@ def test_worker_discovers_prepares_and_holds(data, profile, job, monkeypatch):
     session = TestClient(app, headers={"Authorization": "Bearer " + token})
     response = session.post("/api/worker/tick")
     assert response.status_code == 200
-    assert store.applications()[0]["state"] == State.READY
+    # A discovered source without an adapter now has a durable manual hand-off hold.
+    assert store.applications()[0]["state"] == State.REVIEW
+    assert store.applications()[0]["manifest"]["files"]
+    assert store.daily_usage().used == 0
+    assert app.state.service.operations.status()["results"][0]["stage"] == "checking_readiness"
     store.set_settings(
         Settings(automation_enabled=True, connections_enabled=True, linkedin_authorised=True)
     )

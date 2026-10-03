@@ -25,6 +25,9 @@ def test_worker_logs_an_error_and_stops_cleanly(data, monkeypatch):
         def set(self):
             pass
 
+        def is_set(self):
+            return False
+
     class Thread:
         def __init__(self, target, daemon):
             self.target = target
@@ -32,7 +35,7 @@ def test_worker_logs_an_error_and_stops_cleanly(data, monkeypatch):
         def start(self):
             self.target()
 
-        def join(self, timeout):
+        def join(self):
             pass
 
     monkeypatch.setattr(

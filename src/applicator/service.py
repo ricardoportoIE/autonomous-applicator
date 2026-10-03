@@ -5,9 +5,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
-from .browser import ReviewRequired, linkedin_job_id
+from .browser import LinkedInBrowser, ReviewRequired, linkedin_job_id
 from .documents import fingerprint, generate, validate_generation, validate_manifest
 from .models import Advice, Job, Preflight, Profile, State, SubmissionCheck
+from .operations import Operation, Operations
 from .policy import answer_questions, evaluate, select_evidence
 from .store import Store
 
@@ -39,6 +40,7 @@ class Service:
         self.store, self.data = store, data
         self.adapters = adapters or {}
         self.selector = selector
+        self.operations = Operations(store)
 
     def preflight(self, app_id: int, sources: set[str] | None = None) -> Preflight:
         """Inspect current local gates without reserving, browsing or generating documents.
@@ -180,8 +182,20 @@ class Service:
         )
 
     def prepare(
-        self, app_id: int, selected: list[str] | None = None, *, use_ai: bool | None = None
+        self,
+        app_id: int,
+        selected: list[str] | None = None,
+        *,
+        use_ai: bool | None = None,
+        progress: Callable[[str, str], None] | None = None,
     ) -> None:
+        if progress is None:
+            with self.operations.run("prepare", app_id) as operation:
+                self.prepare(app_id, selected, use_ai=use_ai, progress=operation.progress)
+                operation.result(self.store.application(app_id)["state"])
+            return
+        report = progress
+        report("evaluating", "Checking the opportunity against approved candidate facts.")
         row = self.store.application(app_id)
         if row["state"] in {State.SUBMITTED, State.SUBMITTING, State.UNCERTAIN}:
             raise ValueError("This application is already submitted or needs reconciliation")
@@ -209,6 +223,9 @@ class Service:
             metadata: dict[str, Any] = {"method": "manual" if selected is not None else "local"}
             ai_enabled = self.store.settings().ai_document_preparation if use_ai is None else use_ai
             if chosen is None and ai_enabled:
+                report(
+                    "selecting_evidence", "Selecting vacancy-specific evidence with GPT-6.1 Sol."
+                )
                 try:
                     if self.selector is None:
                         raise PreparationError(
@@ -239,6 +256,10 @@ class Service:
             if chosen is None:
                 chosen = select_evidence(job, profile, evaluation.evidence_ids)
             try:
+                report(
+                    "generating_documents",
+                    "Generating and validating the vacancy-specific CV and required cover letter.",
+                )
                 manifest = generate(profile, job, chosen, folder, revision)
             except (ValueError, OSError) as exc:
                 if metadata["method"] != "openai":
@@ -260,6 +281,10 @@ class Service:
             evaluation.blockers.append(
                 "Documents require verified evidence and a confirmed profile."
             )
+        report(
+            "saving_documents",
+            "Saving documents against the reviewed opportunity and profile revision.",
+        )
         self.store.prepare(
             app_id,
             revision,
@@ -269,7 +294,17 @@ class Service:
             expected_job=job,
         )
 
-    def submit(self, app_id: int) -> str:
+    def submit(self, app_id: int, *, progress: Callable[[str, str], None] | None = None) -> str:
+        if progress is None:
+            with self.operations.run("submit", app_id) as operation:
+                receipt = self.submit(app_id, progress=operation.progress)
+                operation.result("submitted")
+                return receipt
+        report = progress
+        report(
+            "checking_readiness",
+            "Rechecking policy, approved answers, document hashes and AI provenance.",
+        )
         row = self.store.application(app_id)
         profile, revision = self.store.profile()
         job = Job.model_validate(row["job"])
@@ -294,27 +329,110 @@ class Service:
         answers, unresolved = answer_questions(job, profile)
         if unresolved:
             raise ValueError("Required questions remain unanswered")
+        report(
+            "reserving_attempt",
+            "Reserving one daily attempt before accessing the application form.",
+        )
         attempt = self.store.reserve(app_id, revision)
+        adapter = self.adapters[job.source]
+        previous_progress = adapter.progress if isinstance(adapter, LinkedInBrowser) else None
+        if isinstance(adapter, LinkedInBrowser):
+            adapter.profile = profile
+            adapter.progress = progress
         try:
-            receipt = self.adapters[job.source].submit(job, answers, folder)
+            report(
+                "opening_opportunity", "Opening the reviewed opportunity in the dedicated browser."
+            )
+            receipt = adapter.submit(job, answers, folder)
             if not receipt.strip():
                 raise ValueError("Provider did not return a confirmation receipt")
+            report(
+                "recording_confirmation", "Recording the provider's confirmed submission receipt."
+            )
+            self.store.finish(app_id, attempt, receipt)
         except ReviewRequired as exc:
             self.store.hold(app_id, str(exc))
             raise
         except Exception:
             self.store.finish(app_id, attempt, None)
             raise
-        self.store.finish(app_id, attempt, receipt)
+        finally:
+            if isinstance(adapter, LinkedInBrowser):
+                adapter.progress = previous_progress
         return receipt
 
-    def tick(self) -> dict[str, str]:
+    def tick(
+        self, operation: Operation | None = None, *, stopping: Callable[[], bool] | None = None
+    ) -> dict[str, str]:
+        """Process a FIFO snapshot, completing each vacancy before starting the next."""
+        if operation is None:
+            with self.operations.run("cycle") as owned:
+                return self.tick(owned, stopping=stopping)
         result: dict[str, str] = {}
-        if self.store.settings().automation_enabled:
-            for row in self.store.applications():
-                if row["state"] == State.READY:
-                    try:
-                        result[str(row["id"])] = self.submit(row["id"])
-                    except Exception as exc:
-                        result[str(row["id"])] = type(exc).__name__
+        if not self.store.settings().automation_enabled:
+            operation.completion_status = "paused"
+            return result
+        for candidate in sorted(self.store.applications(), key=lambda row: row["id"]):
+            if stopping and stopping():
+                operation.completion_status = "stopped"
+                break
+            if not self.store.settings().automation_enabled:
+                operation.completion_status = "paused"
+                break
+            if not self.store.daily_usage().remaining:
+                operation.completion_status = "limit_reached"
+                break
+            row = self.store.application(candidate["id"])
+            _, revision = self.store.profile()
+            stale = row["revision"] != revision or not row["evaluation"]
+            if row["state"] not in {State.REVIEW, State.READY} or (
+                row["state"] == State.REVIEW and not stale
+            ):
+                continue
+            app_id = row["id"]
+            operation.progress(
+                "evaluating", "Starting the next opportunity in order of arrival.", app_id
+            )
+            try:
+                if stale or row["state"] == State.REVIEW:
+                    self.prepare(app_id, progress=operation.progress)
+                if stopping and stopping():
+                    operation.result(self.store.application(app_id)["state"])
+                    operation.completion_status = "stopped"
+                    break
+                if not self.store.settings().automation_enabled:
+                    operation.result(self.store.application(app_id)["state"])
+                    operation.completion_status = "paused"
+                    break
+                row = self.store.application(app_id)
+                if row["state"] != State.READY:
+                    operation.result(row["state"])
+                    continue
+                result[str(app_id)] = self.submit(app_id, progress=operation.progress)
+                operation.result("submitted")
+            except Exception as exc:
+                result[str(app_id)] = type(exc).__name__
+                row = self.store.application(app_id)
+                if row["state"] == State.READY or (
+                    row["state"] == State.REVIEW
+                    and (row["revision"] != self.store.profile()[1] or not row["evaluation"])
+                ):
+                    # Persist a current-revision hold: a later cycle must not retry this failure.
+                    profile, revision = self.store.profile()
+                    evaluation = evaluate(
+                        Job.model_validate(row["job"]), profile, self.store.settings()
+                    )
+                    evaluation.state = State.REVIEW
+                    evaluation.blockers.append(
+                        "Processing failed; inspect the recorded stage before retrying manually."
+                    )
+                    self.store.prepare(
+                        app_id,
+                        revision,
+                        evaluation.model_dump_json(),
+                        State.REVIEW,
+                        row["manifest"],
+                        expected_job=Job.model_validate(row["job"]),
+                    )
+                operation.result(self.store.application(app_id)["state"], type(exc).__name__)
         return result

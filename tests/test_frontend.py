@@ -14,6 +14,8 @@ from ui_coverage import save_coverage, start_coverage
 from applicator.api import create_app
 from applicator.browser import browser_options
 from applicator.models import Advice, Job, Question, Settings
+from applicator.operations import Operation
+from applicator.service import PreparationError
 
 
 @pytest.fixture
@@ -89,6 +91,166 @@ def test_manual_selection_has_a_distinct_document_origin(dashboard):
     expect(page.get_by_role("region", name="Document preparation")).to_contain_text(
         "Evidence selected manually"
     )
+
+
+@pytest.mark.browser
+def test_queue_monitor_shows_slow_ai_then_form_stage_and_confirmed_result(dashboard):
+    page, app, _ = dashboard
+    release_ai, release_form = threading.Event(), threading.Event()
+    store = app.state.store
+    store.set_settings(
+        Settings(automation_enabled=True, ai_document_preparation=True, linkedin_authorised=True)
+    )
+
+    def select(_profile, _job, metadata):
+        assert release_ai.wait(20)
+        metadata.update(
+            method="openai",
+            model="gpt-6.1-sol",
+            requested_model="gpt-6.1-sol",
+            response_id="resp_ui_queue",
+        )
+        return Advice(evidence_ids=["python"], explanation="Approved project.")
+
+    def submit(_job, _answers, _folder):
+        status = app.state.service.operations.status()["run"]
+        Operation(store, status["id"]).progress(
+            "answering_questions", "Completing form step 3 using approved answers only."
+        )
+        assert release_form.wait(20)
+        return "fixture:confirmed"
+
+    app.state.service.selector = select
+    adapter = Mock()
+    adapter.submit.side_effect = submit
+    app.state.service.adapters["manual"] = adapter
+    monitor = page.locator("#worker-status")
+    try:
+        page.get_by_role("button", name="Run agent cycle", exact=True).click()
+        expect(monitor).to_contain_text("Running")
+        expect(monitor).to_contain_text("Backend Engineer")
+        expect(monitor).to_contain_text("selecting evidence")
+        expect(monitor).to_contain_text("GPT-6.1 Sol")
+        expect(page.locator("#workspace")).to_have_attribute("aria-busy", "true")
+        release_ai.set()
+        expect(monitor).to_contain_text("answering questions")
+        expect(monitor).to_contain_text("form step 3")
+        release_form.set()
+        expect(monitor).to_contain_text("Completed")
+        expect(page.locator("#worker-results")).to_contain_text("Submitted")
+        expect(page.locator("#worker-results")).to_contain_text("recording confirmation")
+        assert store.daily_usage().used == 1
+    finally:
+        release_ai.set()
+        release_form.set()
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("outcome", ["failed", "interrupted", "paused", "limit_reached"])
+def test_queue_monitor_displays_terminal_stage_and_failure_code(dashboard, outcome):
+    page, app, _ = dashboard
+    with app.state.service.operations.run("submit", 1) as operation:
+        operation.progress(
+            "awaiting_confirmation", "Waiting for provider confirmation; do not retry."
+        )
+        operation.finish(outcome, "TimeoutError" if outcome in {"failed", "interrupted"} else None)
+    monitor = page.locator("#worker-status")
+    labels = {
+        "failed": "Failed",
+        "interrupted": "Interrupted",
+        "paused": "Paused",
+        "limit_reached": "Daily application limit reached",
+    }
+    expect(monitor).to_contain_text(labels[outcome])
+    expect(monitor).to_contain_text("Last stage: awaiting confirmation")
+    if outcome in {"failed", "interrupted"}:
+        expect(monitor).to_contain_text("TimeoutError")
+    page.get_by_role("button", name="Lock workspace", exact=True).click()
+    expect(monitor).to_be_empty()
+    page.wait_for_timeout(1200)
+    expect(monitor).to_be_empty()
+
+
+@pytest.mark.browser
+def test_queue_monitor_reports_temporary_read_failure_and_recovers(dashboard):
+    page, _, _ = dashboard
+    page.route(
+        "**/api/worker/status",
+        lambda route: route.fulfill(status=503, json={"detail": "Status temporarily unavailable"}),
+    )
+    expect(page.locator("#worker-status")).to_contain_text("Live status unavailable")
+    page.unroute("**/api/worker/status")
+    expect(page.locator("#worker-status")).to_contain_text("Completed")
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("action", ["reload", "pause"])
+def test_queue_monitor_resumes_observation_and_pause_during_slow_preparation(dashboard, action):
+    page, app, _ = dashboard
+    release = threading.Event()
+    calls = []
+    app.state.store.set_settings(
+        Settings(automation_enabled=True, ai_document_preparation=True, linkedin_authorised=True)
+    )
+
+    def select(_profile, _job, metadata):
+        calls.append("ai")
+        assert release.wait(20)
+        metadata.update(
+            method="openai",
+            model="gpt-6.1-sol",
+            requested_model="gpt-6.1-sol",
+            response_id="resp_ui_observation",
+        )
+        return Advice(evidence_ids=["python"], explanation="Approved evidence.")
+
+    adapter = Mock()
+    adapter.submit.return_value = "fixture:confirmed"
+    app.state.service.adapters["manual"] = adapter
+    app.state.service.selector = select
+    page.reload()
+    expect(page.locator("#readiness")).to_contain_text("Agent enabled")
+    try:
+        page.get_by_role("button", name="Run agent cycle", exact=True).click()
+        expect(page.locator("#worker-status")).to_contain_text("selecting evidence")
+        if action == "reload":
+            page.reload()
+            expect(page.locator("#worker-status")).to_contain_text("selecting evidence")
+            expect(page.locator("#worker-status")).to_contain_text("Backend Engineer")
+        else:
+            page.get_by_role("button", name="Pause all automation", exact=True).click()
+            expect(page.locator("#notice")).to_contain_text("Automation paused")
+        release.set()
+        expect(page.locator("#worker-status")).to_contain_text(
+            "Completed" if action == "reload" else "Paused"
+        )
+        assert calls == ["ai"]
+        assert adapter.submit.call_count == (1 if action == "reload" else 0)
+        assert app.state.store.daily_usage().used == (1 if action == "reload" else 0)
+    finally:
+        release.set()
+
+
+@pytest.mark.browser
+def test_failed_queue_job_keeps_its_stage_visible_after_an_empty_cycle(dashboard):
+    page, app, _ = dashboard
+    app.state.store.set_settings(
+        Settings(automation_enabled=True, ai_document_preparation=True, linkedin_authorised=True)
+    )
+    app.state.service.selector = Mock(
+        side_effect=PreparationError("AI advice failed; no documents or applications were sent")
+    )
+    page.get_by_role("button", name="Run agent cycle", exact=True).click()
+    expect(page.locator("#notice")).to_contain_text("Agent cycle completed")
+    page.get_by_text("Recent application results", exact=True).click()
+    expect(page.locator("#worker-results")).to_contain_text("Failed")
+    expect(page.locator("#worker-results")).to_contain_text("Failure at selecting evidence")
+    expect(page.locator("#worker-results")).to_contain_text("PreparationError")
+    assert app.state.store.daily_usage().used == 0
+    page.get_by_role("button", name="Run agent cycle", exact=True).click()
+    expect(page.locator("#notice")).to_have_text("Agent cycle completed: {}")
+    expect(page.locator("#worker-results")).to_contain_text("Failure at selecting evidence")
+    app.state.service.selector.assert_called_once()
 
 
 def assert_networking_accessibility(page):

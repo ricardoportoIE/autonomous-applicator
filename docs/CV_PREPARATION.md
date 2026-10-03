@@ -4,7 +4,7 @@ Document preparation can use `gpt-6.1-sol` by default for both **Prepare documen
 
 ## How tailoring works
 
-The adviser receives the vacancy and verified evidence records through the Responses API with structured evidence identifiers, medium reasoning, a 30-second timeout, disabled automatic retries and `store=False`. Contact details and approved questionnaire answers are not included in this request. The model selects relevant records and ranks them for the vacancy. Selection is bounded to six identifiers and no more than three projects; unknown or unverified identifiers are rejected.
+The adviser receives the vacancy and verified evidence records through the Responses API with structured evidence identifiers, medium reasoning, a 180-second timeout, disabled automatic retries and `store=False`. Contact details and approved questionnaire answers are not included in this request. The model selects relevant records and ranks them for the vacancy. Selection is bounded to six identifiers and no more than three projects; unknown or unverified identifiers are rejected. Calls run sequentially within the application queue; a slow response does not start another vacancy or trigger a local fallback.
 
 The renderer writes PDF and DOCX documents using the approved factual text, rather than accepting unrestricted model-written claims. Skills are filtered against the vacancy's requirements, selected projects follow the relevance order, and experience/education retain their chronology. Factual history, qualifications, languages and awards are preserved. The professional summary remains the approved base summary. Cover letters, when required, use the selected factual examples.
 

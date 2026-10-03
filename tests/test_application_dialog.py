@@ -217,7 +217,24 @@ def test_native_dialog_full_submission_against_an_intercepted_provider(
         return context
 
     monkeypatch.setattr(LinkedInBrowser, "context", fixture_context)
-    assert LinkedInBrowser(data, profile).submit(job, {}, tmp_path) == "linkedin:123:confirmed"
+    adapter = LinkedInBrowser(data, profile)
+    stages = []
+    adapter.progress = lambda stage, detail: stages.append((stage, detail))
+    assert adapter.submit(job, {}, tmp_path) == "linkedin:123:confirmed"
+    assert [stage for stage, _ in stages] == [
+        "opening_opportunity",
+        "verifying_opportunity",
+        "opening_application",
+        "uploading_documents",
+        "answering_questions",
+        "uploading_documents",
+        "advancing_form",
+        "uploading_documents",
+        "answering_questions",
+        "uploading_documents",
+        "submitting",
+        "awaiting_confirmation",
+    ]
     assert submitted == [
         {"email": profile.email, "country": "Ireland (+353)", "phone": "5550100", "files": 1}
     ]

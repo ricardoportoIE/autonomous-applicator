@@ -39,6 +39,17 @@ class Store:
                     detail TEXT NOT NULL, created TEXT NOT NULL);
                 CREATE INDEX IF NOT EXISTS events_application ON events(application_id, id DESC);
                 CREATE INDEX IF NOT EXISTS attempts_day ON attempts(day);
+                CREATE TABLE IF NOT EXISTS application_runs (
+                    id TEXT PRIMARY KEY, kind TEXT NOT NULL, status TEXT NOT NULL,
+                    application_id INTEGER, stage TEXT NOT NULL, detail TEXT NOT NULL,
+                    started TEXT NOT NULL, updated TEXT NOT NULL, stage_started TEXT NOT NULL,
+                    finished TEXT, error_code TEXT);
+                CREATE UNIQUE INDEX IF NOT EXISTS one_application_run
+                    ON application_runs(status) WHERE status='running';
+                CREATE TABLE IF NOT EXISTS application_run_results (
+                    id INTEGER PRIMARY KEY, run_id TEXT NOT NULL, application_id INTEGER NOT NULL,
+                    outcome TEXT NOT NULL, stage TEXT NOT NULL, error_code TEXT, finished TEXT NOT NULL,
+                    UNIQUE(run_id,application_id));
             """)
             db.execute(
                 "INSERT OR IGNORE INTO config VALUES ('settings', ?)",
@@ -330,6 +341,61 @@ class Store:
 
     def recover(self) -> int:
         with self.connect(True) as db:
+            now = datetime.now(UTC).isoformat()
+            for run in db.execute(
+                "SELECT id,application_id,stage FROM application_runs WHERE status='running'"
+            ).fetchall():
+                db.execute(
+                    "UPDATE application_runs SET status='interrupted',error_code='ProcessInterrupted',updated=?,finished=? WHERE id=?",
+                    (now, now, run["id"]),
+                )
+                self.event(
+                    db,
+                    "application_run_interrupted",
+                    json.dumps(
+                        {
+                            "run_id": run["id"],
+                            "stage": run["stage"],
+                            "error_code": "ProcessInterrupted",
+                        }
+                    ),
+                    run["application_id"],
+                )
+                row = db.execute(
+                    "SELECT state,evaluation FROM applications WHERE id=?", (run["application_id"],)
+                ).fetchone()
+                if row and row["state"] in {State.REVIEW, State.READY}:
+                    evaluation = json.loads(row["evaluation"])
+                    evaluation["state"] = State.REVIEW
+                    evaluation.setdefault("blockers", []).append(
+                        "Processing was interrupted; inspect the recorded stage and prepare again manually."
+                    )
+                    revision = int(
+                        db.execute("SELECT value FROM config WHERE key='revision'").fetchone()[0]
+                    )
+                    db.execute(
+                        "UPDATE applications SET state=?,evaluation=?,revision=?,manifest='{}' WHERE id=?",
+                        (State.REVIEW, json.dumps(evaluation), revision, run["application_id"]),
+                    )
+                if row:
+                    outcome = (
+                        State.UNCERTAIN
+                        if row["state"] == State.SUBMITTING
+                        else State.REVIEW
+                        if row["state"] == State.READY
+                        else row["state"]
+                    )
+                    db.execute(
+                        "INSERT OR IGNORE INTO application_run_results(run_id,application_id,outcome,stage,error_code,finished) VALUES(?,?,?,?,?,?)",
+                        (
+                            run["id"],
+                            run["application_id"],
+                            outcome,
+                            run["stage"],
+                            None if outcome == State.SUBMITTED else "ProcessInterrupted",
+                            now,
+                        ),
+                    )
             count = db.execute(
                 "UPDATE applications SET state=? WHERE state=?", (State.UNCERTAIN, State.SUBMITTING)
             ).rowcount

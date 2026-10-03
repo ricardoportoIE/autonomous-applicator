@@ -18,6 +18,7 @@ let profile = null,
   applications = [],
   connections = [];
 let activeInvitation = null;
+let workerMonitor = null;
 let connectionTab = "active";
 const invitationFeedback = new Map();
 const contactPhotoUrls = new Map();
@@ -206,6 +207,108 @@ function renderEvents(events, target) {
     target.append(el);
   }
 }
+function renderWorkerStatus(record) {
+  const target = $("#worker-status");
+  target.replaceChildren();
+  $("#worker-results").replaceChildren();
+  const run = record.run;
+  if (!run) {
+    target.append(
+      node("p", "Idle — no application processing has started.", "empty"),
+    );
+    return;
+  }
+  const labels = {
+    running: "Running",
+    completed: "Completed",
+    failed: "Failed",
+    interrupted: "Interrupted — review before retrying",
+    paused: "Paused",
+    stopped: "Stopped",
+    limit_reached: "Daily application limit reached",
+  };
+  target.append(node("strong", labels[run.status] || run.status));
+  if (run.job)
+    target.append(
+      node(
+        "p",
+        `${run.job.title} · ${run.job.company} · Application #${run.application_id}`,
+      ),
+    );
+  target.append(
+    node(
+      "p",
+      `${run.status === "running" ? "Current" : "Last"} stage: ${run.stage.replaceAll("_", " ")}`,
+    ),
+  );
+  target.append(node("small", run.detail));
+  if (run.error_code)
+    target.append(
+      node(
+        "p",
+        `Failure at ${run.stage.replaceAll("_", " ")}: ${run.error_code}. Inspect the application activity log before retrying.`,
+        "error",
+      ),
+    );
+  for (const result of record.results) {
+    const entry = node("div", undefined, "entry");
+    entry.append(
+      node(
+        "strong",
+        `${result.job.title} · ${result.error_code ? "Failed — " : ""}${stateLabel(result.outcome)}`,
+      ),
+    );
+    entry.append(
+      node(
+        "small",
+        `Application #${result.application_id} · ${result.error_code ? "Failure at " : ""}${result.stage.replaceAll("_", " ")}${result.error_code ? " · " + result.error_code : ""}`,
+      ),
+    );
+    $("#worker-results").append(entry);
+  }
+}
+function renderWorkerClock(run) {
+  if (!run) {
+    $("#worker-clock").textContent = "";
+    return;
+  }
+  const end = run.finished ? new Date(run.finished).getTime() : Date.now();
+  const elapsed = Math.max(
+    0,
+    Math.floor((end - new Date(run.started).getTime()) / 1000),
+  );
+  const stageElapsed = Math.max(
+    0,
+    Math.floor((end - new Date(run.stage_started).getTime()) / 1000),
+  );
+  $("#worker-clock").textContent =
+    `Total: ${elapsed}s · Stage: ${stageElapsed}s · Run ${run.id}`;
+}
+function startWorkerMonitor() {
+  if (workerMonitor) return;
+  const monitor = { token, timer: null, lastRecord: null };
+  workerMonitor = monitor;
+  const current = () => workerMonitor === monitor && token === monitor.token;
+  async function poll() {
+    try {
+      const record = await api("/worker/status");
+      if (current()) {
+        const serialised = JSON.stringify(record);
+        if (monitor.lastRecord !== serialised) renderWorkerStatus(record);
+        monitor.lastRecord = serialised;
+        renderWorkerClock(record.run);
+      }
+    } catch (error) {
+      if (current()) {
+        monitor.lastRecord = null;
+        $("#worker-status").textContent =
+          `Live status unavailable: ${error.message}`;
+      }
+    }
+    if (current()) monitor.timer = setTimeout(poll, 1000);
+  }
+  void poll();
+}
 async function refresh() {
   const records = await Promise.all([
     api("/settings"),
@@ -278,6 +381,7 @@ async function refresh() {
   connections = await api("/connections");
   renderConnections();
   renderReadiness(usage);
+  startWorkerMonitor();
 }
 function updateConnectionTabs() {
   for (const tab of all("[data-connection-tab]")) {
@@ -1116,6 +1220,8 @@ $("#tick").onclick = () =>
     message("Agent cycle completed: " + JSON.stringify(result));
   });
 function lockWorkspace() {
+  clearTimeout(workerMonitor?.timer);
+  workerMonitor = null;
   token = "";
   sessionStorage.removeItem("applicator-token");
   profile = null;
@@ -1165,6 +1271,9 @@ function lockWorkspace() {
     "#stats",
     "#daily-usage",
     "#queue-count",
+    "#worker-status",
+    "#worker-clock",
+    "#worker-results",
   ].forEach((selector) => $(selector).replaceChildren());
   $("#token").value = "";
   view("overview");

@@ -2,6 +2,7 @@
 
 import os
 import re
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TypedDict
 from urllib.parse import urlencode, urlsplit
@@ -554,6 +555,11 @@ class LinkedInBrowser:
 
     def __init__(self, data: Path, profile: Profile | None = None):
         self.data, self.profile = data, profile
+        self.progress: Callable[[str, str], None] | None = None
+
+    def report(self, stage: str, detail: str) -> None:
+        if self.progress:
+            self.progress(stage, detail)
 
     def context(self, playwright: Playwright, *, headless: bool = True) -> BrowserContext:
         return playwright.chromium.launch_persistent_context(
@@ -686,7 +692,12 @@ class LinkedInBrowser:
             raise ValueError("LinkedIn job identifier does not match the reviewed opportunity")
         with sync_playwright() as playwright, self.context(playwright) as context:
             page = context.new_page()
+            self.report("opening_opportunity", "Opening the reviewed LinkedIn opportunity.")
             page.goto(job.url, wait_until="domcontentloaded")
+            self.report(
+                "verifying_opportunity",
+                "Checking the live title, company, location and description against the reviewed vacancy.",
+            )
             current_job = job_details(page, job.source_id)
             if current_job.title != job.title:
                 raise ValueError("Job title changed; re-import and review")
@@ -696,6 +707,7 @@ class LinkedInBrowser:
                 raise ValueError("Job location changed; re-import and review")
             if " ".join(current_job.description.split()) != " ".join(job.description.split()):
                 raise ValueError("Job description changed; re-import and review")
+            self.report("opening_application", "Opening the Easy Apply form.")
             page.get_by_role("button", name=re.compile(r"^Easy Apply\b")).first.click(timeout=10000)
             seen_steps: set[str] = set()
             for _step in range(10):
@@ -706,8 +718,20 @@ class LinkedInBrowser:
                         "The application did not advance; review the form's validation messages"
                     )
                 cv = folder / (filename_stem(self.profile, job) + "_CV.pdf")
+                self.report(
+                    "uploading_documents",
+                    f"Checking and uploading the verified CV: form step {_step + 1}.",
+                )
                 resume_fields = upload_resume(page, dialog, cv)
+                self.report(
+                    "answering_questions",
+                    f"Completing form step {_step + 1} using approved answers only.",
+                )
                 fill_questions(page, self.profile, resume_field_ids=resume_fields)
+                self.report(
+                    "uploading_documents",
+                    f"Checking remaining document fields: form step {_step + 1}.",
+                )
                 uploads = dialog.locator('input[type="file"]')
                 for index in range(uploads.count() if resume_fields is None else 0):
                     upload = uploads.nth(index)
@@ -732,8 +756,13 @@ class LinkedInBrowser:
                     follow = dialog.get_by_label(re.compile(r"^Follow .+ to stay up to date"))
                     if follow.count():
                         follow.uncheck()
+                    self.report("submitting", "Sending the application to LinkedIn.")
                     progress["submitted"] = True
                     submit.click()
+                    self.report(
+                        "awaiting_confirmation",
+                        "Waiting for LinkedIn's submission confirmation; do not retry.",
+                    )
                     page.get_by_text(
                         re.compile(r"Your application was sent|Application submitted"), exact=False
                     ).first.wait_for(timeout=15000)
@@ -742,6 +771,7 @@ class LinkedInBrowser:
                 if next_button.count() != 1:
                     raise ValueError("Unsupported Easy Apply step; review manually")
                 seen_steps.add(application_step(dialog))
+                self.report("advancing_form", f"Validating and advancing form step {_step + 1}.")
                 next_button.click()
                 page.wait_for_timeout(600)
             raise ValueError("Easy Apply exceeded the ten-step limit")

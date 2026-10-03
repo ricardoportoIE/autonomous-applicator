@@ -25,6 +25,7 @@ from .networking import Networking
 from .photos import stored_photo
 from .service import PreparationError, Service
 from .store import Store
+from .workspace import server_owner
 
 
 class Preparation(Contract):
@@ -68,7 +69,11 @@ def local_token(data: Path) -> str:
 
 
 def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
-    store = Store(data / "applicator.sqlite3")
+    # Guard initial migrations too: networking recovery must not touch another
+    # server's live invitation before the application's lifespan starts.
+    with server_owner(data):
+        store = Store(data / "applicator.sqlite3")
+        network = Networking(store, data)
 
     def select_ai(profile: Profile, job: Job, metadata: dict[str, Any]) -> Advice:
         if not os.getenv("OPENAI_API_KEY"):
@@ -79,7 +84,7 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
         if model != "gpt-6.1-sol":
             raise PreparationError("Set OPENAI_MODEL=gpt-6.1-sol for document preparation", 503)
         try:
-            with OpenAI(timeout=30, max_retries=0) as ai_client:
+            with OpenAI(timeout=180, max_retries=0) as ai_client:
                 return advise(ai_client, profile, job, model, metadata=metadata)
         except Exception as exc:
             raise PreparationError(
@@ -87,7 +92,6 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
             ) from exc
 
     service = Service(store, data, selector=select_ai)
-    network = Networking(store, data)
     browser_lock = threading.Lock()
     stop = threading.Event()
 
@@ -96,7 +100,7 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
         service.adapters["linkedin"] = LinkedInBrowser(data, profile)
 
     def tick() -> dict[str, str]:
-        with browser_lock:
+        with service.operations.run("cycle") as operation, browser_lock:
             configure_adapter()
             settings = store.settings()
             if (
@@ -107,6 +111,9 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
                 and network.remaining()
             ):
                 profile, _ = store.profile()
+                operation.progress(
+                    "discovering_contacts", "Searching for authorised networking contacts."
+                )
                 contacts = LinkedInBrowser(data, profile).contacts(
                     settings.search_location,
                     network.remaining(),
@@ -117,28 +124,27 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
             if settings.automation_enabled:
                 if settings.discovery_enabled and settings.linkedin_authorised:
                     profile, _ = store.profile()
+                    operation.progress(
+                        "discovering_jobs",
+                        "Searching for new opportunities before processing the FIFO queue.",
+                    )
                     jobs = LinkedInBrowser(data, profile).search(
                         settings.search_keywords, settings.search_location
                     )
                     for job in jobs:
                         store.add_job(job)
-                _, revision = store.profile()
-                for row in store.applications():
-                    if row["state"] == State.REVIEW and (
-                        not row["evaluation"] or row["revision"] != revision
-                    ):
-                        try:
-                            service.prepare(row["id"])
-                        except ValueError as exc:
-                            with store.connect() as db:
-                                store.event(
-                                    db, "preparation_review_required", str(exc)[:500], row["id"]
-                                )
-            result = service.tick()
+            result = service.tick(operation, stopping=stop.is_set)
             settings = store.settings()
             if settings.automation_enabled and settings.connections_enabled:
                 for row in network.list():
+                    if not store.settings().automation_enabled or stop.is_set():
+                        break
                     if row["state"] == "queued":
+                        operation.progress(
+                            "networking",
+                            "Processing the separate connection queue after the application queue.",
+                            clear_application=True,
+                        )
                         try:
                             result[f"connection:{row['id']}"] = network.send(row["id"])
                         except Exception as exc:
@@ -155,14 +161,17 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-        store.recover()
-        thread = threading.Thread(target=loop, daemon=True) if worker else None
-        if thread:
-            thread.start()
-        yield
-        stop.set()
-        if thread:
-            thread.join(timeout=1)
+        with server_owner(data):
+            store.recover()
+            thread = threading.Thread(target=loop, daemon=True) if worker else None
+            if thread:
+                thread.start()
+            try:
+                yield
+            finally:
+                stop.set()
+                if thread:
+                    thread.join()
 
     app = FastAPI(
         title="Autonomous Applicator",
@@ -332,15 +341,23 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
 
     @app.post("/api/applications/{app_id}/prepare", dependencies=auth)
     def prepare(app_id: int, preparation: Preparation) -> dict[str, Any]:
-        with browser_lock:
-            service.prepare(app_id, preparation.evidence_ids, use_ai=preparation.use_ai)
+        with service.operations.run("prepare", app_id) as operation, browser_lock:
+            service.prepare(
+                app_id,
+                preparation.evidence_ids,
+                use_ai=preparation.use_ai,
+                progress=operation.progress,
+            )
+            operation.result(store.application(app_id)["state"])
         return store.application(app_id)
 
     @app.post("/api/applications/{app_id}/submit", dependencies=auth)
     def submit(app_id: int) -> dict[str, str]:
-        with browser_lock:
+        with service.operations.run("submit", app_id) as operation, browser_lock:
             configure_adapter()
-            return {"receipt": service.submit(app_id)}
+            receipt = service.submit(app_id, progress=operation.progress)
+            operation.result("submitted")
+            return {"receipt": receipt}
 
     @app.post("/api/applications/{app_id}/receipt", dependencies=auth)
     def receipt(app_id: int, receipt: Receipt) -> dict[str, str]:
@@ -439,6 +456,10 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
     @app.post("/api/worker/tick", dependencies=auth)
     def run_tick() -> dict[str, str]:
         return tick()
+
+    @app.get("/api/worker/status", dependencies=auth)
+    def worker_status() -> dict[str, Any]:
+        return service.operations.status()
 
     app.mount(
         "/", StaticFiles(directory=Path(__file__).parent / "static", html=True), name="dashboard"

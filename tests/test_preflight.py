@@ -165,7 +165,16 @@ def test_application_events_include_older_entries_and_exclude_other_records(data
         for _ in range(205):
             store.event(db, "other_event", "Unrelated activity", other)
     timeline = store.events(app_id)
-    assert [row["kind"] for row in timeline] == ["materials_prepared", "job_added"]
+    assert [row["kind"] for row in timeline] == [
+        "application_run_finished",
+        "application_processing_result",
+        "materials_prepared",
+        "application_stage",
+        "application_stage",
+        "application_stage",
+        "application_run_started",
+        "job_added",
+    ]
     assert all(row["application_id"] == app_id for row in timeline)
     assert len(store.events()) == len(store.events(other)) == 200
     with pytest.raises(KeyError):

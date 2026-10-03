@@ -41,6 +41,16 @@ Daily usage reads the saved limit and counted reservations in one SQLite stateme
 
 Queue listings fetch and decode records in one connection. Journal and attempt-day indexes support scoped histories and budget counts. Dashboard search/status/sort operations work on the loaded records without mutating them. A pure helper supplies consistent, tested ordering, with record identifiers breaking ties. Filtering does not change routing or eligibility.
 
+## Sequential processing and ownership
+
+Application processing uses a FIFO snapshot ordered by the immutable import identifier, independently of dashboard sorting. The service completes preparation and submission for one eligible record before taking the next. It reloads the record, profile revision, pause state and quota rather than treating the snapshot as approval. Current-revision reviews, submitted records, reconciliation holds and skipped opportunities are excluded. New imports wait for the next snapshot. Safe failures become review holds; an unknown provider outcome remains uncertain.
+
+Manual preparation, manual submission and automatic cycles share a SQLite single-owner lease. A partial unique index permits only one running application operation. The API claims ownership before waiting for the dedicated browser lock, so competing application requests return a busy conflict instead of silently queueing another cycle. A workspace-level operating-system lock prevents a second server from recovering another live server's records. Graceful shutdown retains that lock until the background worker finishes its current operation and stops taking new vacancies.
+
+Stage updates and results are committed separately from slow model/browser calls. The authenticated GET /api/worker/status route returns the current or latest run and the latest 50 per-application results across runs, without acquiring the browser lock. The browser reports identity checks, form steps, document uploads, approved questions, the irreversible click and receipt confirmation. Run IDs connect timestamps and stage labels to the application's journal. Progress reports carry fixed descriptions and exception classes, excluding answer values, credentials and raw provider diagnostics.
+
+Restart recovery retains the interrupted stage. Pending preparation records lose their submission manifest and become current-revision review holds; reserved submissions become uncertain. Neither state is automatically retried. The latest results remain readable across subsequent empty cycles. Dashboard polling observes these records without starting work, survives reloads, discards locked-session responses and keeps elapsed-time updates outside the live announcement region.
+
 ## Learning
 
 Outcome feedback supports aggregate observations and candidate-reviewed suggestions. It does not self-train model weights, add skills, alter immigration facts, lower thresholds or fabricate experience. Small samples are reported as insufficient evidence, not causal proof.
