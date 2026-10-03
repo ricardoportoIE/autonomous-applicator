@@ -49,6 +49,7 @@ The post-test improvement pass reviewed every changed source and test line. New 
 | `api.py` | Authentication, Host/Origin, stream limits, routes, worker exceptions and browser locking |
 | `browser.py` | Exact origins and identities, grounded forms, uploads and submission failure boundaries |
 | `networking.py` | Identity, European location, deduplication, independent limits and uncertain invitations |
+| `photos.py` | Private URL-keyed cache, bounded PNG dimensions/size, path containment and atomic writes |
 | `documents.py` | Approved content, chronology, escaping, A4 layout, page/size limits and hashes |
 | `adviser.py` | Explicit model, structured evidence-only output and rejected invented identifiers |
 | `discovery.py` | Fixed provider origin, board identifiers, HTML extraction and response limit |
@@ -57,3 +58,11 @@ The post-test improvement pass reviewed every changed source and test line. New 
 | Tests, scripts, CI and documentation | Meaningful assertions, fixture isolation, measured coverage and public-data hygiene |
 
 Conservative stops remain for changed descriptions, ambiguous uploads, missing documents, unsupported controls and unconfirmed receipts. Tests use fictional records and intercepted provider traffic. Coverage measures execution; it does not certify live provider selectors or every employer form. No real application or invitation was sent during this review.
+
+## Contact portrait follow-up, 3 October 2026
+
+Every changed source and test line was reviewed. Discovery captures only a single visible square image from the bounded primary header containing the reviewed member name, role and location. Covers, small company logos and recommended members' portraits are excluded. Missing, ambiguous or failed captures are optional and do not prevent contact discovery. The cache accepts bounded PNGs only, uses URL hashes as filenames and rejects paths escaping the private data directory. The photo endpoint requires the same local authentication as other connection reads and returns no-store responses.
+
+The dashboard fetches only images in the selected connection tab, shares concurrent downloads and displays initials when an image is unavailable. Blob URLs are revoked on image failure and session locking. Late responses cannot restore an image after locking. Locations have a separate, highlighted text element. New regressions exercise delayed image rendering, redirects, incorrect identities, cache errors, authenticated access, corrupt or oversized images, archived contacts, mobile/desktop sizing, accessibility and lock races. A read-only live check captured the existing contacts' portraits and verified their local presentation without sending invitations or modifying the database.
+
+The follow-up CI audit detected [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) in the Tailwind CLI's pinned watcher dependency. A scoped override selects `@parcel/watcher` 2.6.0, which removes the vulnerable `micromatch`/`braces` chain. A clean installation, unchanged generated CSS, an isolated native-watch rebuild and a fresh npm audit verify the change. Tailwind itself remains at 4.3.3. The private `.env` started from a blank template; only key presence and the selected model were checked after local configuration. No key was displayed and no paid model request was made.

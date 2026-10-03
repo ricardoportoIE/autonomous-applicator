@@ -4,6 +4,8 @@ A local job application workbench that links every candidate claim to evidence, 
 
 Inspect submission readiness without opening a browser or consuming a daily attempt. Search and sort the queue, follow an individual application's activity, and see the remaining London-day attempt budget.
 
+Manage European hiring contacts in active and archived queues, with private circular portraits, highlighted locations, profile links and visible invitation progress.
+
 ![Local application dashboard with fictional example data](docs/assets/dashboard.png)
 
 Built for an Ireland and UK technology job search. The interface, code, prompts and documentation use British English. Personal information, credentials, generated documents and browser sessions stay outside Git.
@@ -27,7 +29,7 @@ The fit score is a transparent heuristic, not an ATS score or a hiring probabili
 uv sync --extra dev --python 3.14
 # Uses installed Edge on Windows; otherwise install Chromium:
 uv run python -m playwright install chromium
-Copy-Item .env.example .env
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
 # Set a fresh OPENAI_API_KEY locally only if enabling the optional AI adviser.
 uv run python -m applicator.cli serve
 ```
@@ -74,5 +76,7 @@ Frontend unit tests cover presentation and parsing helpers. Real-browser tests c
 ## AI integration
 
 The optional adviser uses the OpenAI Responses API with `gpt-6.1-sol`, structured output and `store=False`. It selects existing evidence identifiers rather than inventing candidate history. Unknown form answers require candidate input. No hidden chain of thought is stored; the application records concise explanations and evidence references.
+
+Set `OPENAI_API_KEY` in the ignored local `.env` file, keep `OPENAI_MODEL=gpt-6.1-sol`, and restart the server after saving. The **Select evidence with GPT-6.1 Sol** button enables advice for the selected application. Contact discovery and invitations use local rules and do not require an OpenAI request. See the [operating guide](docs/OPERATIONS.md) for configuration details.
 
 LinkedIn prohibits unauthorised automated access under its [User Agreement](https://www.linkedin.com/legal/user-agreement). The candidate has declared specific authorisation for discovery, Easy Apply and networking. Enable that scope explicitly after local sign-in. The adapter performs bounded browser actions and holds unknown questions or changed job details for review. Fixture tests do not certify the current live LinkedIn interface. Other employer portals use manual hand-off unless a permitted adapter is configured.

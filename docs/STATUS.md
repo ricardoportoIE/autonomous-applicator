@@ -13,6 +13,7 @@ Version 0.3.0 reviewed and locally validated on 3 October 2026. Repository: [ric
 - Transparent job fit and 80/50 routing, sponsorship exclusions, mandatory-condition review and stale-material invalidation.
 - Manual and Greenhouse imports; LinkedIn discovery, bounded Easy Apply, approved text/select/radio answers, document uploads and confirmation checks.
 - European recruiter discovery and controlled invitations; no public profile edits.
+- Private, authenticated 64-pixel contact portraits with initials fallback and highlighted locations in active and archived queues.
 - Accessible profile links for every connection state, spaced controls and independent single-contact invitations in a visible dedicated browser.
 - Durable Started/Running/Done/Failed/Needs review feedback, primary-card Connect/More selection, concurrent status reads and lock/reload observation without resending.
 - Current semantic and legacy LinkedIn profile cards, primary-result link selection, exact invitation identity checks and readable browser-error diagnostics.
@@ -21,6 +22,16 @@ Version 0.3.0 reviewed and locally validated on 3 October 2026. Repository: [ric
 - Optional `gpt-6.1-sol` adviser using structured evidence identifiers. No factual generation or private chain-of-thought logging.
 
 ## Local validation
+
+### Contact portraits and local OpenAI configuration follow-up
+
+Contact discovery optionally captures the single primary member portrait after checking the reviewed identity, role and location. Images stay in the ignored local data directory and are served through an authenticated no-store PNG endpoint. The dashboard shows circular 64-pixel portraits, a separate highlighted location and initials when a photo cannot be loaded. Only the selected tab's images are fetched; locking revokes their blob URLs and discards late downloads. Twenty-five new regressions cover browser capture, bounds and identity checks, cache/storage failures, authenticated access, unavailable or invalid images, tab caching, mobile/desktop accessibility and session locking.
+
+A read-only profile inspection cached all eight existing contact portraits. The running local dashboard then displayed all eight images at the intended size at both 390- and 1,440-pixel widths, highlighted their locations and removed their images on lock. The mobile check also confirmed no horizontal overflow with the actual longer roles and locations. This verification used only authenticated local GET requests, sent no invitations and changed no database records. An SQLite backup was taken before starting the updated local server.
+
+The optional OpenAI adviser is implemented and was not called during these checks. A private ignored `.env` was initially prepared with an empty `OPENAI_API_KEY`; a subsequent presence-only check found a locally configured key before the updated server started. The key was not displayed or validated through a paid request. Operational documentation explains how to enter a fresh local key and restart the server. The adviser remains explicitly selected through the evidence-selection button.
+
+The first remote run stopped at a newly reported Tailwind tooling dependency advisory before Python tests. A scoped watcher 2.6.0 override removes the vulnerable dependency chain. Fresh npm/Python audits report no known vulnerabilities. A clean npm installation, byte-for-byte unchanged compiled CSS and an isolated native-watch rebuild also passed.
 
 ### Recruiter discovery and archive follow-up
 
@@ -38,40 +49,40 @@ Five intercepted-provider regressions cover plain Pending links, extended button
 
 Follow-up validation: **45 tests passed** across the manual-networking and contact-discovery modules. Ruff checks, Python formatting and strict mypy also passed. These checks do not repeat the complete frontend suite or establish live submission behaviour for every LinkedIn layout.
 
-The full-suite results below are from implementation commit `cc82fac`, including both networking follow-ups.
+The full-suite results below include the contact portrait implementation `9f33692`. The tooling-only dependency correction is `53411b4`; it reproduces the same dashboard CSS.
 
 | Check | Result |
 | --- | --- |
-| Python tests | 240 passed, including backend and real-browser integration tests |
+| Python tests | 265 passed, including backend and real-browser integration tests |
 | JavaScript unit tests | 8 passed |
-| Python statement coverage | 98.29% (1,382 / 1,406 statements) |
-| Python branch coverage | 95.31% (406 / 426 branches) |
-| Combined statement/branch coverage | 97.60%; CI minimum 90% |
-| Dashboard JavaScript browser line coverage | 99.11% (1,121 / 1,131 lines), across app.js and ui.js |
-| Dashboard JavaScript browser branch coverage | 96.04% (316 / 329 branches) |
-| Dashboard JavaScript browser function coverage | 100% (59 / 59 functions) |
+| Python statement coverage | 98.26% (1,470 / 1,496 statements) |
+| Python branch coverage | 95.04% (441 / 464 branches) |
+| Combined statement/branch coverage | 97.50%; CI minimum 90% |
+| Dashboard JavaScript browser line coverage | 99.18% (1,216 / 1,226 lines), across app.js and ui.js |
+| Dashboard JavaScript browser branch coverage | 95.81% (343 / 358 branches) |
+| Dashboard JavaScript browser function coverage | 100% (63 / 63 functions) |
 | Helper unit coverage | 100% lines, branches and functions in ui.js |
-| Frontend journeys | 59 scenarios, including 40 axe scans across six views, application detail, invitation progress, search outcomes and the active/archive tabs at desktop and mobile widths |
+| Frontend journeys | 67 scenarios, including 46 axe scans across six views, application detail, invitation progress, search outcomes, portraits and the active/archive tabs at desktop and mobile widths |
 | Responsive checks | 390, 768 and 1,440 pixels; keyboard navigation and 200% text enlargement |
 | Ruff | Passed |
 | Frontend checks | ESLint and Prettier passed |
-| Strict mypy | Passed for all 12 source modules |
+| Strict mypy | Passed for all 13 source modules |
 | Dependency audits | Python and npm reported no known vulnerabilities; the unpublished local package is not a PyPI audit target |
 | Packaging | Source archive and wheel built; packaged dashboard assets match current source, private data absent |
 | Document QA | PDF/DOCX content and layout checks repeated; earlier visual inspection of the unchanged renderer produced a two-page CV and one-page cover letter |
 | Browser journeys | Dashboard/profile/evidence/job/settings journey, local upload/submission fixture, intercepted LinkedIn Easy Apply and recruiter-discovery fixtures |
 | Persistence and security | Threshold properties, concurrent reservation, daily limits, unknown answers, altered documents, origin/Host/token checks, crash recovery and SQLite backup/restore |
-| Repository hygiene | Credential patterns and private contact details absent from 56 tracked files |
+| Repository hygiene | Credential patterns and private contact details absent from 58 tracked files |
 
 The improvement pass adds 22 Python regressions and three JavaScript helper tests. Diagnostics are explicitly tested to leave records, journals, attempt counts and submission adapters untouched. A browser submission journey uses a mocked provider adapter, records its fictional receipt and checks the quota and timeline. Preview screenshots use fictional example records only. Both 0.3.0 distributions were verified, including byte-for-byte dashboard assets and exclusion of private runtime paths.
 
 Browser coverage uses precise V8 ranges from the actual local application, converted with v8-to-istanbul. Helper unit coverage is reported separately. The browser report gate requires 90% lines and 80% branches. Python coverage explicitly traces Playwright greenlets and API worker threads using the C tracing core, following the [Coverage.py configuration guidance](https://coverage.readthedocs.io/en/latest/config.html).
 
-The [complete source review](CODE_REVIEW.md) records the line-by-line inspection and regression findings. The CI matrix checks Linux and Windows with Python 3.12 and 3.14, using Node.js 24. It also rebuilds the committed Tailwind CSS and verifies unchanged output, runs frontend checks, audits dependencies and publishes coverage reports. [Remote CI passed all four combinations](https://github.com/ricardoportoIE/autonomous-applicator/actions/runs/37075132135) for implementation commit `cc82fac`. The earlier member-link implementation `4cd7862` also passed its complete matrix, following a rerun of a Windows/Python 3.14 pause assertion timeout; its assertions were not weakened. Earlier recruiter-discovery, browser-login and version 0.3.0 matrices passed as well. This final record changes documentation only. The [improvement assessment](IMPROVEMENTS.md) distinguishes delivered capabilities from proposed next priorities.
+The [complete source review](CODE_REVIEW.md) records the line-by-line inspection and regression findings. The CI matrix checks Linux and Windows with Python 3.12 and 3.14, using Node.js 24. It also rebuilds the committed Tailwind CSS and verifies unchanged output, runs frontend checks, audits dependencies and publishes coverage reports. [Remote CI passed all four combinations](https://github.com/ricardoportoIE/autonomous-applicator/actions/runs/37108488461) for commit `53411b4`, including the portrait implementation and tooling correction. The first Windows/Python 3.14 attempt encountered two five-second timeouts in existing dashboard-unlock/manual-queue checks. Both checks passed in a targeted local repeat, and the complete Windows job then passed on rerun without changing assertions or runtime code. The previous networking implementation `cc82fac` and earlier member-link, recruiter-discovery, browser-login and version 0.3.0 matrices also passed. This final record changes documentation only. The [improvement assessment](IMPROVEMENTS.md) distinguishes delivered capabilities from proposed next priorities.
 
 ## Required live setup and limits
 
-The current coverage measurements and full-suite counts above refer to implementation commit `cc82fac`, including recruiter discovery limits, visible search progress, automatic archiving and Pending link confirmation. The login correction has three tests distinguishing expected window closure from setup or unrelated failures. The discovery repair adds 19 regressions covering semantic/deeply wrapped/legacy cards, ambiguous or incomplete identity, wrong contact-information links, result scoping, canonical deduplication, bounded discovery, sanitised API errors and frontend recovery. Invitation checks require the same primary profile identity, role and location; redirects stop before examining invitation controls.
+The current coverage measurements and full-suite counts above include contact portraits, recruiter discovery limits, visible search progress, automatic archiving and Pending link confirmation. The login correction has three tests distinguishing expected window closure from setup or unrelated failures. The discovery repair adds 19 regressions covering semantic/deeply wrapped/legacy cards, ambiguous or incomplete identity, wrong contact-information links, result scoping, canonical deduplication, bounded discovery, sanitised API errors and frontend recovery. Invitation checks require the same primary profile identity, role and location; redirects stop before examining invitation controls.
 
 The initial networking UI follow-up added isolated member links. The independent invitation implementation adds 30 test cases: 22 backend/provider cases and eight frontend scenarios. A single manual invitation works with no candidate facts and paused background queues, shares the networking quota, and opens the selected profile with visible-browser intent. Intercepted browser cases exercise direct buttons and links, More menus and delayed popovers, rendering delays, Follow-only and recommended-member controls, duplicate controls, identity/location changes, login challenges, redirects, revoked scope and missing confirmation. Other checks cover sanitised failures, database migration, interrupted-run ownership, readable concurrent status and immediate busy-browser rejection. Frontend checks verify phase changes, failure/uncertainty, independent navigation, duplicate suppression, lost responses, status errors, reload observation and locking without resending. No real invitation was sent during these checks.
 
@@ -83,6 +94,6 @@ Recruiter discovery was subsequently checked against the authenticated account a
 
 The candidate-declared LinkedIn scope for discovery, Easy Apply and networking is configured in the local workspace. The initial adapter still requires validation against the authenticated account and current live selectors. All LinkedIn traffic in the automated tests is intercepted; tests send no real applications or invitations. A missing visible confirmation after a submission click is explicitly tested as uncertain, without automatic retry.
 
-The local candidate profile was translated from the supplied documents and subsequently confirmed in the local workspace. Unapproved evidence remains excluded until candidate review. This confirmation does not independently certify qualifications. Use `browser-login` to renew authentication when needed. Configure a fresh, rotated API key locally to use live AI advice. The credential shared in chat was not used or committed. No paid OpenAI request was made during implementation/testing.
+The local candidate profile was translated from the supplied documents and subsequently confirmed in the local workspace. Unapproved evidence remains excluded until candidate review. This confirmation does not independently certify qualifications. Use `browser-login` to renew authentication when needed. Keep a fresh, rotated API key in the ignored local environment file to use live AI advice. Credentials were not displayed or committed. No paid OpenAI request was made during implementation/testing.
 
 Automation remains paused locally. Unknown or unsupported questions stop for review; employer-specific portals without an adapter use manual hand-off. Feedback currently provides recorded outcomes and cautious observations, not self-training or automatic factual/policy changes. This is a tested local prototype, not a guarantee of defect-free live job applications or ATS acceptance.
