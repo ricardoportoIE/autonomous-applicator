@@ -11,6 +11,11 @@
     "test": "node --test --experimental-test-coverage --test-coverage-include=src/applicator/static/ui.js --test-coverage-lines=100 --test-coverage-branches=100 tests/frontend/*.test.js",
     "format:check": "prettier --check src/applicator/static/*.html src/applicator/static/*.js frontend tests/frontend package.json eslint.config.js"
   },
+  "overrides": {
+    "@tailwindcss/cli": {
+      "@parcel/watcher": "2.6.0"
+    }
+  },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@tailwindcss/cli": "4.3.3",
