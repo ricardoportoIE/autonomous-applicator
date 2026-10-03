@@ -6,6 +6,7 @@ Version 0.3.0 reviewed and locally validated on 3 October 2026. Repository: [ric
 
 - Current and legacy LinkedIn job detail readers, exact job redirect checks, bounded canonical discovery and visible job-search progress/outcomes.
 - Native/ARIA Easy Apply dialogues, grounded phone country components, verified CV chooser selection, custom screening radios and stopped-step detection.
+- Configurable default GPT-6.1 Sol preparation for ordinary and worker flows, visible model provenance, candidate/job fingerprints and review after API failures without local fallback.
 - Read-only submission preflight, current gate explanations, actual daily attempt capacity, searchable/filterable/sortable queues and application-specific activity.
 - Single-connection queue reads, indexed journals and quota queries, required-cover-PDF checks and LinkedIn identity validation before reservation.
 - Locally compiled Tailwind CSS, responsive layouts, semantic navigation, agent readiness, session locking and outcome counts.
@@ -24,6 +25,16 @@ Version 0.3.0 reviewed and locally validated on 3 October 2026. Repository: [ric
 - Optional `gpt-6.1-sol` adviser using structured evidence identifiers. No factual generation or private chain-of-thought logging.
 
 ## Local validation
+
+### Default AI CV preparation follow-up
+
+The [CV preparation audit](CV_PREPARATION.md) distinguishes historical local preparations from actual model calls. A read-only inspection found one prepared CV with no model provenance. Two new real `gpt-6.1-sol` requests through an isolated default-preparation workspace then produced different evidence sets and CV content for two existing vacancies, while preserving approved text and zero submission attempts. Four PDFs/eight pages passed content, hash and Poppler visual checks. Preparation took 8.209/5.025 seconds with AI and 0.173/0.157 seconds locally. The summary remains approved base wording; this comparison does not establish improved hiring outcomes or ATS acceptance.
+
+The candidate authorised default AI preparation and review after API failure. The shared service now applies that setting to ordinary and new worker preparations, records actual response/model metadata and current snapshot fingerprints, and checks provenance before reservation. Twenty-six new backend cases and two real-browser scenarios cover these behaviours with mocked responses and no paid API calls. Previous live benchmark results concern the earlier prompt/renderer and remain a historical comparison.
+
+After a private SQLite backup and paused/no-in-flight checks, the local server was updated and default AI preparation enabled. A third real request regenerated the pending CV through the ordinary endpoint and confirmed `gpt-6.1-sol`, current revision, valid factual content/hashes and two visually verified pages. An authenticated dashboard check showed the actual model and checked default setting, with no JavaScript errors. The required questionnaire remained unanswered, the application stayed in review, the original attempt count was unchanged and automation remained paused.
+
+Full local validation on Windows/Python 3.14 passed **372 Python tests** in 873 seconds and **8 JavaScript unit tests**. A subsequent coverage review added six failure cases; all **26 AI preparation tests** then passed in eight seconds with coverage appended, for **378 distinct passing Python tests**. Combined Python coverage is **97.73%**, with **98.48%** statement coverage (1,690/1,716) and **95.47%** branch coverage (548/574). The adviser and API reach 100% measured coverage; the service reaches 97%. Dashboard browser coverage is **99.22%** of lines, **96.00%** of branches and **100%** of functions. Ruff/formatting, strict mypy, frontend lint/format/unit checks, deterministic Tailwind compilation, repository hygiene and the distribution build passed. Personal CVs, credentials, provider response identifiers and live reports remain ignored.
 
 ### Easy Apply form follow-up
 

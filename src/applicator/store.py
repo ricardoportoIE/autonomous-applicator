@@ -78,6 +78,18 @@ class Store:
 
     def set_settings(self, settings: Settings) -> None:
         with self.connect(True) as db:
+            previous = Settings.model_validate_json(
+                db.execute("SELECT value FROM config WHERE key='settings'").fetchone()[0]
+            )
+            if settings.ai_document_preparation and not previous.ai_document_preparation:
+                count = db.execute(
+                    "UPDATE applications SET state=?,evaluation='{}',revision=0,manifest='{}' "
+                    "WHERE state IN (?,?) AND COALESCE(json_extract(manifest,'$.generation.method'),'') != ?",
+                    (State.REVIEW, State.REVIEW, State.READY, "openai"),
+                ).rowcount
+                self.event(
+                    db, "ai_preparation_enabled", f"{count} pending records require AI preparation."
+                )
             db.execute(
                 "UPDATE config SET value=? WHERE key='settings'", (settings.model_dump_json(),)
             )
@@ -212,17 +224,28 @@ class Store:
         return DailyUsage(day=day, used=used, limit=limit, remaining=max(0, limit - used))
 
     def prepare(
-        self, app_id: int, revision: int, evaluation: str, state: State, manifest: dict[str, Any]
+        self,
+        app_id: int,
+        revision: int,
+        evaluation: str,
+        state: State,
+        manifest: dict[str, Any],
+        *,
+        expected_job: Job | None = None,
     ) -> None:
         with self.connect(True) as db:
             current_revision = int(
                 db.execute("SELECT value FROM config WHERE key='revision'").fetchone()[0]
             )
-            row = db.execute("SELECT state FROM applications WHERE id=?", (app_id,)).fetchone()
+            row = db.execute("SELECT state,job FROM applications WHERE id=?", (app_id,)).fetchone()
             if not row:
                 raise KeyError(app_id)
             if current_revision != revision:
                 raise ValueError("Profile changed while preparing materials")
+            if expected_job is not None and json.loads(row[1]) != expected_job.model_dump(
+                mode="json"
+            ):
+                raise ValueError("Opportunity changed while preparing materials")
             if row[0] in {State.SUBMITTED, State.SUBMITTING, State.UNCERTAIN}:
                 raise ValueError("This application cannot be prepared in its current state")
             db.execute(

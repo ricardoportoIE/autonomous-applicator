@@ -87,6 +87,7 @@ class Job(Contract):
 
 class Settings(Contract):
     automation_enabled: bool = False
+    ai_document_preparation: bool = False
     daily_limit: int = Field(default=10, ge=1, le=50)
     auto_threshold: int = Field(default=80, ge=80, le=100)
     review_threshold: int = Field(default=50, ge=50, le=79)
@@ -131,7 +132,7 @@ class Evaluation(Contract):
 
 
 class Advice(Contract):
-    evidence_ids: list[str]
+    evidence_ids: list[str] = Field(max_length=6)
     explanation: str = Field(max_length=1500)
 
 

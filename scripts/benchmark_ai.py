@@ -60,6 +60,13 @@ class RecordingClient:
         self.responses = SimpleNamespace(parse=self.parse)
         self.records = []
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        # The benchmark owns and closes the shared SDK client in its outer context.
+        return False
+
     def parse(self, **kwargs):
         started = time.perf_counter()
         response = self.client.responses.parse(**kwargs)

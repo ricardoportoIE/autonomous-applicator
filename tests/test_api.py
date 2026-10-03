@@ -1,4 +1,4 @@
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock
 
 import httpx
 import pytest
@@ -142,10 +142,18 @@ def test_ai_prepare_no_key_mock_success_and_failure(data, profile, job, monkeypa
         == 503
     )
     monkeypatch.setenv("OPENAI_API_KEY", "test-placeholder")
-    monkeypatch.setattr(module, "OpenAI", Mock())
-    monkeypatch.setattr(
-        module, "advise", Mock(return_value=Advice(evidence_ids=["python"], explanation="Relevant"))
-    )
+    monkeypatch.setattr(module, "OpenAI", MagicMock())
+
+    def selected(_client, _profile, _job, _model, *, metadata):
+        metadata.update(
+            method="openai",
+            requested_model="gpt-6.1-sol",
+            model="gpt-6.1-sol",
+            response_id="resp_fixture",
+        )
+        return Advice(evidence_ids=["python"], explanation="Relevant")
+
+    monkeypatch.setattr(module, "advise", Mock(side_effect=selected))
     assert (
         session.post(f"/api/applications/{app_id}/prepare", json={"use_ai": True}).status_code
         == 200

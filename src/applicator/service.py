@@ -1,12 +1,13 @@
 """Orchestration that keeps irreversible actions behind deterministic gates."""
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 from .browser import ReviewRequired, linkedin_job_id
-from .documents import generate, validate_manifest
-from .models import Job, Preflight, State, SubmissionCheck
+from .documents import fingerprint, generate, validate_generation, validate_manifest
+from .models import Advice, Job, Preflight, Profile, State, SubmissionCheck
 from .policy import answer_questions, evaluate, select_evidence
 from .store import Store
 
@@ -15,15 +16,29 @@ class Adapter(Protocol):
     def submit(self, job: Job, answers: dict[str, str], folder: Path) -> str: ...
 
 
+class PreparationError(ValueError):
+    def __init__(self, detail: str, status_code: int = 502):
+        super().__init__(detail)
+        self.status_code = status_code
+
+
 def validate_target(job: Job) -> None:
     if job.source == "linkedin" and linkedin_job_id(job.url) != job.source_id:
         raise ValueError("LinkedIn job identifier does not match the reviewed opportunity")
 
 
 class Service:
-    def __init__(self, store: Store, data: Path, adapters: dict[str, Adapter] | None = None):
+    def __init__(
+        self,
+        store: Store,
+        data: Path,
+        adapters: dict[str, Adapter] | None = None,
+        *,
+        selector: Callable[[Profile, Job, dict[str, Any]], Advice] | None = None,
+    ):
         self.store, self.data = store, data
         self.adapters = adapters or {}
+        self.selector = selector
 
     def preflight(self, app_id: int, sources: set[str] | None = None) -> Preflight:
         """Inspect current local gates without reserving, browsing or generating documents.
@@ -142,6 +157,21 @@ class Service:
                     True,
                     "Current document files match their recorded hashes.",
                 )
+            try:
+                validate_generation(
+                    row["manifest"], profile, job, require_ai=settings.ai_document_preparation
+                )
+            except ValueError as exc:
+                check("generation", "Document preparation method", False, str(exc))
+            else:
+                check(
+                    "generation",
+                    "Document preparation method",
+                    True,
+                    "Verified gpt-6.1-sol selection for this candidate and opportunity."
+                    if settings.ai_document_preparation
+                    else "The configured preparation method is permitted.",
+                )
         return Preflight(
             checked_at=datetime.now(UTC).isoformat(),
             can_submit=all(item.passed for item in checks),
@@ -149,7 +179,9 @@ class Service:
             checks=checks,
         )
 
-    def prepare(self, app_id: int, selected: list[str] | None = None) -> None:
+    def prepare(
+        self, app_id: int, selected: list[str] | None = None, *, use_ai: bool | None = None
+    ) -> None:
         row = self.store.application(app_id)
         if row["state"] in {State.SUBMITTED, State.SUBMITTING, State.UNCERTAIN}:
             raise ValueError("This application is already submitted or needs reconciliation")
@@ -157,21 +189,84 @@ class Service:
         profile, revision = self.store.profile()
         evaluation = evaluate(job, profile, self.store.settings())
         manifest = {}
+
+        def hold_preparation(error: PreparationError) -> None:
+            evaluation.state = State.REVIEW
+            evaluation.blockers.append(str(error))
+            self.store.prepare(
+                app_id, revision, evaluation.model_dump_json(), State.REVIEW, {}, expected_job=job
+            )
+            with self.store.connect() as db:
+                self.store.event(db, "preparation_review_required", str(error), app_id)
+
+        if selected is not None and use_ai is True:
+            raise ValueError(
+                "Choose AI selection or explicit evidence identifiers, rather than both"
+            )
         if evaluation.evidence_ids and profile.confirmed:
             folder = self.data / "documents" / str(app_id)
-            chosen = (
-                selected
-                if selected is not None
-                else select_evidence(job, profile, evaluation.evidence_ids)
-            )
-            manifest = generate(profile, job, chosen, folder, revision)
+            chosen = selected
+            metadata: dict[str, Any] = {"method": "manual" if selected is not None else "local"}
+            ai_enabled = self.store.settings().ai_document_preparation if use_ai is None else use_ai
+            if chosen is None and ai_enabled:
+                try:
+                    if self.selector is None:
+                        raise PreparationError(
+                            "Configure the AI selection integration before preparing documents", 503
+                        )
+                    chosen = self.selector(profile, job, metadata).evidence_ids
+                    validate_generation(
+                        {
+                            "generation": {
+                                **metadata,
+                                "profile_fingerprint": fingerprint(profile),
+                                "job_fingerprint": fingerprint(job),
+                            }
+                        },
+                        profile,
+                        job,
+                        require_ai=True,
+                    )
+                except PreparationError as exc:
+                    hold_preparation(exc)
+                    raise
+                except ValueError as exc:
+                    failure = PreparationError(
+                        "AI preparation could not be verified; the application remains in review"
+                    )
+                    hold_preparation(failure)
+                    raise failure from exc
+            if chosen is None:
+                chosen = select_evidence(job, profile, evaluation.evidence_ids)
+            try:
+                manifest = generate(profile, job, chosen, folder, revision)
+            except (ValueError, OSError) as exc:
+                if metadata["method"] != "openai":
+                    raise
+                failure = PreparationError(
+                    "AI-selected documents could not be validated; reduce or review the evidence"
+                )
+                hold_preparation(failure)
+                raise failure from exc
+            manifest["generation"] = {
+                **metadata,
+                "profile_fingerprint": fingerprint(profile),
+                "job_fingerprint": fingerprint(job),
+                "generated_at": datetime.now(UTC).isoformat(),
+                "renderer_version": 2,
+            }
         if not manifest and evaluation.state == State.READY:
             evaluation.state = State.REVIEW
             evaluation.blockers.append(
                 "Documents require verified evidence and a confirmed profile."
             )
         self.store.prepare(
-            app_id, revision, evaluation.model_dump_json(), evaluation.state, manifest
+            app_id,
+            revision,
+            evaluation.model_dump_json(),
+            evaluation.state,
+            manifest,
+            expected_job=job,
         )
 
     def submit(self, app_id: int) -> str:
@@ -188,6 +283,12 @@ class Service:
         validate_target(job)
         folder = self.data / "documents" / str(app_id)
         validate_manifest(row["manifest"], folder, revision)
+        validate_generation(
+            row["manifest"],
+            profile,
+            job,
+            require_ai=self.store.settings().ai_document_preparation,
+        )
         if job.cover_letter_required and "cover_pdf" not in row["manifest"]["files"]:
             raise ValueError("Generate the required cover letter before submission")
         answers, unresolved = answer_questions(job, profile)

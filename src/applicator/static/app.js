@@ -688,6 +688,46 @@ async function detail(id) {
   recheck.onclick = () => action(() => detail(id));
   preflight.append(checklist, recheck);
   target.append(preflight);
+  const generation = row.manifest.generation;
+  const provenance = node("section", undefined, "preflight");
+  provenance.setAttribute("aria-label", "Document preparation");
+  provenance.append(node("h3", "Document preparation"));
+  if (generation) {
+    provenance.append(
+      node(
+        "p",
+        generation.method === "openai"
+          ? "Evidence selected with " + generation.model
+          : generation.method === "manual"
+            ? "Evidence selected manually"
+            : "Evidence selected using local rules",
+      ),
+      node(
+        "p",
+        "Prepared for " +
+          row.job.title +
+          " at " +
+          row.job.company +
+          ". Profile revision " +
+          row.manifest.revision +
+          ".",
+      ),
+      node(
+        "p",
+        "Selected evidence: " +
+          row.manifest.evidence_ids.length +
+          ". Approved factual text is preserved.",
+      ),
+    );
+  } else {
+    provenance.append(
+      node(
+        "p",
+        "Preparation origin is unavailable. Regenerate documents to record it.",
+      ),
+    );
+  }
+  target.append(provenance);
   if (row.evaluation.score !== undefined) {
     target.append(
       node("p", "Fit: " + row.evaluation.score + "/100 · " + row.state),
@@ -766,7 +806,11 @@ async function detail(id) {
     );
     button.onclick = () =>
       action(async () => {
-        await api("/applications/" + id + "/prepare", "POST", { use_ai: ai });
+        await api(
+          "/applications/" + id + "/prepare",
+          "POST",
+          ai ? { use_ai: true } : {},
+        );
         await refresh();
         await detail(id);
         message("Documents prepared from approved evidence.");
@@ -1035,6 +1079,7 @@ $("#settings-form").onsubmit = (event) => {
       "linkedin_authorised",
       "connections_enabled",
       "discovery_enabled",
+      "ai_document_preparation",
     ])
       obj[key] = form.elements.namedItem(key).checked;
     for (const key of [

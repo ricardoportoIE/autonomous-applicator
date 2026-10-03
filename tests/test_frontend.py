@@ -13,7 +13,7 @@ from ui_coverage import save_coverage, start_coverage
 
 from applicator.api import create_app
 from applicator.browser import browser_options
-from applicator.models import Job, Question, Settings
+from applicator.models import Advice, Job, Question, Settings
 
 
 @pytest.fixture
@@ -39,6 +39,56 @@ def dashboard(data, profile, job, request):
         save_coverage(coverage, request.node.nodeid)
         assert not errors
         browser.close()
+
+
+@pytest.mark.browser
+def test_ai_default_setting_and_normal_prepare_show_verified_origin(dashboard):
+    page, app, _ = dashboard
+    calls = []
+
+    def select(_profile, job, metadata):
+        calls.append(job.title)
+        metadata.update(
+            method="openai",
+            model="gpt-6.1-sol",
+            requested_model="gpt-6.1-sol",
+            response_id="resp_ui_fixture",
+        )
+        return Advice(evidence_ids=["python"], explanation="Relevant approved project.")
+
+    app.state.service.selector = select
+    page.get_by_role("button", name="Agent settings", exact=True).click()
+    page.get_by_label("Use GPT-6.1 Sol for document preparation by default", exact=True).check()
+    page.get_by_role("button", name="Save agent settings", exact=True).click()
+    expect(page.locator("#notice")).to_have_text("Agent settings saved.")
+    assert app.state.store.settings().ai_document_preparation
+    page.get_by_role("button", name="Applications", exact=True).click()
+    page.get_by_role("button", name=re.compile("^Open Backend Engineer")).click()
+    expect(page.get_by_role("region", name="Document preparation")).to_contain_text(
+        "Preparation origin is unavailable"
+    )
+    page.get_by_role("button", name="Prepare documents", exact=True).click()
+    expect(page.locator("#notice")).to_have_text("Documents prepared from approved evidence.")
+    expect(page.get_by_role("region", name="Document preparation")).to_contain_text(
+        "Evidence selected with gpt-6.1-sol"
+    )
+    expect(page.get_by_role("region", name="Document preparation")).to_contain_text(
+        "Profile revision 1"
+    )
+    assert calls == ["Backend Engineer"]
+    assert app.state.store.daily_usage().used == 0
+
+
+@pytest.mark.browser
+def test_manual_selection_has_a_distinct_document_origin(dashboard):
+    page, app, _ = dashboard
+    app_id = app.state.store.applications()[0]["id"]
+    app.state.service.prepare(app_id, ["python"])
+    page.get_by_role("button", name="Applications", exact=True).click()
+    page.get_by_role("button", name=re.compile("^Open Backend Engineer")).click()
+    expect(page.get_by_role("region", name="Document preparation")).to_contain_text(
+        "Evidence selected manually"
+    )
 
 
 def assert_networking_accessibility(page):

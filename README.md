@@ -56,6 +56,7 @@ uv run python -m pip_audit
 - [Delivery and validation record](docs/STATUS.md)
 - [Complete source review and regression findings](docs/CODE_REVIEW.md)
 - [Live OpenAI performance and evidence-selection comparison](docs/AI_BENCHMARK.md)
+- [Vacancy-specific CV preparation and model provenance](docs/CV_PREPARATION.md)
 - [Improvements and next priorities](docs/IMPROVEMENTS.md)
 
 ## Frontend development and testing
@@ -76,8 +77,8 @@ Frontend unit tests cover presentation and parsing helpers. Real-browser tests c
 
 ## AI integration
 
-The optional adviser uses the OpenAI Responses API with `gpt-6.1-sol`, structured output and `store=False`. It selects existing evidence identifiers rather than inventing candidate history. Unknown form answers require candidate input. No hidden chain of thought is stored; the application records concise explanations and evidence references.
+The optional adviser uses the OpenAI Responses API with `gpt-6.1-sol`, structured output and `store=False`. It selects and ranks existing evidence identifiers; the renderer preserves approved factual wording. Unknown form answers require candidate input. No hidden chain of thought is stored. Documents retain model provenance, evidence references and candidate/job fingerprints.
 
-Set `OPENAI_API_KEY` in the ignored local `.env` file, keep `OPENAI_MODEL=gpt-6.1-sol`, and restart the server after saving. The **Select evidence with GPT-6.1 Sol** button enables advice for the selected application. Contact discovery and invitations use local rules and do not require an OpenAI request. See the [operating guide](docs/OPERATIONS.md) for configuration details.
+Set `OPENAI_API_KEY` in the ignored local `.env` file, keep `OPENAI_MODEL=gpt-6.1-sol`, and restart the server after saving. Enable **Use GPT-6.1 Sol for document preparation by default** in Agent settings for ordinary and automatic preparation. AI failures remain in review without a local fallback. The explicit **Select evidence with GPT-6.1 Sol** button remains available. Contact discovery and invitations use local rules and do not require an OpenAI request. See the [operating guide](docs/OPERATIONS.md) and [live CV audit](docs/CV_PREPARATION.md).
 
 LinkedIn prohibits unauthorised automated access under its [User Agreement](https://www.linkedin.com/legal/user-agreement). The candidate has declared specific authorisation for discovery, Easy Apply and networking. Enable that scope explicitly after local sign-in. The adapter performs bounded browser actions and holds unknown questions or changed job details for review. Fixture tests do not certify the current live LinkedIn interface. Other employer portals use manual hand-off unless a permitted adapter is configured.

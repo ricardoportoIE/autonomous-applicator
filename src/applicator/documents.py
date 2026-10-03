@@ -1,6 +1,7 @@
 """Create conservative ATS documents from immutable approved evidence."""
 
 import hashlib
+import json
 import re
 from pathlib import Path
 from typing import Any
@@ -16,7 +17,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
-from .models import Job, Profile
+from .models import Contract, Job, Profile
 from .policy import normalise, requirements
 
 LABELS = {
@@ -60,6 +61,34 @@ def chronology(dates: str) -> tuple[int, int]:
 
 def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def fingerprint(record: Contract) -> str:
+    payload = json.dumps(record.model_dump(mode="json"), sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def validate_generation(
+    manifest: dict[str, Any], profile: Profile, job: Job, *, require_ai: bool = False
+) -> None:
+    generation = manifest.get("generation", {})
+    if generation:
+        if generation.get("profile_fingerprint") != fingerprint(profile) or generation.get(
+            "job_fingerprint"
+        ) != fingerprint(job):
+            raise ValueError(
+                "Prepared documents do not match the current candidate and opportunity"
+            )
+    if require_ai:
+        model = generation.get("model", "")
+        if (
+            generation.get("method") != "openai"
+            or generation.get("requested_model") != "gpt-6.1-sol"
+            or not isinstance(model, str)
+            or (model != "gpt-6.1-sol" and not model.startswith("gpt-6.1-sol-"))
+            or not generation.get("response_id")
+        ):
+            raise ValueError("Regenerate documents with verified gpt-6.1-sol evidence selection")
 
 
 def font_name() -> str:
@@ -114,7 +143,11 @@ def selected_lines(profile: Profile, job: Job, evidence_ids: list[str]) -> list[
     needs = requirements(job)
     for category, heading in LABELS.items():
         items = [item for item in selected if item.category == category]
-        items.sort(key=lambda item: chronology(item.dates), reverse=True)
+        if category in {"skill", "project"}:
+            rank = {eid: index for index, eid in enumerate(evidence_ids)}
+            items.sort(key=lambda item: rank.get(item.id, len(rank)))
+        else:
+            items.sort(key=lambda item: chronology(item.dates), reverse=True)
         if items:
             lines.append(("heading", heading))
             for item in items:

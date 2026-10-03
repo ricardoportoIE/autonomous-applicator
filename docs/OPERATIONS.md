@@ -110,6 +110,8 @@ The OpenAI integration is optional. Copy `.env.example` to the repository root a
 
 Open an application and choose **Select evidence with GPT-6.1 Sol** to invoke the adviser. It selects approved evidence identifiers for that job; it does not invent candidate facts or authorise submissions. Without a configured key, this action explains how to enable the adviser; ordinary networking, deterministic scoring and document preparation remain available. The optional adviser is mocked in automated tests and does not incur API charges during testing. The application records outcome counts and observations. It does not train itself or silently change the candidate's facts or permissions.
 
+To use the model for ordinary and automatic document preparation, enable **Use GPT-6.1 Sol for document preparation by default** in Agent settings. API or document validation failures remain in review with no silent local fallback or automatic preparation retry. Existing pending local materials need regeneration after enabling this setting. Submitted and uncertain history is retained. The **Document preparation** section identifies the method and actual model; submission checks verify the current candidate/job fingerprints. See the [CV preparation audit](CV_PREPARATION.md) for the live comparison, retained factual wording and validation limits.
+
 ## Validation limits
 
 The test suite exercises a real browser against local fixtures and intercepts all LinkedIn fixture traffic. It does not log into a real account, submit actual applications or send invitations. Unsupported company portals require manual hand-off. Free-text motivation answers must be candidate-approved; the current adviser selects factual evidence and does not invent questionnaire responses.

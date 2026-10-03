@@ -1,6 +1,8 @@
 """Optional AI evidence selection. No model-generated facts reach a CV."""
 
 import json
+import time
+from typing import Any
 
 from openai import OpenAI
 
@@ -13,8 +15,21 @@ work authorisation or answers. Do not convert independent projects into commerci
 Return only evidence identifiers and a concise explanation. This explanation is a decision
 summary, not private chain of thought. Do not grant submission permissions."""
 
+INSTRUCTIONS += """ Rank identifiers by relevance to this specific vacancy. Choose at most
+three project identifiers and at most three other identifiers. Historical experience,
+education, languages and awards are retained separately by the renderer. Prefer a focused
+selection over weak keyword overlaps, without removing relevant independent project evidence."""
 
-def advise(client: OpenAI, profile: Profile, job: Job, model: str = "gpt-6.1-sol") -> Advice:
+
+def advise(
+    client: OpenAI,
+    profile: Profile,
+    job: Job,
+    model: str = "gpt-6.1-sol",
+    *,
+    metadata: dict[str, Any] | None = None,
+) -> Advice:
+    started = time.perf_counter()
     response = client.responses.parse(
         model=model,
         instructions=INSTRUCTIONS,
@@ -39,4 +54,25 @@ def advise(client: OpenAI, profile: Profile, job: Job, model: str = "gpt-6.1-sol
     ):
         raise ValueError("AI returned no usable evidence or an unapproved identifier")
     result.evidence_ids = list(dict.fromkeys(result.evidence_ids))
+    if (
+        sum(
+            item.category == "project" and item.id in result.evidence_ids
+            for item in profile.evidence
+        )
+        > 3
+    ):
+        raise ValueError("AI selected too many projects for the bounded CV")
+    if metadata is not None:
+        if response.model != model and not response.model.startswith(model + "-"):
+            raise ValueError("The provider returned a different model")
+        metadata.update(
+            method="openai",
+            requested_model=model,
+            model=response.model,
+            response_id=response.id,
+            reasoning_effort="medium",
+            elapsed_seconds=round(time.perf_counter() - started, 3),
+            input_tokens=response.usage.input_tokens if response.usage else 0,
+            output_tokens=response.usage.output_tokens if response.usage else 0,
+        )
     return result

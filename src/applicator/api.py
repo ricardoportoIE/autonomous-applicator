@@ -20,16 +20,16 @@ from .adviser import advise
 from .browser import LinkedInBrowser
 from .discovery import greenhouse
 from .documents import validate_manifest
-from .models import Contract, DailyUsage, Evidence, Job, Preflight, Profile, Settings, State
+from .models import Advice, Contract, DailyUsage, Evidence, Job, Preflight, Profile, Settings, State
 from .networking import Networking
 from .photos import stored_photo
-from .service import Service
+from .service import PreparationError, Service
 from .store import Store
 
 
 class Preparation(Contract):
     evidence_ids: list[str] | None = None
-    use_ai: bool = False
+    use_ai: bool | None = None
 
 
 class Receipt(Contract):
@@ -69,7 +69,24 @@ def local_token(data: Path) -> str:
 
 def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
     store = Store(data / "applicator.sqlite3")
-    service = Service(store, data)
+
+    def select_ai(profile: Profile, job: Job, metadata: dict[str, Any]) -> Advice:
+        if not os.getenv("OPENAI_API_KEY"):
+            raise PreparationError(
+                "Set a fresh OPENAI_API_KEY locally to enable the AI adviser", 503
+            )
+        model = os.getenv("OPENAI_MODEL", "gpt-6.1-sol")
+        if model != "gpt-6.1-sol":
+            raise PreparationError("Set OPENAI_MODEL=gpt-6.1-sol for document preparation", 503)
+        try:
+            with OpenAI(timeout=30, max_retries=0) as ai_client:
+                return advise(ai_client, profile, job, model, metadata=metadata)
+        except Exception as exc:
+            raise PreparationError(
+                "AI advice failed; no documents or applications were sent"
+            ) from exc
+
+    service = Service(store, data, selector=select_ai)
     network = Networking(store, data)
     browser_lock = threading.Lock()
     stop = threading.Event()
@@ -193,6 +210,10 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
     async def value_error(_request: Request, exc: ValueError) -> JSONResponse:
         return JSONResponse({"detail": str(exc)}, status_code=409)
 
+    @app.exception_handler(PreparationError)
+    async def preparation_error(_request: Request, exc: PreparationError) -> JSONResponse:
+        return JSONResponse({"detail": str(exc)}, status_code=exc.status_code)
+
     @app.exception_handler(KeyError)
     async def key_error(_request: Request, _exc: KeyError) -> JSONResponse:
         return JSONResponse(
@@ -311,28 +332,8 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
 
     @app.post("/api/applications/{app_id}/prepare", dependencies=auth)
     def prepare(app_id: int, preparation: Preparation) -> dict[str, Any]:
-        selected = preparation.evidence_ids
-        if preparation.use_ai:
-            if not os.getenv("OPENAI_API_KEY"):
-                raise HTTPException(
-                    503, "Set a fresh OPENAI_API_KEY locally to enable the AI adviser"
-                )
-            profile, _ = store.profile()
-            job = Job.model_validate(store.application(app_id)["job"])
-            try:
-                advice = advise(
-                    OpenAI(timeout=30, max_retries=0),
-                    profile,
-                    job,
-                    os.getenv("OPENAI_MODEL", "gpt-6.1-sol"),
-                )
-            except Exception as exc:
-                raise HTTPException(
-                    502, "AI advice failed; no documents or applications were sent"
-                ) from exc
-            selected = advice.evidence_ids
         with browser_lock:
-            service.prepare(app_id, selected)
+            service.prepare(app_id, preparation.evidence_ids, use_ai=preparation.use_ai)
         return store.application(app_id)
 
     @app.post("/api/applications/{app_id}/submit", dependencies=auth)
