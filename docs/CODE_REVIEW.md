@@ -59,6 +59,14 @@ The post-test improvement pass reviewed every changed source and test line. New 
 
 Conservative stops remain for changed descriptions, ambiguous uploads, missing documents, unsupported controls and unconfirmed receipts. Tests use fictional records and intercepted provider traffic. Coverage measures execution; it does not certify live provider selectors or every employer form. No real application or invitation was sent during this review.
 
+## LinkedIn job discovery follow-up, 3 October 2026
+
+The authenticated search results retained the older list layout, but opening a vacancy produced a new detail layout without an `h1` or the former company, location and description selectors. The shared reader now supports both explicit contracts. The current header requires a matching company label/link, one title paragraph and one location row before reading the section headed **About the job**, including poster-added requirements. Generated CSS classes are excluded from this contract. Unsupported or incomplete details stop instead of borrowing text from recommended vacancies.
+
+Discovery validates limits, canonicalises only exact approved-origin numeric job links, deduplicates results, excludes recommendations when a results container is available, recognises explicit empty results and rejects job redirects. Submission reuses the same reader and preserves title/company/description comparisons while adding a location comparison before opening Easy Apply. Provider-read failures import no records and expose no raw browser diagnostics. The dashboard shows accessible progress, completion or failure, suppresses duplicate clicks and discards late responses after locking.
+
+Thirty-one added regressions cover current and legacy layouts, delayed rendering, incomplete or ambiguous fields, oversized content, origins, redirects, canonicalisation, limits, no results, changed submission snapshots and mobile search feedback/accessibility. The legacy fixture now declares UTF-8 explicitly so its middle-dot location separator matches the real provider encoding. No assertion or submission safeguard was weakened. A separate live dashboard check imported seven local opportunities, returned HTTP 200 and left both application and invitation attempt counts unchanged. Private browser snapshots remain ignored.
+
 ## Contact portrait follow-up, 3 October 2026
 
 Every changed source and test line was reviewed. Discovery captures only a single visible square image from the bounded primary header containing the reviewed member name, role and location. Covers, small company logos and recommended members' portraits are excluded. Missing, ambiguous or failed captures are optional and do not prevent contact discovery. The cache accepts bounded PNGs only, uses URL hashes as filenames and rejects paths escaping the private data directory. The photo endpoint requires the same local authentication as other connection reads and returns no-store responses.

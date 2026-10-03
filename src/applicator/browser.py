@@ -62,6 +62,95 @@ def ensure_linkedin(page: Page) -> None:
         raise ValueError("Complete login or verification manually using browser-login")
 
 
+def job_details(page: Page, expected_id: str) -> Job:
+    """Read the primary job header and description on a verified detail URL."""
+    ensure_linkedin(page)
+    if linkedin_job_id(page.url) != expected_id:
+        raise ReviewRequired("LinkedIn opened a different job; re-import and review")
+    main = page.get_by_role("main")
+    main.locator(
+        '.job-details-jobs-unified-top-card__company-name, [aria-label^="Company, "]'
+    ).first.wait_for(timeout=10000)
+    legacy = main.locator(".job-details-jobs-unified-top-card__company-name")
+    if legacy.count():
+        selectors = {
+            "title": "h1",
+            "company": ".job-details-jobs-unified-top-card__company-name",
+            "location": ".job-details-jobs-unified-top-card__tertiary-description-container",
+            "description": "#job-details",
+        }
+        main.locator("#job-details").wait_for(timeout=10000)
+        if any(main.locator(selector).count() != 1 for selector in selectors.values()):
+            raise ReviewRequired("LinkedIn job details are ambiguous; review this job manually")
+        details = {
+            key: main.locator(selector).inner_text().strip() for key, selector in selectors.items()
+        }
+        details["location"] = details["location"].split("\u00b7")[0].strip()
+    else:
+        main.get_by_role("heading", name="About the job", exact=True).wait_for(timeout=10000)
+        details = main.evaluate(r"""main => {
+          const text = el => el?.textContent.trim() || '';
+          // Current job detail pages use paragraphs and generated CSS classes.
+          // The company label, its link, and the preceding title/location rows
+          // identify the primary header without reading recommended jobs.
+          const company = main.querySelector('[aria-label^="Company, "]');
+          if (!company) return null;
+          let header = company.parentElement;
+          let identity = null;
+          for (let depth=0; header && header!==main && depth<12; depth++,header=header.parentElement) {
+            if (header.querySelectorAll('[aria-label^="Company, "]').length!==1) break;
+            const rows = [...header.children];
+            const metadata = rows.filter(el=>el.tagName==='P' && el.firstElementChild?.tagName==='SPAN' && text(el.firstElementChild));
+            if (metadata.length!==1) continue;
+            const titles = rows.slice(0,rows.indexOf(metadata[0])).filter(el=>!el.contains(company))
+              .flatMap(row=>[...row.querySelectorAll('p')]);
+            const links = [...company.querySelectorAll('a[href*="/company/"]')].filter(link=>text(link));
+            if (titles.length!==1 || links.length!==1 || company.getAttribute('aria-label')!==`Company, ${text(links[0])}.`) return null;
+            const link = new URL(links[0].href);
+            if (link.origin!=='https://www.linkedin.com' || !link.pathname.startsWith('/company/')) return null;
+            identity = {title:text(titles[0]),company:text(links[0]),location:text(metadata[0].firstElementChild)};
+            break;
+          }
+          if (!identity) return null;
+          const headings = [...main.querySelectorAll('h2,[role="heading"]')].filter(el=>text(el)==='About the job');
+          if (headings.length!==1) return null;
+          let section = headings[0].parentElement;
+          for (let depth=0; section && section!==main && depth<8; depth++,section=section.parentElement) {
+            const body = [...section.children].filter(el=>el.tagName==='P' && text(el));
+            if (!body.length) continue;
+            if (section.querySelectorAll('h1,h2,[role="heading"]').length!==1) return null;
+            const clone = section.cloneNode(true);
+            clone.querySelectorAll('h2,[role="heading"],button,script,style,svg').forEach(el=>el.remove());
+            clone.querySelectorAll('p,li,br').forEach(el=>{el.prepend('\n');el.append('\n');});
+            return {...identity,description:clone.textContent.replace(/\n[ \t]*\n(?:[ \t]*\n)*/g,'\n\n').trim()};
+          }
+          return null;
+        }""")
+    if not details or any(
+        not isinstance(details.get(key), str)
+        or not details[key].strip()
+        or len(details[key]) > maximum
+        for key, maximum in (
+            ("title", 200),
+            ("company", 200),
+            ("location", 200),
+            ("description", 40000),
+        )
+    ):
+        raise ReviewRequired(
+            "LinkedIn job details are incomplete or unsupported; review this job manually"
+        )
+    return Job(
+        source="linkedin",
+        source_id=expected_id,
+        url=f"https://www.linkedin.com/jobs/view/{expected_id}/",
+        title=details["title"],
+        company=details["company"],
+        location=details["location"],
+        description=details["description"],
+    )
+
+
 def member_details(page: Page) -> dict[str, str]:
     """Read only the primary profile card, using explicit legacy or semantic contracts."""
     ensure_linkedin(page)
@@ -303,6 +392,8 @@ class LinkedInBrowser:
         )
 
     def search(self, keywords: str, location: str, limit: int = 10) -> list[Job]:
+        if not 1 <= limit <= 10:
+            raise ValueError("Job discovery limit must be between 1 and 10")
         jobs: list[Job] = []
         with sync_playwright() as playwright, self.context(playwright) as context:
             page = context.new_page()
@@ -312,41 +403,39 @@ class LinkedInBrowser:
                 wait_until="domcontentloaded",
             )
             ensure_linkedin(page)
-            page.locator('a[href*="/jobs/view/"]').first.wait_for(timeout=15000)
-            links = page.locator('a[href*="/jobs/view/"]').evaluate_all(
-                "nodes => nodes.map(n=>n.href)"
+            main = page.get_by_role("main")
+            links_locator = main.locator('a[href*="/jobs/view/"]')
+            empty = main.get_by_role(
+                "heading",
+                name=re.compile(
+                    r"^(?:No (?:matching )?jobs found|No (?:matching )?results found)[.!]?$", re.I
+                ),
             )
-            urls = list(dict.fromkeys(re.sub(r"\?.*$", "", link) for link in links))[:limit]
-            for url in urls:
-                job_id = linkedin_job_id(url)
+            links_locator.or_(empty).filter(visible=True).first.wait_for(timeout=15000)
+            ensure_linkedin(page)
+            if not links_locator.count() and empty.filter(visible=True).count():
+                return []
+            results = main.locator(".jobs-search-results-list, .scaffold-layout__list")
+            if results.count():
+                links_locator = results.locator('a[href*="/jobs/view/"]')
+                links_locator.first.wait_for(timeout=10000)
+            links = links_locator.evaluate_all("nodes => nodes.map(n=>n.href)")
+            ids: list[str] = []
+            for link in links:
+                try:
+                    job_id = linkedin_job_id(link)
+                except ValueError:
+                    continue
+                if job_id not in ids:
+                    ids.append(job_id)
+            if not ids:
+                raise ReviewRequired(
+                    "LinkedIn search has no supported job links; review the search manually"
+                )
+            for job_id in ids[:limit]:
+                url = f"https://www.linkedin.com/jobs/view/{job_id}/"
                 page.goto(url, wait_until="domcontentloaded")
-                ensure_linkedin(page)
-                title = page.locator("h1").first.inner_text(timeout=10000).strip()
-                company = (
-                    page.locator(".job-details-jobs-unified-top-card__company-name")
-                    .first.inner_text(timeout=10000)
-                    .strip()
-                )
-                description = page.locator("#job-details").inner_text(timeout=10000).strip()
-                actual_location = (
-                    page.locator(
-                        ".job-details-jobs-unified-top-card__tertiary-description-container"
-                    )
-                    .first.inner_text(timeout=10000)
-                    .split("·")[0]
-                    .strip()
-                )
-                jobs.append(
-                    Job(
-                        source="linkedin",
-                        source_id=job_id,
-                        title=title,
-                        company=company,
-                        location=actual_location,
-                        url=url,
-                        description=description,
-                    )
-                )
+                jobs.append(job_details(page, job_id))
         return jobs
 
     def contacts(
@@ -425,18 +514,14 @@ class LinkedInBrowser:
         with sync_playwright() as playwright, self.context(playwright) as context:
             page = context.new_page()
             page.goto(job.url, wait_until="domcontentloaded")
-            ensure_linkedin(page)
-            if page.locator("h1").first.inner_text(timeout=10000).strip() != job.title:
+            current_job = job_details(page, job.source_id)
+            if current_job.title != job.title:
                 raise ValueError("Job title changed; re-import and review")
-            company = (
-                page.locator(".job-details-jobs-unified-top-card__company-name")
-                .first.inner_text(timeout=10000)
-                .strip()
-            )
-            if company != job.company:
+            if current_job.company != job.company:
                 raise ValueError("Company changed; re-import and review")
-            current_description = page.locator("#job-details").inner_text(timeout=10000).strip()
-            if " ".join(current_description.split()) != " ".join(job.description.split()):
+            if current_job.location != job.location:
+                raise ValueError("Job location changed; re-import and review")
+            if " ".join(current_job.description.split()) != " ".join(job.description.split()):
                 raise ValueError("Job description changed; re-import and review")
             page.get_by_role("button", name=re.compile(r"^Easy Apply\b")).first.click(timeout=10000)
             for _step in range(10):

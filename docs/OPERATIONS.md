@@ -54,6 +54,10 @@ Edits invalidate pending documents. Reprepare before sending. Documents from con
 
 ## Reviewing the queue
 
+**Search LinkedIn** uses the saved search keywords and location, with the Easy Apply filter. It reads up to ten unique vacancies from the available results, imports complete job details and leaves existing opportunities unchanged. It does not submit applications or consume an application attempt. The button shows **Searching…** and a status message until completion or failure; zero imports can mean no matches or already imported results. Locking the workspace clears the status and discards late dashboard responses.
+
+Job reading supports the legacy layout and the current detail layout, whose header uses company-labelled links and title/location paragraphs. The description includes requirements added by the job poster. Canonical job URLs, exact identifiers and complete fields are required; unexpected redirects or ambiguous details stop the search. Submission repeats the same reader and compares title, company, location and description with the reviewed opportunity before opening Easy Apply. Search errors explain that no opportunities were imported or applications sent during the failed provider read.
+
 Use **Search opportunities** to match role, company and location. Multiple words must all match. Combine the search with **Application status** and sort by newest, highest fit or company. Unevaluated opportunities sort below scored opportunities when sorting by fit. Filters stay in place when records refresh; **Clear filters** resets them. Locking the workspace clears the filters as well as candidate content.
 
 Open an application to see **Submission readiness**. This read-only inspection checks current permissions, attempt capacity, status, integration, LinkedIn scope and identity, candidate confirmation, policy, profile revision, required answers and document integrity. A required cover letter must have a valid PDF. **Recheck readiness** refreshes the inspection without creating materials or consuming an attempt. Manual sources without an integration remain manual hand-offs.

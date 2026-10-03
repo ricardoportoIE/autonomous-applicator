@@ -307,7 +307,8 @@
   .search-status:not(:empty) {
     @apply rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900;
   }
-  #contact-search[aria-busy="true"]::before {
+  #contact-search[aria-busy="true"]::before,
+  #linkedin-search[aria-busy="true"]::before {
     content: "";
     @apply mr-2 inline-block size-4 animate-spin rounded-full border-2 border-current border-r-transparent align-middle;
   }

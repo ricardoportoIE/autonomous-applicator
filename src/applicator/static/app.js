@@ -965,9 +965,29 @@ $("#board-form").onsubmit = (event) => {
 };
 $("#linkedin-search").onclick = () =>
   action(async () => {
-    const result = await api("/discover/linkedin", "POST");
-    await refresh();
-    message("Imported " + result.imported + " LinkedIn opportunities.");
+    const requestToken = token;
+    const button = $("#linkedin-search");
+    const status = $("#linkedin-search-status");
+    button.textContent = "Searching…";
+    button.setAttribute("aria-busy", "true");
+    status.textContent = "Searching LinkedIn and reading job details…";
+    try {
+      const result = await api("/discover/linkedin", "POST");
+      await refresh();
+      if (token !== requestToken) return;
+      status.textContent = result.imported
+        ? `Search complete. ${result.imported} new opportunities imported.`
+        : "Search complete. No new opportunities to import; results may already be in your queue.";
+      message("Imported " + result.imported + " LinkedIn opportunities.");
+    } catch (error) {
+      if (token === requestToken)
+        status.textContent =
+          "Search failed. Check the message above, then try again.";
+      throw error;
+    } finally {
+      button.textContent = "Search LinkedIn";
+      button.removeAttribute("aria-busy");
+    }
   });
 $("#contact-search").onclick = () =>
   action(async () => {
@@ -1061,6 +1081,9 @@ function lockWorkspace() {
   connectionTab = "active";
   updateConnectionTabs();
   $("#contact-search-status").textContent = "";
+  $("#linkedin-search-status").textContent = "";
+  $("#linkedin-search").textContent = "Search LinkedIn";
+  $("#linkedin-search").removeAttribute("aria-busy");
   $("#contact-search").textContent = "Find European recruiters";
   $("#contact-search").removeAttribute("aria-busy");
   clearTimeout(activeInvitation?.timer);

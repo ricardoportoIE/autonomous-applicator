@@ -4,6 +4,7 @@ Version 0.3.0 reviewed and locally validated on 3 October 2026. Repository: [ric
 
 ## Implemented
 
+- Current and legacy LinkedIn job detail readers, exact job redirect checks, bounded canonical discovery and visible job-search progress/outcomes.
 - Read-only submission preflight, current gate explanations, actual daily attempt capacity, searchable/filterable/sortable queues and application-specific activity.
 - Single-connection queue reads, indexed journals and quota queries, required-cover-PDF checks and LinkedIn identity validation before reservation.
 - Locally compiled Tailwind CSS, responsive layouts, semantic navigation, agent readiness, session locking and outcome counts.
@@ -22,6 +23,16 @@ Version 0.3.0 reviewed and locally validated on 3 October 2026. Repository: [ric
 - Optional `gpt-6.1-sol` adviser using structured evidence identifiers. No factual generation or private chain-of-thought logging.
 
 ## Local validation
+
+### LinkedIn job search follow-up
+
+The live search failure was traced to changed vacancy detail markup: results were accessible, but the old detail selectors were absent. The reader now supports the observed paragraph-based header and **About the job** section, while retaining the explicit legacy contract. Search uses canonical approved-origin job IDs, filters duplicate and malformed links, scopes structured results away from recommendations, recognises explicit empty results and verifies the opened vacancy. Submission shares this reader and compares the reviewed title, company, location and description before Easy Apply.
+
+Thirty-one new regressions cover complete identity, unsupported fields/layouts, delayed rendering, limits, redirects, origins, deduplication, no results, changed submission snapshots and accessible mobile progress/outcomes. The legacy provider fixture now explicitly declares its UTF-8 encoding; submission and receipt assertions remain intact.
+
+The local server was restarted after a private SQLite backup and checks that neither queue had an in-flight submission. A live dashboard search returned HTTP 200, imported seven complete local opportunities and showed its progress and completion at 390 pixels without overflow or JavaScript errors. Application and invitation attempt counts were unchanged. Automation remained paused; no real application or invitation was sent. Private identities, snapshots and credentials were not published.
+
+Full local validation on Windows/Python 3.14: **304 Python tests passed** in 813 seconds, plus **8 JavaScript unit tests**. Python statement coverage is **98.31%** (1,508/1,534), branch coverage **95.27%** (463/486), and combined coverage **97.57%**. Dashboard browser coverage is **99.19%** of lines, **95.91%** of branches and **100%** of functions; helper unit coverage remains 100%. Ruff, formatting, strict mypy, frontend lint/format checks, deterministic Tailwind compilation, repository hygiene, distribution verification and Python/npm dependency audits passed. The suite uses fictional or intercepted provider fixtures and makes no paid OpenAI requests. Live Easy Apply submission remains outside this read-only discovery validation.
 
 ### Live OpenAI comparison follow-up
 

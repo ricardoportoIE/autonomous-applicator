@@ -210,7 +210,7 @@ def test_duplicate_clicks_are_suppressed_and_pause_remains_available(dashboard):
     page.get_by_role("button", name="Applications", exact=True).click()
     held = []
     page.route("**/api/discover/linkedin", lambda route: held.append(route))
-    button = page.get_by_role("button", name="Search LinkedIn", exact=True)
+    button = page.locator("#linkedin-search")
     button.click()
     # Reproduce a second event while the operation is pending; native controls are disabled.
     button.dispatch_event("click")
@@ -220,6 +220,48 @@ def test_duplicate_clicks_are_suppressed_and_pause_remains_available(dashboard):
     assert not app.state.store.settings().automation_enabled
     held[0].fulfill(status=200, content_type="application/json", body='{"imported":0}')
     expect(page.locator("#workspace")).not_to_have_attribute("aria-busy", "true")
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("outcome", ["imported", "empty", "failed"])
+def test_linkedin_job_search_shows_progress_and_result(dashboard, outcome):
+    page, _, _ = dashboard
+    page.set_viewport_size({"width": 390, "height": 900})
+    page.get_by_role("button", name="Applications", exact=True).click()
+    held = []
+    page.route("**/api/discover/linkedin", lambda route: held.append(route))
+    button = page.locator("#linkedin-search")
+    status = page.locator("#linkedin-search-status")
+    button.click()
+    expect(button).to_have_text("Searching…")
+    expect(button).to_have_attribute("aria-busy", "true")
+    expect(button).to_be_disabled()
+    expect(status).to_have_text("Searching LinkedIn and reading job details…")
+    assert_networking_accessibility(page)
+    assert len(held) == 1
+    if outcome == "failed":
+        held[0].fulfill(
+            status=502,
+            content_type="application/json",
+            body='{"detail":"The browser could not read the LinkedIn job search."}',
+        )
+        expect(status).to_contain_text("Search failed.")
+        expect(page.locator("#notice")).to_contain_text("The browser could not read")
+    else:
+        held[0].fulfill(
+            status=200,
+            content_type="application/json",
+            body='{"imported":' + ("2" if outcome == "imported" else "0") + "}",
+        )
+        expect(status).to_contain_text(
+            "2 new opportunities imported."
+            if outcome == "imported"
+            else "No new opportunities to import"
+        )
+    expect(button).to_have_text("Search LinkedIn")
+    expect(button).not_to_have_attribute("aria-busy", "true")
+    expect(button).to_be_enabled()
+    assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
 
 
 @pytest.mark.browser
@@ -570,6 +612,8 @@ def test_lock_during_pending_request_does_not_restore_private_content(dashboard)
     held[0].fulfill(status=200, content_type="application/json", body='{"imported":0}')
     expect(page.locator("#workspace")).not_to_have_attribute("aria-busy", "true")
     expect(page.locator("#workspace")).to_be_hidden()
+    expect(page.locator("#linkedin-search-status")).to_have_text("")
+    expect(page.locator("#linkedin-search")).to_have_text("Search LinkedIn")
     assert page.locator("#evidence-list").inner_html() == ""
     assert page.evaluate("sessionStorage.getItem('applicator-token')") is None
 

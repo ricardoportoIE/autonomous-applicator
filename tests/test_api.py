@@ -240,8 +240,12 @@ def test_browser_errors_are_actionable_json_without_raw_provider_details(
     response = session.post(path)
     assert response.status_code == 502
     assert "browser could not" in response.json()["detail"]
-    assert "uncertain applications or invitations" in response.json()["detail"]
+    if operation == "jobs":
+        assert "No opportunities were imported or applications sent" in response.json()["detail"]
+    else:
+        assert "uncertain applications or invitations" in response.json()["detail"]
     assert "private-provider" not in response.text
     assert response.headers["cache-control"] == "no-store"
     assert app.state.network.list() == []
     assert app.state.store.daily_usage().used == 0
+    assert app.state.store.applications() == []

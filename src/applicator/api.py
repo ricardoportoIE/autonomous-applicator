@@ -297,9 +297,16 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
             raise ValueError("Configure the declared LinkedIn authorisation scope first")
         profile, _ = store.profile()
         with browser_lock:
-            jobs = LinkedInBrowser(data, profile).search(
-                settings.search_keywords, settings.search_location
-            )
+            try:
+                jobs = LinkedInBrowser(data, profile).search(
+                    settings.search_keywords, settings.search_location
+                )
+            except BrowserError as exc:
+                raise HTTPException(
+                    502,
+                    "The browser could not read the LinkedIn job search. Check the dedicated "
+                    "browser session and try again. No opportunities were imported or applications sent.",
+                ) from exc
         return {"imported": sum(store.add_job(job)[1] for job in jobs)}
 
     @app.post("/api/applications/{app_id}/prepare", dependencies=auth)
