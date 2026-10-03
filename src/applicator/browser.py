@@ -323,28 +323,192 @@ def approved_answer(label: str, profile: Profile) -> str | None:
     return exact.get(" ".join(label.casefold().split())) or None
 
 
+def application_dialog(page: Page) -> Locator:
+    """Wait for one visible native or ARIA dialog and its rendered form controls."""
+    dialog = page.get_by_role("dialog").filter(visible=True)
+    dialog.wait_for(timeout=10000)
+    controls = dialog.locator('input:not([type="hidden"]), select, textarea')
+    actions = dialog.get_by_role("button", name=re.compile(r"^(Next|Review|Submit application)$"))
+    controls.or_(actions).filter(visible=True).first.wait_for(timeout=10000)
+    return dialog
+
+
+def application_step(dialog: Locator) -> str:
+    """Identify form controls and navigation without recording personal field values."""
+    return str(
+        dialog.evaluate(r"""dialog => JSON.stringify({
+      fields:[...dialog.querySelectorAll('input,select,textarea')].map(el=>[el.id,el.type]),
+      actions:[...dialog.querySelectorAll('button')].filter(el=>el.checkVisibility() && /^(Next|Review|Submit application)$/.test(el.textContent.trim())).map(el=>el.textContent.trim())
+    })""")
+    )
+
+
 def form_questions(page: Page) -> list[dict[str, Any]]:
     # DOM inspection is data extraction, not execution of site-supplied instructions.
     return list(
-        page.locator("[role=dialog]").evaluate("""dialog => {
-      const labelText = el => {const label=el.labels?.[0]?.cloneNode(true); if(label){label.querySelectorAll('input,select,textarea').forEach(n=>n.remove());return label.textContent.trim();} return el.getAttribute('aria-label') || '';};
+        application_dialog(page).evaluate(r"""dialog => {
+      const text = el => el?.textContent.trim() || '';
+      const unmark = value => value.replace(/\s*\*$/, '').trim();
+      const groupFor = el => el.closest('fieldset,[role="radiogroup"]');
+      const semanticGroup = el => {
+        const group = groupFor(el);
+        if (!group || group.getAttribute('role')!=='radiogroup') return null;
+        const siblings = [...group.parentElement.children];
+        const labels = siblings.slice(0,siblings.indexOf(group)).filter(node=>node.tagName==='P' && text(node));
+        if (labels.length!==1) return null;
+        const label = unmark(text(labels[0]));
+        const cards = [...group.querySelectorAll('[role="radio"]')];
+        const inputs = [...group.querySelectorAll('input[type="radio"]')];
+        if (!label || cards.length<2 || cards.length!==inputs.length || cards.some(card=>card.querySelectorAll('input[type="radio"]').length!==1 || unmark(card.getAttribute('aria-label') || '')!==label)) return null;
+        return {label,required:text(labels[0]).endsWith('*')};
+      };
+      const widget = el => el.type==='checkbox' ? el.closest('[role="checkbox"]') : null;
+      const required = el => el.required || el.getAttribute('aria-required') === 'true' || widget(el)?.getAttribute('aria-required') === 'true' || (el.type==='radio' && (groupFor(el)?.getAttribute('aria-required')==='true' || semanticGroup(el)?.required));
+      const labelText = el => {
+        const label=el.labels?.[0]?.cloneNode(true);
+        if(label) label.querySelectorAll('input,select,textarea,[aria-hidden="true"]').forEach(n=>n.remove());
+        const choice = el.type==='radio' && semanticGroup(el) ? text(el.closest('[role="radio"]')) : '';
+        const value = (text(label) || el.getAttribute('aria-label') || widget(el)?.getAttribute('aria-label') || choice || '').trim();
+        return required(el) ? unmark(value) : value;
+      };
+      const groupLabel = el => text(groupFor(el)?.querySelector('legend')) || groupFor(el)?.getAttribute('aria-label') || semanticGroup(el)?.label || '';
       return [...dialog.querySelectorAll('input,select,textarea')]
       .filter(el => el.type !== 'hidden' && el.type !== 'file' && !['submit','button'].includes(el.type))
-      .map(el => ({id:el.id, type:el.type, value:el.value,
+      .map(el => ({id:el.id, type:el.type, value:el.value, checked:el.checked || ['true','mixed'].includes(widget(el)?.getAttribute('aria-checked')),
         label:labelText(el),
-        group:el.type === 'radio' ? (el.closest('fieldset')?.querySelector('legend')?.textContent || el.closest('[role=radiogroup]')?.getAttribute('aria-label') || '').trim() : '',
-        group_choices:el.type === 'radio' && el.name ? [...dialog.querySelectorAll('input[type=radio]')].filter(other=>other.name===el.name).map(labelText) : [],
-        required:el.required || el.getAttribute('aria-required') === 'true',
+        group:el.type === 'radio' ? (required(el) ? unmark(groupLabel(el)) : groupLabel(el).trim()) : '',
+        group_choices:el.type === 'radio' && el.name ? [...(groupFor(el) || dialog).querySelectorAll('input[type=radio]')].filter(other=>other.name===el.name).map(labelText) : [],
+        required:!!required(el),
         choices:el.tagName === 'SELECT' ? [...el.options].map(o=>o.text) : []}));}""")
     )
 
 
-def fill_questions(page: Page, profile: Profile) -> None:
-    for field in form_questions(page):
+def contact_phone_answers(fields: list[dict[str, Any]], profile: Profile) -> dict[str, str]:
+    """Split an approved international phone only against the form's country choices."""
+    countries = [
+        field for field in fields if str(field["label"]).casefold() == "phone country code"
+    ]
+    if not countries:
+        return {}
+    phones = [
+        field
+        for field in fields
+        if str(field["label"]).casefold() in {"phone number", "mobile phone number"}
+    ]
+    if len(countries) != 1 or len(phones) != 1:
+        raise ValueError("Ambiguous phone controls require manual review")
+    country, phone = countries[0], phones[0]
+    country_label, phone_label = str(country["label"]), str(phone["label"])
+    number = approved_answer(phone_label, profile)
+    country_answer = approved_answer(country_label, profile)
+    if not number:
+        raise ValueError(f"Approve an exact answer for: {phone_label}")
+    if country_answer and country_answer not in country["choices"]:
+        raise ValueError(f"Approved answer does not match available choices: {country_label}")
+    if country_answer and not number.startswith("+"):
+        return {country_label: country_answer, phone_label: number}
+    digits = re.sub(r"[ ()-]", "", number)
+    if not re.fullmatch(r"\+[1-9]\d{7,14}", digits):
+        raise ValueError(f"Approve an exact answer for: {country_label}")
+    matches = []
+    for choice in country["choices"]:
+        match = re.search(r"\(\+(\d{1,4})\)$", choice)
+        if match and digits[1:].startswith(match[1]) and len(digits[1:]) > len(match[1]):
+            matches.append((choice, match[1]))
+    if country_answer:
+        matches = [item for item in matches if item[0] == country_answer]
+        if not matches:
+            raise ValueError(
+                "Approved phone country code does not match the approved international phone number"
+            )
+    else:
+        longest = max((len(item[1]) for item in matches), default=0)
+        matches = [item for item in matches if len(item[1]) == longest]
+    if len(matches) != 1:
+        raise ValueError(f"Approve an exact answer for: {country_label}")
+    choice, prefix = matches[0]
+    return {country_label: choice, phone_label: digits[1 + len(prefix) :]}
+
+
+def upload_resume(page: Page, dialog: Locator, document: Path) -> set[str] | None:
+    """Upload the verified CV through the current résumé widget and confirm selection."""
+    button = dialog.get_by_role("button", name="Upload resume", exact=True).filter(visible=True)
+    if not button.count():
+        return None
+    if button.count() != 1:
+        raise ValueError("Ambiguous resume upload controls require manual review")
+    if not document.is_file():
+        raise ValueError("Expected the verified document for this job and candidate")
+    scope = button
+    for _depth in range(8):
+        scope = scope.locator("xpath=..")
+        if scope.evaluate("el => el.tagName==='DIALOG' || el.getAttribute('role')==='dialog'"):
+            raise ValueError("The resume upload section is unsupported; review manually")
+        if scope.get_by_text(re.compile(r"^Resume\s*\*?$"), exact=True).count() == 1:
+            break
+    else:
+        raise ValueError("The resume upload section is unsupported; review manually")
+    if dialog.locator('input[type="file"]').count() != scope.locator('input[type="file"]').count():
+        raise ValueError("Additional upload fields require manual mapping")
+    with page.expect_file_chooser(timeout=10000) as chooser:
+        button.click()
+    chooser.value.set_files(str(document))
+    filename = scope.get_by_text(document.name, exact=True)
+    filename.wait_for(timeout=10000)
+    card = filename
+    for _depth in range(8):
+        card = card.locator("xpath=..")
+        if (
+            card.locator('[role="radio"]').count() == 1
+            and card.locator('input[type="radio"]').count() == 1
+        ):
+            break
+        if card.evaluate("(el, root) => el===root", scope.element_handle()):
+            raise ValueError("The uploaded resume selection is ambiguous; review manually")
+    else:
+        raise ValueError("The uploaded resume selection is unsupported; review manually")
+    card.locator('[role="radio"][aria-checked="true"]').wait_for(timeout=10000)
+    if not card.locator('input[type="radio"]').is_checked():
+        raise ValueError("The uploaded resume is not selected; review manually")
+    ids = scope.locator('input[type="radio"]').evaluate_all("""inputs => {
+      const documentLabel = text => !text.trim() || /\\.(?:pdf|docx?)\\b/i.test(text);
+      const resumeLabel = text => !text.trim() || /^Resume\\s*\\*?$/i.test(text.trim());
+      if (inputs.some(el=>{
+        const group = el.closest('fieldset,[role="radiogroup"]');
+        const groupLabel = group?.querySelector('legend')?.textContent || group?.getAttribute('aria-label') ||
+          (group?.getAttribute('aria-labelledby') || '').split(/\\s+/).map(id=>document.getElementById(id)?.textContent || '').join(' ');
+        return !el.id || !el.closest('[role="radio"]') || !resumeLabel(groupLabel) ||
+          !documentLabel(el.getAttribute('aria-label') || '') || [...el.labels].some(label=>!documentLabel(label.textContent));
+      })) return null;
+      return inputs.map(el=>el.id);
+    }""")
+    if (
+        not ids
+        or len(set(ids)) != len(ids)
+        or dialog.locator("input,select,textarea").evaluate_all(
+            "(inputs, ids) => inputs.filter(el=>ids.includes(el.id)).length", ids
+        )
+        != len(ids)
+    ):
+        raise ValueError("Resume controls overlap with questionnaire fields; review manually")
+    return set(ids)
+
+
+def fill_questions(
+    page: Page, profile: Profile, *, resume_field_ids: set[str] | None = None
+) -> None:
+    fields = form_questions(page)
+    phone_answers = contact_phone_answers(fields, profile)
+    dialog = page.get_by_role("dialog").filter(visible=True)
+    for field in fields:
         label, field_id = str(field["label"]).strip(), str(field["id"])
+        if resume_field_ids and field_id in resume_field_ids:
+            continue
+        if field["type"] == "checkbox" and not field["required"] and not field.get("checked"):
+            continue
         if not label or not field_id:
             raise ValueError("Unlabelled form control requires manual review")
-        locator = page.locator('[id="' + field_id.replace('"', '\\"') + '"]')
+        locator = dialog.locator('[id="' + field_id.replace('"', '\\"') + '"]')
         if field["type"] == "radio":
             group = field["group"]
             if not group or not field["group_choices"]:
@@ -355,14 +519,23 @@ def fill_questions(page: Page, profile: Profile) -> None:
             if value not in field["group_choices"]:
                 raise ValueError(f"Approved answer does not match available choices: {group}")
             if label == value:
-                locator.check()
+                card = locator.locator("xpath=ancestor::*[@role='radio'][1]")
+                if card.count() == 1 and card.is_visible():
+                    if card.get_attribute("aria-checked") != "true":
+                        card.click()
+                    if card.get_attribute("aria-checked") != "true" or not locator.is_checked():
+                        raise ValueError(
+                            "The approved radio answer was not selected; review manually"
+                        )
+                else:
+                    locator.check()
             continue
         if field["type"] == "checkbox":
             if re.fullmatch(r"Follow .+ to stay up to date.*", label):
                 locator.uncheck()
                 continue
             raise ValueError(f"Explicit selection or consent requires manual review: {label}")
-        value = approved_answer(label, profile)
+        value = phone_answers.get(label) or approved_answer(label, profile)
         if not value or not value.strip():
             # Existing values also need validation; never assume a prefilled legal answer is correct.
             if field["required"] or field["value"]:
@@ -524,13 +697,19 @@ class LinkedInBrowser:
             if " ".join(current_job.description.split()) != " ".join(job.description.split()):
                 raise ValueError("Job description changed; re-import and review")
             page.get_by_role("button", name=re.compile(r"^Easy Apply\b")).first.click(timeout=10000)
+            seen_steps: set[str] = set()
             for _step in range(10):
                 ensure_linkedin(page)
-                dialog = page.get_by_role("dialog")
-                dialog.wait_for(timeout=10000)
-                fill_questions(page, self.profile)
+                dialog = application_dialog(page)
+                if application_step(dialog) in seen_steps:
+                    raise ValueError(
+                        "The application did not advance; review the form's validation messages"
+                    )
+                cv = folder / (filename_stem(self.profile, job) + "_CV.pdf")
+                resume_fields = upload_resume(page, dialog, cv)
+                fill_questions(page, self.profile, resume_field_ids=resume_fields)
                 uploads = dialog.locator('input[type="file"]')
-                for index in range(uploads.count()):
+                for index in range(uploads.count() if resume_fields is None else 0):
                     upload = uploads.nth(index)
                     label = upload.evaluate(
                         "el => (el.getAttribute('aria-label') || el.labels?.[0]?.textContent || el.id || '').toLowerCase()"
@@ -562,6 +741,7 @@ class LinkedInBrowser:
                 next_button = dialog.get_by_role("button", name=re.compile(r"^(Next|Review)$"))
                 if next_button.count() != 1:
                     raise ValueError("Unsupported Easy Apply step; review manually")
+                seen_steps.add(application_step(dialog))
                 next_button.click()
                 page.wait_for_timeout(600)
             raise ValueError("Easy Apply exceeded the ten-step limit")

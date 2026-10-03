@@ -5,6 +5,7 @@ Version 0.3.0 reviewed and locally validated on 3 October 2026. Repository: [ric
 ## Implemented
 
 - Current and legacy LinkedIn job detail readers, exact job redirect checks, bounded canonical discovery and visible job-search progress/outcomes.
+- Native/ARIA Easy Apply dialogues, grounded phone country components, verified CV chooser selection, custom screening radios and stopped-step detection.
 - Read-only submission preflight, current gate explanations, actual daily attempt capacity, searchable/filterable/sortable queues and application-specific activity.
 - Single-connection queue reads, indexed journals and quota queries, required-cover-PDF checks and LinkedIn identity validation before reservation.
 - Locally compiled Tailwind CSS, responsive layouts, semantic navigation, agent readiness, session locking and outcome counts.
@@ -23,6 +24,16 @@ Version 0.3.0 reviewed and locally validated on 3 October 2026. Repository: [ric
 - Optional `gpt-6.1-sol` adviser using structured evidence identifiers. No factual generation or private chain-of-thought logging.
 
 ## Local validation
+
+### Easy Apply form follow-up
+
+The live failure occurred before final submission because the current form used a native dialogue without an explicit role attribute. The repair also covers required-label markers, separate phone country/number inputs, the current resume file chooser and custom screening radio cards. Resume selection is verified against the job-specific CV filename and both native/ARIA checked state; questionnaire controls cannot be excluded through overlapping identifiers. Optional unchecked preferences remain unchecked, and stalled steps stop before repeated uploads.
+
+An authenticated rehearsal filled approved contacts, uploaded and verified the job-specific CV and reached an unanswered mandatory work-authorisation question. No final submission was clicked or new attempt reserved. The discovered question and its actual binary choices are retained locally. Conditional candidate facts were saved separately; they were not converted into an approved Yes/No answer. The target remains in review, with current documents and an explicit unanswered-question blocker. Automation remains paused. Private records, CVs and browser snapshots remain excluded from Git.
+
+A read-only authenticated dashboard check verified a blank answer selector with the provider's actual choices, blocked preflight, valid regenerated documents and no JavaScript errors. It changed no candidate answers and sent no application.
+
+Full local validation on Windows/Python 3.14: **350 Python tests passed** in 804 seconds, including 46 new form regressions, plus **8 JavaScript unit tests**. Python statement coverage is **98.23%** (1,605/1,634), branch coverage **95.04%** (517/544), and combined coverage **97.43%**. Dashboard browser coverage remains **99.19%** of lines, **95.91%** of branches and **100%** of functions. Ruff, source/test formatting, strict mypy, frontend lint/format checks, repository hygiene and the distribution build passed. No paid OpenAI requests were made. The local server was restarted after a private SQLite backup and paused/no-in-flight checks; a repeated authenticated dashboard check retained the unanswered question, valid documents and original attempt count.
 
 ### LinkedIn job search follow-up
 

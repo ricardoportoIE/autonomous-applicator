@@ -96,6 +96,10 @@ Each application has a PDF CV and editable DOCX, plus cover letter counterparts 
 
 Before a real submission, inspect the generated PDF and LinkedIn's parsed fields. Document tests verify text extraction, page dimensions, length, size and hash checks. They do not certify every employer's ATS. Live upload mappings and Easy Apply selectors require initial account-level validation.
 
+Easy Apply supports native and ARIA dialogues, waits for asynchronously rendered controls and reads required markers. A separate phone country selector is matched against the approved international phone number and the form's actual choices. Ambiguous country prefixes require an exact approved choice. The current **Upload resume** chooser uploads the job-specific CV and verifies its filename and selected native/ARIA radio state within the Resume section. Additional upload types or overlapping questionnaire controls stop for review. The older labelled file-input form remains supported.
+
+Optional unchecked preferences, including premium top-choice selections, remain unchecked. Required or already selected unknown consent controls require review. Custom screening radio cards use the exact approved question and available choice; a prefilled answer does not establish permission or eligibility. A provider-discovered question is retained in the application record so the next local preflight can explain the missing answer. Preserve conditional work-authorisation details as candidate facts; do not convert them automatically into a generic Yes/No answer. When a step does not advance, the adapter stops rather than uploading the CV repeatedly or clicking through validation errors.
+
 ## Backup and recovery
 
 Stop the server before copying the entire ignored `data` directory, including SQLite WAL/SHM sidecars if present. Restore while stopped, then restart; interrupted attempts remain uncertain. Store backups securely. The event log and receipt are the source of truth, not a dashboard success message alone.
