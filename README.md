@@ -1,5 +1,7 @@
 # Autonomous Applicator
 
+<img src="frontend/public/icon.svg" width="64" height="64" alt="Autonomous Applicator: a checked application briefcase and a forward arrow" />
+
 **An evidence-led career workspace: tailored applications, controlled automation and a record of every decision.**
 
 [![Quality and application safeguards](https://github.com/ricardoportoIE/autonomous-applicator/actions/workflows/ci.yml/badge.svg)](https://github.com/ricardoportoIE/autonomous-applicator/actions/workflows/ci.yml)
@@ -129,7 +131,7 @@ Recorded outcomes can inform reviewed improvements. The system does not retrain 
 
 ## Quality and verification
 
-The frontend review expanded measurement from three helpers to **all ten authored runtime TypeScript/TSX files**, including the bootstrap. **145 Vitest tests achieve 100% lines, statements, functions and branches**, enforced **per file** in CI. Only type-only contracts and declaration files are excluded. Libraries, generated bundles and test code are outside this measurement.
+The frontend review expanded measurement from three helpers to **all ten authored runtime TypeScript/TSX files**, including the bootstrap. **147 Vitest tests achieve 100% lines, statements, functions and branches**, enforced **per file** in CI. Only type-only contracts and declaration files are excluded. Libraries, generated bundles and test code are outside this measurement.
 
 | Verification layer | What it checks |
 | --- | --- |

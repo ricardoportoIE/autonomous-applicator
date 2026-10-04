@@ -112,9 +112,14 @@ export function App({ workspace }: { workspace: Workspace }) {
       </a>
       <aside className="sidebar">
         <a className="brand" href="#main-content">
-          <span className="brand-mark">
-            a<span>+</span>
-          </span>
+          <img
+            className="brand-mark"
+            src="./icon.svg"
+            alt=""
+            aria-hidden="true"
+            width="44"
+            height="44"
+          />
           <span>
             Autonomous
             <br />

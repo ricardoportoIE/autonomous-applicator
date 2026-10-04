@@ -1,8 +1,24 @@
 from pathlib import Path
 
 import pytest
+from playwright.sync_api import expect
 
 from applicator.models import Evidence, Job, Profile
+
+
+@pytest.fixture(autouse=True)
+def browser_assertion_deadline(request):
+    if request.node.get_closest_marker("browser") is None:
+        yield
+        return
+    # These are state assertions, not response-time benchmarks. Document writes,
+    # SQLite commits and the authenticated refresh can exceed five seconds on CI.
+    # Waiting observes the existing action; it never repeats a provider command.
+    expect.set_options(timeout=15000)
+    try:
+        yield
+    finally:
+        expect.set_options(timeout=5000)
 
 
 @pytest.fixture

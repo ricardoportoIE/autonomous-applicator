@@ -6,6 +6,8 @@ from test_browser import TOKEN
 from test_frontend import dashboard as dashboard
 from test_react_frontend import check_accessibility
 
+from applicator.models import Settings, State
+
 
 @pytest.mark.browser
 @pytest.mark.parametrize(
@@ -101,3 +103,55 @@ def test_blocked_session_storage_keeps_local_login_and_lock_operational(dashboar
     page.get_by_role("button", name="Lock workspace", exact=True).click()
     expect(page.get_by_role("button", name="Unlock workspace")).to_be_visible()
     expect(page.get_by_text("Alex Example", exact=True)).to_have_count(0)
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("operation", ["prepare", "not-sent"])
+def test_slow_operation_completion_is_observed_without_repeating_the_command(dashboard, operation):
+    page, app, _ = dashboard
+    store = app.state.store
+    row = store.applications()[0]
+    if operation == "not-sent":
+        store.set_settings(Settings(automation_enabled=True))
+        attempt = store.reserve(row["id"], row["revision"])
+        store.finish(row["id"], attempt, None)
+        page.reload()
+    page.get_by_role("button", name="Applications", exact=True).click()
+    page.get_by_role("button", name="Open Backend Engineer at Example Employer", exact=True).click()
+    endpoint = f"/api/applications/{row['id']}/{operation}"
+    # Delay delivery to the controller after the real local response. The browser
+    # keeps rendering and polling whilst the one command remains in flight.
+    page.evaluate(
+        "endpoint => { const original = window.fetch; window.fetch = async (...args) => {"
+        "const response = await original(...args);"
+        "if (args[0] === endpoint) await new Promise(resolve => setTimeout(resolve, 6000));"
+        "return response; }; }",
+        endpoint,
+    )
+    commands = []
+    page.on(
+        "request",
+        lambda request: commands.append(request.url)
+        if request.method == "POST" and request.url.endswith(endpoint)
+        else None,
+    )
+    if operation == "prepare":
+        page.get_by_role("button", name="Prepare documents", exact=True).click()
+        notice = "Documents prepared from approved evidence."
+    else:
+        page.get_by_role("tab", name="Activity & outcome", exact=True).click()
+        page.get_by_label(
+            "I checked the provider and this application was not sent", exact=True
+        ).check()
+        page.get_by_role("button", name="Confirm application was not sent", exact=True).click()
+        notice = "Confirmed as not sent. Capacity released; prepare again manually before retrying."
+    expect(page.locator("#workspace")).to_have_attribute("aria-busy", "true")
+    expect(page.locator("#notice")).to_have_text(notice)
+    expect(page.locator("#workspace")).not_to_have_attribute("aria-busy", "true")
+    assert len(commands) == 1
+    assert store.daily_usage().used == 0
+    if operation == "not-sent":
+        assert store.daily_usage().held == 0
+        assert store.application(row["id"])["state"] == State.REVIEW
+    else:
+        assert store.application(row["id"])["manifest"]["files"]

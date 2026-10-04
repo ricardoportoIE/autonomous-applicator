@@ -76,7 +76,7 @@
     @apply mb-7 flex items-center gap-3 text-xl font-semibold leading-tight text-white no-underline hover:no-underline;
   }
   .brand-mark {
-    @apply flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#d7f27e] text-xl font-bold text-[#172033];
+    @apply size-11 shrink-0 rounded-xl;
   }
   .brand span:last-child {
     @apply text-base;
