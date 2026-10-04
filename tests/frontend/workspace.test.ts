@@ -23,6 +23,34 @@ describe("workspace ownership and operations", () => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
+  it("refreshes a changed application after failed preparation without repeating the mutation", async () => {
+    await workspace.unlock("fixture");
+    await workspace.openDetail(1);
+    const json = vi
+      .spyOn(workspace.api, "json")
+      .mockImplementation(async (path) => {
+        if (path.endsWith("/prepare"))
+          throw new ApiError("AI preparation failed; review required", 503);
+        if (path === "/applications/1")
+          return { ...application, state: "review", manifest: {} } as never;
+        return payload("/api" + path) as never;
+      });
+    await workspace.action(() =>
+      workspace.mutate("/applications/1/prepare", "POST", {}, "Prepared", 1),
+    );
+    expect(workspace.getSnapshot().detail?.row).toMatchObject({
+      state: "review",
+      manifest: {},
+    });
+    expect(workspace.getSnapshot().notice).toContain("AI preparation failed");
+    expect(
+      json.mock.calls.filter(([path]) => path.endsWith("/prepare")),
+    ).toHaveLength(1);
+    json.mockRejectedValue(new Error("Status reads unavailable"));
+    await expect(
+      workspace.mutate("/applications/1/prepare", "POST", {}, "Prepared", 1),
+    ).rejects.toThrow("Status reads unavailable");
+  });
   it("retains the newer refresh when an older settings response arrives later", async () => {
     await workspace.unlock("fixture");
     let finish!: (value: unknown) => void;

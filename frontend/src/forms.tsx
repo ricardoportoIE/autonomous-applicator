@@ -301,6 +301,7 @@ export function JobForm({
       id="job-form"
       onSubmit={(event) => {
         const form = read(event);
+        const session = workspace.api.session();
         void workspace.action(async () => {
           const url = text(form, "url");
           const identity = linkedinIdentity(url);
@@ -317,6 +318,8 @@ export function JobForm({
                   .map((byte) => byte.toString(16).padStart(2, "0"))
                   .join("")
               : "";
+          if (!workspace.api.isCurrent(session))
+            throw new Error("Workspace locked. Unlock it before continuing.");
           const value = {
             title: text(form, "title"),
             company: text(form, "company"),

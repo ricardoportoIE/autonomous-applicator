@@ -8,6 +8,8 @@ Corrections found during the migration include explicit textarea/select accessib
 
 Vitest/React Testing Library test the typed API client, workspace ownership and components. Existing real-browser regressions were adapted to explicit modal buttons and application tabs; assertions for receipts, quotas, approved answers, provenance, private photos, uncertainty and pause/reload observation were retained. Additional Playwright checks exercise complete creation payloads, native modal accessibility/keyboard behaviour, tab content and manual evidence selection. Validation results are recorded in [STATUS.md](STATUS.md).
 
+The final pass found a transient local read failure and a cached-document consistency gap after failed preparation. Read transport failures now have one bounded retry with session checks, while POST/PUT/DELETE and HTTP failures are never repeated. Failed application mutations refresh local snapshots without reissuing the command, and the original diagnostic is retained if reconciliation reads fail. The opportunity form checks its session after asynchronous identity hashing, preventing a stale draft from being posted after locking and unlocking again. Regressions cover all three cases.
+
 ## Original source review
 
 Every line of the authored runtime modules, dashboard HTML, JavaScript and styling, test suite, CLI, repository hygiene script, CI configuration and operational documentation was inspected. Generated CSS and dependency lockfiles were checked through reproducible builds and dependency audits. Dependency source code, the live LinkedIn website and private source documents are outside this review's line-by-line scope.

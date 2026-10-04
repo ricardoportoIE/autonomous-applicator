@@ -5,7 +5,10 @@ from pathlib import Path
 
 import pytest
 from playwright.sync_api import expect
+from test_browser import TOKEN
 from test_frontend import dashboard as dashboard
+
+from applicator.service import PreparationError
 
 
 def check_accessibility(page):
@@ -173,3 +176,75 @@ def test_lock_closes_open_modal_and_discards_candidate_draft(dashboard):
     expect(page.get_by_role("dialog")).to_have_count(0)
     assert "Private unsaved draft" not in page.locator("body").inner_text()
     assert app.state.store.profile()[1] == revision
+
+
+@pytest.mark.browser
+def test_failed_ai_preparation_refreshes_document_provenance_and_review_state(dashboard):
+    page, app, _ = dashboard
+
+    def failed_selection(*_args):
+        raise PreparationError("AI preparation could not finish. Review this opportunity.")
+
+    app.state.service.selector = failed_selection
+    page.get_by_role("button", name="Applications", exact=True).click()
+    page.get_by_role("button", name=re.compile("^Open Backend Engineer")).click()
+    expect(page.get_by_role("region", name="Document preparation")).to_contain_text("local rules")
+    page.get_by_role("button", name="Select evidence with GPT-6.1 Sol", exact=True).click()
+    expect(page.locator("#notice")).to_contain_text("AI preparation could not finish")
+    expect(page.get_by_role("region", name="Document preparation")).to_contain_text(
+        "Preparation origin is unavailable"
+    )
+    expect(page.locator("#application-detail .badge").first).to_have_text("For review")
+    assert page.get_by_role("button", name=re.compile("^Download ")).count() == 0
+    assert app.state.store.application(1)["state"] == "review"
+    assert app.state.store.daily_usage().used == 0
+
+
+@pytest.mark.browser
+def test_transient_read_failure_recovers_without_repeating_a_command(dashboard):
+    page, app, _ = dashboard
+    calls = []
+
+    def temporary_failure(route):
+        calls.append(route.request.method)
+        if len(calls) == 1:
+            route.abort("connectionreset")
+        else:
+            route.continue_()
+
+    page.route("**/api/settings", temporary_failure)
+    page.reload()
+    expect(page.locator("#workspace")).to_be_visible()
+    assert calls == ["GET", "GET"]
+    assert app.state.store.daily_usage().used == 0
+
+
+@pytest.mark.browser
+def test_lock_during_opportunity_hashing_cannot_import_a_stale_draft(dashboard):
+    page, app, _ = dashboard
+    before = app.state.store.applications()
+    page.get_by_role("button", name="Applications", exact=True).click()
+    page.get_by_role("button", name="Add opportunity", exact=True).click()
+    for label, value in [
+        ("Job title", "Unsaved role"),
+        ("Company", "Example"),
+        ("Location", "Ireland"),
+        ("Job URL", "https://example.test/jobs/unsaved"),
+        ("Job description", "Private unsaved candidate draft"),
+    ]:
+        page.get_by_label(label, exact=True).fill(value)
+    page.evaluate(
+        "() => {crypto.subtle.digest = () => new Promise(resolve => {window.finishHash = () => resolve(new ArrayBuffer(32));});}"
+    )
+    page.get_by_role("button", name="Save opportunity", exact=True).click()
+    page.get_by_role("button", name="Close dialogue", exact=True).click()
+    page.get_by_role("button", name="Lock workspace", exact=True).click()
+    page.get_by_label("Access token", exact=True).fill(TOKEN)
+    page.get_by_role("button", name="Unlock workspace", exact=True).click()
+    expect(page.locator("#notice")).to_have_text("Local workspace unlocked.")
+    requests = []
+    page.on("request", lambda request: requests.append((request.method, request.url)))
+    page.evaluate("async () => {window.finishHash(); await new Promise(requestAnimationFrame);}")
+    expect(page.locator("#workspace")).not_to_have_attribute("aria-busy", "true")
+    assert not any(method == "POST" and url.endswith("/api/jobs") for method, url in requests)
+    assert app.state.store.applications() == before

@@ -31,7 +31,7 @@ export class ApiClient {
     revision?: number,
   ) {
     const session = this.generation;
-    const response = await fetch("/api" + path, {
+    const options: RequestInit = {
       method,
       headers: {
         Authorization: "Bearer " + this.token,
@@ -39,7 +39,18 @@ export class ApiClient {
         ...(revision === undefined ? {} : { "If-Match": String(revision) }),
       },
       body: body === undefined ? undefined : JSON.stringify(body),
-    });
+    };
+    let response: Response;
+    try {
+      response = await fetch("/api" + path, options);
+    } catch (error) {
+      // One bounded transport retry is safe for reads; mutations are never retried.
+      if (method !== "GET" || !this.isCurrent(session)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      if (!this.isCurrent(session))
+        throw new ApiError("Workspace locked. Unlock it before continuing.");
+      response = await fetch("/api" + path, options);
+    }
     if (!this.isCurrent(session))
       throw new ApiError("Workspace locked. Unlock it before continuing.");
     if (!response.ok) {

@@ -10,6 +10,28 @@ describe("session-bound API client", () => {
     expired.mockClear();
   });
   afterEach(() => vi.unstubAllGlobals());
+  it("retries a transient read transport failure once, but never retries a mutation", async () => {
+    const fetcher = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce(Response.json({ ok: true }));
+    vi.stubGlobal("fetch", fetcher);
+    expect(await client.json("/settings")).toEqual({ ok: true });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    fetcher.mockReset().mockRejectedValue(new TypeError("Failed to fetch"));
+    await expect(client.json("/applications/1/submit", "POST")).rejects.toThrow(
+      "Failed to fetch",
+    );
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+  it("does not retry a transport failure after locking during backoff", async () => {
+    const fetcher = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+    vi.stubGlobal("fetch", fetcher);
+    const result = client.json("/settings");
+    setTimeout(() => client.setToken(""), 10);
+    await expect(result).rejects.toThrow("Workspace locked");
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
   it("sends authentication and the reviewed profile revision without leaking them to URLs", async () => {
     const fetcher = vi.fn().mockResolvedValue(Response.json({ ok: true }));
     vi.stubGlobal("fetch", fetcher);

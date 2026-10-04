@@ -227,12 +227,31 @@ export class Workspace {
     detailId?: number,
     profileRevision = this.state.revision,
   ) {
-    await this.api.json(
-      path,
-      method,
-      body,
-      path === "/profile" ? profileRevision : undefined,
-    );
+    const session = this.api.session();
+    try {
+      await this.api.json(
+        path,
+        method,
+        body,
+        path === "/profile" ? profileRevision : undefined,
+      );
+    } catch (error) {
+      // Preparation/submission may have recorded a review or receipt before failing.
+      // Reconcile the displayed snapshot through reads, without repeating the action.
+      if (
+        detailId !== undefined &&
+        this.api.isCurrent(session) &&
+        this.state.unlocked
+      ) {
+        try {
+          await this.refresh();
+          await this.openDetail(detailId);
+        } catch {
+          /* Keep the original actionable diagnostic. */
+        }
+      }
+      throw error;
+    }
     await this.refresh();
     if (detailId !== undefined) await this.openDetail(detailId);
     this.message(notice);

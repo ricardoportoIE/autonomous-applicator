@@ -36,6 +36,8 @@ Background pause remains available during long workspace actions. A native modal
 
 The API, browser adapters, scoring, FIFO application lease, attempt reservations, CV renderer and GPT-6.1 Sol defaults retain their existing contracts. React does not send invitations or applications from effects: observation and explicit commands are separate. Poll failures never retry external actions. Profile edits retain `If-Match` revision checks. Candidate content is rendered as text, and portrait object URLs are revoked on lock. The existing same-origin Content Security Policy remains enabled; assets, icons and fonts require no CDN.
 
+Read requests have one bounded retry after a transport failure, provided the same session still owns them. HTTP errors and mutation requests are not retried. A failed application action refreshes the opportunity and readiness snapshot through authenticated reads, so cleared documents, review holds or recorded receipts are reflected without repeating the command. Opportunity identity hashing also retains its opening session: a locked draft cannot be imported after another unlock.
+
 ## Development and checks
 
 ```powershell
