@@ -1,5 +1,7 @@
 # Delivery and validation record
 
+Version 0.3.0 reviewed through the sending-capacity and routine-answer follow-up on 4 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+
 ## Sending capacity and routine answers, 4 October 2026
 
 The daily application limit now counts confirmed sends. Safe stops before sending release their reservation atomically with the review record; uncertain or pending sends hold capacity separately across calendar days. Confirmed manual receipts count towards the cap. FIFO preparation continues at exhausted capacity, retaining unchanged ready documents and showing **waiting for capacity**. Negative reconciliation requires the candidate to check the provider, preserves the attempt journal and leaves a manual preparation hold before retrying.
@@ -10,7 +12,11 @@ City/remote-country, same-country and configured-country preferences are availab
 
 A real isolated GPT-6.1 Sol source-selection request using fictional facts completed in **4.227 seconds** and selected the expected source. The final answer matched its canonical approved wording exactly. This single example verifies integration and provenance, not a general accuracy or performance benchmark. No provider application or invitation was sent by that test. A separate SQLite snapshot audit verified the legacy journal migration without changing the live workspace.
 
-Version 0.3.0 reviewed through the sending-capacity and routine-answer follow-up on 4 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+The Windows/Python 3.14 full run passed **538 tests in 1,131.85 seconds**. Final review added targeted regressions, bringing the suite to **551 collected cases**. Current-source backend checks re-ran **316 non-browser cases**, plus the configured routine-provider cases and final location/caching regressions; **eight current production-browser regressions** passed, including mobile/desktop accessibility, live routine controls and pre-click gates. The final frontend unit run passed **54 tests**. Changed-module coverage was cleared before remeasurement to avoid counting outdated source lines.
+
+Combined Python statement/branch coverage is **97.64%**: **98.40%** statements (2,276/2,313) and **95.42%** branches (750/786). Routine answer statements have 100% measured coverage, with 98% combined statement/branch coverage. Current production React coverage is **98.70%** of lines, **89.26%** of branches and **97.12%** of functions; frontend helper unit line coverage is 100%. All local coverage gates, strict typing, formatting, dependency audits and package checks passed. Legacy migration fixtures explicitly close their connections, with resource warnings treated as errors in their final checks.
+
+The local server was updated after a temporary pause, an idle-state check and a private SQLite backup. Existing application/networking settings were restored and the new routine/location defaults were retained. Read-only desktop/mobile inspection verified the live confirmed-send budget, preference controls and zero JavaScript errors. No submission or model request was triggered by the inspection; previously enabled background automation was restored. Final Python wheel and source archive checks verified all four current React assets without private paths. GitHub Actions runs Windows/Linux with Python 3.12/3.14; remote results must be checked separately from these local results.
 
 ## Questionnaire answer ideas, 4 October 2026
 

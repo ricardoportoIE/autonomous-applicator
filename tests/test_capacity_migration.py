@@ -1,6 +1,7 @@
 """Upgrade real reservation journals without forgetting receipts or uncertain sends."""
 
 import sqlite3
+from contextlib import closing
 
 import pytest
 
@@ -11,7 +12,7 @@ from applicator.store import Store
 def test_failed_legacy_accounting_migration_rolls_back_schema_and_counts(data):
     path = data / "failed-migration.sqlite3"
     path.parent.mkdir(parents=True)
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         db.executescript("""
             CREATE TABLE attempts(id INTEGER PRIMARY KEY,application_id INTEGER NOT NULL,
                 day TEXT NOT NULL,started TEXT NOT NULL,receipt TEXT);
@@ -21,7 +22,7 @@ def test_failed_legacy_accounting_migration_rolls_back_schema_and_counts(data):
         """)
     with pytest.raises(sqlite3.IntegrityError, match="migration interruption"):
         Store(path)
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         assert "status" not in {row[1] for row in db.execute("PRAGMA table_info(attempts)")}
         assert db.execute("SELECT receipt FROM attempts").fetchone()[0] == "confirmed:receipt"
         db.execute("DROP TRIGGER fail_upgrade")
@@ -34,7 +35,7 @@ def test_legacy_attempts_migrate_once_and_preserve_unknown_capacity(data, job, m
     path = data / "legacy.sqlite3"
     path.parent.mkdir(parents=True)
     monkeypatch.setattr("applicator.store.day_key", lambda now=None: "2026-10-04")
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         db.executescript("""
             CREATE TABLE applications (id INTEGER PRIMARY KEY, source TEXT NOT NULL,
                 source_id TEXT NOT NULL, job TEXT NOT NULL, state TEXT NOT NULL,

@@ -265,6 +265,23 @@ def test_location_review_prepares_documents_and_only_accepts_this_opportunity(pr
     )
 
 
+def test_new_location_policy_rechecks_ready_records_without_rebuilding_documents(prepared, job):
+    store, service, app_id, adapter = prepared
+    job.location = "Cork, Ireland"
+    store.update_job(app_id, job)
+    store.set_settings(
+        Settings(automation_enabled=True, automatic_location_policy="configured_countries")
+    )
+    service.prepare(app_id)
+    manifest = store.application(app_id)["manifest"]
+    assert store.application(app_id)["state"] == State.READY
+    store.set_settings(Settings(automation_enabled=True, automatic_location_policy="same_city"))
+    assert service.tick() == {}
+    assert store.application(app_id)["state"] == State.REVIEW
+    assert store.application(app_id)["manifest"] == manifest
+    adapter.submit.assert_not_called()
+
+
 def test_routine_answer_is_scoped_cached_and_keeps_document_fingerprint(prepared, profile, job):
     store, service, app_id, _ = prepared
     question = Question(id="new", label="Describe your Python project experience")
@@ -287,6 +304,12 @@ def test_routine_answer_is_scoped_cached_and_keeps_document_fingerprint(prepared
         job.model_copy(update={"source_id": "other", "url": "http://127.0.0.1:9999/other"})
     )
     assert store.application(other)["routine_answers"] == []
+    changed = job.model_copy(update={"title": "Updated role"})
+    store.update_job(app_id, changed)
+    assert store.application(app_id)["routine_answers"] == []
+    assert store.effective_profile(app_id, profile, changed).answers == profile.answers
+    with pytest.raises(ValueError):
+        service.resolve_question(app_id, profile, 1, job, question)
     store.set_settings(Settings(automation_enabled=True, routine_answers_enabled=False))
     assert store.effective_profile(app_id, profile, job).answers == profile.answers
     store.save_profile(profile)
