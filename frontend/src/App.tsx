@@ -32,7 +32,7 @@ import {
 } from "./forms";
 import { Networking } from "./networking";
 import { filterApplications } from "./ui";
-import { Workspace } from "./workspace";
+import { Workspace, savedToken } from "./workspace";
 import type { Application, Evidence, Profile, View } from "./contracts";
 
 const navigation = [
@@ -65,18 +65,7 @@ export function App({ workspace }: { workspace: Workspace }) {
   )!;
   useEffect(() => {
     const followRoute = () => {
-      if (!workspace.getSnapshot().unlocked) return;
-      const match = window.location.hash.match(/^#\/applications\/([1-9]\d*)$/);
-      if (match)
-        void workspace.action(
-          () => workspace.openRecord(Number(match[1]), false),
-          true,
-        );
-      else {
-        const view = window.location.hash.slice(1);
-        if (navigation.some((item) => item.id === view))
-          workspace.navigate(view as View, false);
-      }
+      void workspace.action(() => workspace.followRoute(), true);
     };
     window.addEventListener("hashchange", followRoute);
     window.addEventListener("popstate", followRoute);
@@ -86,7 +75,7 @@ export function App({ workspace }: { workspace: Workspace }) {
     };
   }, [workspace]);
   useEffect(() => {
-    const saved = sessionStorage.getItem("applicator-token");
+    const saved = savedToken();
     if (saved) void workspace.unlock(saved, true);
     return () => workspace.lock();
   }, [workspace]);

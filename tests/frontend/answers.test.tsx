@@ -295,3 +295,48 @@ it("renders model text as text and makes a clarification with no draft unusable"
     ).toBeDisabled(),
   );
 });
+
+it("requires a candidate before approval and accepts optional exact-choice drafts with cited facts", async () => {
+  const optional = { ...question, required: false, choices: ["Yes", "No"] };
+  const view = render(
+    <Answer question={optional} profile={null} workspace={workspace} id={1} />,
+  );
+  fireEvent.change(screen.getByRole("combobox"), { target: { value: "No" } });
+  fireEvent.submit(
+    screen.getByRole("button", { name: "Approve answer" }).closest("form")!,
+  );
+  await waitFor(() =>
+    expect(workspace.getSnapshot().notice).toBe(
+      "Configure the candidate profile first.",
+    ),
+  );
+  view.rerender(
+    <Answer
+      question={optional}
+      profile={{
+        ...profile,
+        sponsorship_required: false,
+        answers: { "question:used_python": "Yes" },
+      }}
+      workspace={workspace}
+      id={1}
+    />,
+  );
+  await userEvent.click(suggest());
+  await resolve({
+    ...idea,
+    draft: "Yes",
+    evidence_ids: ["not-recorded"],
+    fact_keys: [
+      "sponsorship_required",
+      "answer:question:used_python",
+      "answer:missing",
+    ],
+  });
+  expect(screen.getByText("Employer sponsorship: not required")).toBeVisible();
+  expect(screen.getByText("used python: Yes")).toBeVisible();
+  await userEvent.click(
+    screen.getByRole("button", { name: "Use as editable draft" }),
+  );
+  expect(screen.getByRole("combobox")).toHaveValue("Yes");
+});

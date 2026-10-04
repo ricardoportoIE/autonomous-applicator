@@ -52,16 +52,31 @@ export function parseAnswers(value: string): Record<string, string> {
 }
 
 export function errorDetail(value: unknown, status: number) {
-  const body = value as {
-    detail?: string | { loc?: string[]; msg?: string }[];
-  } | null;
-  if (typeof body?.detail === "string") return body.detail;
-  if (Array.isArray(body?.detail)) {
-    return body.detail
-      .map(
-        (item) =>
-          `${item.loc?.slice(1).join(" / ") || "Input"}: ${item.msg || "Invalid value"}`,
-      )
+  const detail =
+    value && typeof value === "object" && "detail" in value
+      ? value.detail
+      : undefined;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail) && detail.length) {
+    return detail
+      .map((item: unknown) => {
+        if (!item || typeof item !== "object") return "Input: Invalid value";
+        const loc =
+          "loc" in item && Array.isArray(item.loc)
+            ? item.loc
+                .slice(1)
+                .filter(
+                  (part: unknown) =>
+                    typeof part === "string" || typeof part === "number",
+                )
+                .join(" / ")
+            : "";
+        const msg =
+          "msg" in item && typeof item.msg === "string" && item.msg
+            ? item.msg
+            : "Invalid value";
+        return `${loc || "Input"}: ${msg}`;
+      })
       .join("; ");
   }
   return `The request failed (${status}). Please try again.`;

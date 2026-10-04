@@ -13,14 +13,22 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    maxWorkers: 4,
     include: ["../tests/frontend/**/*.test.{ts,tsx}"],
     setupFiles: ["../tests/frontend/setup.ts"],
     coverage: {
       provider: "v8",
-      include: ["src/api.ts", "src/ui.ts", "src/workspace.ts"],
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: ["src/contracts.ts", "src/**/*.d.ts"],
       reporter: ["text", "json", "html"],
       reportsDirectory: "../test-results/unit-coverage",
-      thresholds: { lines: 90, branches: 80, functions: 90, statements: 90 },
+      thresholds: {
+        perFile: true,
+        lines: 100,
+        branches: 100,
+        functions: 100,
+        statements: 100,
+      },
     },
   },
 });

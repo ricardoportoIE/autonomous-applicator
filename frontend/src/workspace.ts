@@ -68,11 +68,31 @@ const reason = (error: unknown) =>
     ? error.message
     : "The operation could not be completed.";
 
+/** Storage may be disabled by browser privacy settings; sessions still work in memory. */
+export function savedToken() {
+  try {
+    return sessionStorage.getItem("applicator-token");
+  } catch {
+    return null;
+  }
+}
+const views: View[] = [
+  "overview",
+  "applications",
+  "profile",
+  "networking",
+  "settings",
+  "activity",
+];
+
 /** React subscribes to immutable snapshots. Timers and asynchronous ownership live here. */
 export class Workspace {
   private state = empty();
   private refreshSequence = 0;
   private recordSequence = 0;
+  private detailSequence = 0;
+  private recordLoading: number | null = null;
+  private downloadUrls = new Set<string>();
   private listeners = new Set<() => void>();
   readonly api = new ApiClient((message) => {
     this.lock();
@@ -103,20 +123,30 @@ export class Workspace {
   }
   navigate(view: View, updateUrl = true) {
     this.recordSequence++;
+    this.detailSequence++;
+    this.recordLoading = null;
     if (updateUrl) history.pushState(null, "", "#" + view);
     this.update({ view });
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }
   lock() {
     this.recordSequence++;
+    this.detailSequence++;
+    this.recordLoading = null;
     this.api.setToken("");
-    sessionStorage.removeItem("applicator-token");
+    try {
+      sessionStorage.removeItem("applicator-token");
+    } catch {
+      /* In-memory lock remains effective. */
+    }
     clearTimeout(this.workerTimer);
     clearTimeout(this.invitationTimer);
     this.invitation = null;
     this.photos.forEach((url) => URL.revokeObjectURL(url));
     this.photos.clear();
     this.photoRequests.clear();
+    this.downloadUrls.forEach((url) => URL.revokeObjectURL(url));
+    this.downloadUrls.clear();
     this.state = empty();
     this.listeners.forEach((fn) => fn());
   }
@@ -138,19 +168,47 @@ export class Workspace {
   async unlock(token: string, restored = false) {
     if (this.state.pending) return;
     this.api.setToken(token);
+    const session = this.api.session();
     await this.action(async () => {
       await this.refresh();
-      sessionStorage.setItem("applicator-token", token);
+      if (!this.api.isCurrent(session)) return;
+      let remembered = true;
+      try {
+        sessionStorage.setItem("applicator-token", token);
+      } catch {
+        remembered = false;
+      }
       this.update({ unlocked: true });
-      const match = window.location.hash.match(/^#\/applications\/([1-9]\d*)$/);
-      if (match) await this.openRecord(Number(match[1]), false);
-      if (!restored) this.message("Local workspace unlocked.");
+      await this.followRoute();
+      if (!this.api.isCurrent(session)) return;
+      if (!remembered)
+        this.message(
+          "Local workspace unlocked. Browser storage is unavailable; unlock again after reloading.",
+        );
+      else if (!restored) this.message("Local workspace unlocked.");
       this.pollWorker();
       const running = this.state.connections.find(
         (item) => item.state === "sending",
       );
       if (running) void this.sendInvitation(running.id, true);
     });
+  }
+  async followRoute() {
+    if (!this.state.unlocked) return;
+    const match = window.location.hash.match(/^#\/applications\/([1-9]\d*)$/);
+    if (match && Number.isSafeInteger(Number(match[1]))) {
+      const id = Number(match[1]);
+      if (this.state.view === "record" && this.recordLoading === id) return;
+      if (
+        this.state.view !== "record" ||
+        this.state.record?.application.id !== id
+      )
+        await this.openRecord(id, false);
+    } else {
+      const view = window.location.hash.slice(1) as View;
+      if (views.includes(view) && this.state.view !== view)
+        this.navigate(view, false);
+    }
   }
   async refresh() {
     const session = this.api.session();
@@ -216,34 +274,48 @@ export class Workspace {
     void poll();
   }
   async openDetail(id: number) {
+    const sequence = ++this.detailSequence;
+    const session = this.api.session();
     const profile_revision = this.state.revision;
-    const [row, report, events] = await Promise.all([
-      this.api.json<Application>(`/applications/${id}`),
-      this.api.json<ApplicationDetail["report"]>(
-        `/applications/${id}/preflight`,
-      ),
-      this.api.json<Event[]>(`/applications/${id}/events`),
-    ]);
-    this.update({
-      view: "applications",
-      detail: { row, report, events, profile_revision },
-    });
+    try {
+      const [row, report, events] = await Promise.all([
+        this.api.json<Application>(`/applications/${id}`),
+        this.api.json<ApplicationDetail["report"]>(
+          `/applications/${id}/preflight`,
+        ),
+        this.api.json<Event[]>(`/applications/${id}/events`),
+      ]);
+      if (sequence !== this.detailSequence || !this.api.isCurrent(session))
+        return;
+      this.recordSequence++;
+      this.update({
+        view: "applications",
+        detail: { row, report, events, profile_revision },
+      });
+    } catch (error) {
+      if (sequence === this.detailSequence && this.api.isCurrent(session))
+        throw error;
+    }
   }
   async openRecord(id: number, updateUrl = true) {
     const sequence = ++this.recordSequence;
+    this.recordLoading = id;
+    this.detailSequence++;
     const session = this.api.session();
     if (updateUrl) history.pushState(null, "", `#/applications/${id}`);
-    const route = window.location.hash;
     this.update({ view: "record", record: null });
-    const record = await this.api.json<ApplicationRecord>(
-      `/applications/${id}/record`,
-    );
-    if (
-      sequence === this.recordSequence &&
-      this.api.isCurrent(session) &&
-      route === window.location.hash
-    )
-      this.update({ record });
+    try {
+      const record = await this.api.json<ApplicationRecord>(
+        `/applications/${id}/record`,
+      );
+      if (sequence === this.recordSequence && this.api.isCurrent(session))
+        this.update({ record });
+    } catch (error) {
+      if (sequence === this.recordSequence && this.api.isCurrent(session))
+        throw error;
+    } finally {
+      if (sequence === this.recordSequence) this.recordLoading = null;
+    }
   }
   async olderRecordEvents() {
     const record = this.state.record;
@@ -267,17 +339,28 @@ export class Workspace {
     key: string,
     filename: string,
   ) {
+    const session = this.api.session();
     const blob = await this.api.blob(
       `/applications/${id}/submissions/${attempt}/artifacts/${encodeURIComponent(key)}`,
     );
+    if (this.api.isCurrent(session)) this.saveBlob(blob, filename);
+  }
+  private saveBlob(blob: Blob, filename: string) {
     const url = URL.createObjectURL(blob);
+    this.downloadUrls.add(url);
     const link = document.createElement("a");
     link.href = url;
     link.download = filename;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    try {
+      link.click();
+    } finally {
+      setTimeout(() => {
+        if (this.downloadUrls.delete(url)) URL.revokeObjectURL(url);
+      }, 1000);
+    }
   }
   closeDetail() {
+    this.detailSequence++;
     this.update({ detail: null });
   }
   async mutate(
@@ -289,6 +372,12 @@ export class Workspace {
     profileRevision = this.state.revision,
   ) {
     const session = this.api.session();
+    const view = this.state.view;
+    const detailSequence = this.detailSequence;
+    const canRefreshDetail = () =>
+      this.api.isCurrent(session) &&
+      this.state.view === view &&
+      this.detailSequence === detailSequence;
     try {
       await this.api.json(
         path,
@@ -306,16 +395,18 @@ export class Workspace {
       ) {
         try {
           await this.refresh();
-          await this.openDetail(detailId);
+          if (canRefreshDetail()) await this.openDetail(detailId);
         } catch {
           /* Keep the original actionable diagnostic. */
         }
       }
       throw error;
     }
+    if (!this.api.isCurrent(session)) return;
     await this.refresh();
-    if (detailId !== undefined) await this.openDetail(detailId);
-    this.message(notice);
+    if (detailId !== undefined && canRefreshDetail())
+      await this.openDetail(detailId);
+    if (this.api.isCurrent(session)) this.message(notice);
   }
   pause() {
     return this.action(async () => {
@@ -424,18 +515,19 @@ export class Workspace {
     this.photos.delete(id);
   }
   async download(id: number, key: string, filename: string) {
+    const session = this.api.session();
     let blob: Blob;
     try {
-      blob = await this.api.blob(`/applications/${id}/documents/${key}`);
-    } catch {
-      throw new Error("Document is missing or stale. Regenerate it.");
+      blob = await this.api.blob(
+        `/applications/${id}/documents/${encodeURIComponent(key)}`,
+      );
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) throw error;
+      throw new Error("Document is missing or stale. Regenerate it.", {
+        cause: error,
+      });
     }
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    if (this.api.isCurrent(session)) this.saveBlob(blob, filename);
   }
   async sendInvitation(id: number, observeOnly = false) {
     if (this.invitation) return;

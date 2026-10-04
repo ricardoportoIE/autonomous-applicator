@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
+  RefreshCw,
   Camera,
   FileCheck2,
   History,
@@ -104,6 +105,16 @@ export function ApplicationRecordPage({
   return (
     <div className="application-record" id="application-record">
       <div className="record-navigation">
+        <button
+          type="button"
+          className="secondary"
+          onClick={() =>
+            void workspace.action(() => workspace.openRecord(row.id, false))
+          }
+        >
+          <RefreshCw size={16} aria-hidden="true" />
+          Refresh record
+        </button>
         <button
           type="button"
           className="secondary"

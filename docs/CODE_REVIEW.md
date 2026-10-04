@@ -1,5 +1,13 @@
 # Source review, 2 October 2026
 
+## Complete frontend follow-up, 4 October 2026
+
+Reviewed all authored frontend modules and their event handlers, async boundaries, forms, accessible controls, private image lifecycles and routing. The initial all-runtime Vitest baseline was 72.87% lines; the previous helper-only coverage did not describe the complete interface. Added 84 regressions, bringing the suite to 145 tests and 100% lines/statements/functions/branches across ten runtime files. CI now enforces 100% independently for every file, excluding only type-only contracts and declarations. No executable component is excluded and no coverage-ignore directives are used.
+
+Corrected obsolete detail and record reads that could reopen a page or surface an unrelated error after navigation. Mutation completion no longer redirects away from a newer view. Added session checks after unlock and mutation awaits, shared in-flight record routing, restoration of all six workspace areas, focus-anchor handling and an authenticated read-only record refresh. Storage restrictions no longer crash mounting, authentication or locking. Malformed validation arrays retain a readable diagnostic, and downloads keep authentication failures distinct from missing documents while releasing blob URLs on failure and lock.
+
+Ten additional production-browser cases passed with the real FastAPI server, bundled React, enabled CSP and axe accessibility checks. Existing TypeScript checks, ESLint, formatting and Ruff passed. The complete Python suite is being rerun against the frozen bundle; its final result is recorded in STATUS.md. Tests use fictional data and HTTP fixtures, with no paid model calls or real external sends. Coverage proves execution and tested assertions, not exhaustive real-provider compatibility.
+
 ## Application records and confirmation evidence review, 4 October 2026
 
 Reviewed the submission archive, atomic sending/confirmation timestamps, token-protected record/artifact routes, adapter observations, screenshot capture and React routes. Each new attempt keeps its own reviewed job/contact/evidence/document snapshot; later candidate edits and regenerated CVs cannot replace it. The browser uploads archived files, and the LinkedIn final gate repeats their integrity check. Actual observed fields remain separate from the facts and answers offered to the adapter.

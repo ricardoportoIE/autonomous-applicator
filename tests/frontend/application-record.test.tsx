@@ -172,6 +172,23 @@ it("does not attach an image arriving after unmount", async () => {
   expect(URL.createObjectURL).not.toHaveBeenCalled();
 });
 
+it("does not attach an image error arriving after unmount", async () => {
+  let reject!: (error: Error) => void;
+  vi.spyOn(workspace.api, "blob").mockImplementation(
+    () =>
+      new Promise((_resolve, fail) => {
+        reject = fail;
+      }),
+  );
+  const view = render(
+    <ApplicationRecordPage record={makeRecord()} workspace={workspace} />,
+  );
+  view.unmount();
+  reject(new Error("Late unavailable image"));
+  await Promise.resolve();
+  expect(screen.queryByText(/screenshot is unavailable/)).toBeNull();
+});
+
 it("restores direct links after unlock and keeps the journal snapshot when loading older entries", async () => {
   history.replaceState(null, "", "#/applications/1");
   await workspace.unlock("fixture");
@@ -225,6 +242,7 @@ it("rejects a stale record response after navigation or locking", async () => {
 });
 
 it("downloads authenticated archived documents and revokes the temporary URL", async () => {
+  await workspace.unlock("fixture");
   vi.useFakeTimers();
   vi.spyOn(workspace.api, "blob").mockResolvedValue(new Blob(["PDF"]));
   const click = vi
