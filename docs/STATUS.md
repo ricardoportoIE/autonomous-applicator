@@ -1,6 +1,12 @@
 # Delivery and validation record
 
-Version 0.3.0 reviewed through the delayed LinkedIn authentication follow-up on 4 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+Version 0.3.0 reviewed through the job discovery diagnostics follow-up on 4 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+
+## Job discovery diagnostics, 4 October 2026
+
+Historical worker timeouts did not identify which page or read failed. A subsequent read-only check read seven real search results successfully, without imports, external sends or paid model calls; that success does not establish the historical cause. Discovery now records four precise read stages, batch position and canonical opportunity URL, with controlled recovery advice on browser failures. Navigation permits 60 seconds and discovery DOM waits permit 30 seconds, without retries within the discovery call or weaker identity checks. The worker persists these steps, and the frontend distinguishes discovery-only failures from application activity failures.
+
+The suite now contains **699 Python cases**, including **nine new discovery boundary/worker regressions**. All **50 focused discovery, job-reader and authentication cases passed in 270.43 seconds**. **147 frontend unit cases passed**, retaining 100% statements, lines, functions and branches in all ten runtime modules, including **834 branch outcomes**. TypeScript, ESLint, Prettier, Ruff and strict mypy passed. Full Python coverage remains an enforced per-module CI gate; measurements in earlier sections refer to their own revisions. [Application queue operations](APPLICATION_QUEUE.md) documents the read budgets and failure behaviour, and [Testing and coverage](TESTING.md) documents the added assertions.
 
 ## Delayed LinkedIn authentication, 4 October 2026
 

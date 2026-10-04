@@ -164,7 +164,9 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
                         "discovering_jobs",
                         "Searching for new opportunities before processing the FIFO queue.",
                     )
-                    jobs = LinkedInBrowser(data, profile).search(
+                    discovery_browser = LinkedInBrowser(data, profile)
+                    discovery_browser.progress = operation.progress
+                    jobs = discovery_browser.search(
                         settings.search_keywords, settings.search_location
                     )
                     for job in jobs:

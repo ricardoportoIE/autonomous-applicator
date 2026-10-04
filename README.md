@@ -24,6 +24,8 @@ A successful browser click is not enough to establish a trustworthy application.
 
 The product prioritises factual integrity and recoverability over throughput. Preparation and submission are separate decisions: the queue can keep preparing interesting opportunities after the daily sending limit is reached, while exceptional answers, incompatible requirements and unfamiliar provider behaviour remain visible for review.
 
+Discovery diagnostics identify each read stage, the current vacancy's position and its canonical URL. Bounded waits accommodate slower provider pages, and controlled failure advice keeps private browser diagnostics out of the journal. See [application queue operations](docs/APPLICATION_QUEUE.md) for ordering, time budgets and recovery.
+
 ## What the workspace does
 
 | Capability | User outcome |

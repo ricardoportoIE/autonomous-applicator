@@ -1,5 +1,13 @@
 # Source review, 2 October 2026
 
+## Job discovery timeout diagnostics, 4 October 2026
+
+Three recorded worker failures stopped at the coarse `discovering_jobs` stage with only `TimeoutError`. A read-only check of the dedicated session subsequently read all seven returned vacancies, so the historical failing page cannot be established from those records. No application, invitation, imported record or model call was made during that check.
+
+The worker now wires discovery to its durable progress callback. Search navigation, result extraction, detail navigation and detail extraction each persist their own stage before execution. Detail steps identify the batch position and canonical job URL; browser failures append controlled advice without storing raw exceptions or tracking parameters. Navigation receives a 60-second budget and discovery DOM waits receive 30 seconds, without retries within the discovery call or relaxed identity checks. Submission reader defaults and confirmed-receipt handling are preserved. The React monitor directs discovery-only failures to the dedicated session instead of an application log that does not exist.
+
+Nine additional backend regressions inject failures at six read boundaries, verify successful reads, and check worker success/failure persistence, privacy and zero sending-capacity consumption. The existing React monitor test now verifies both application-specific and discovery-only recovery advice. All tests use isolated workspaces and intercepted provider requests.
+
 ## Delayed LinkedIn authentication, 4 October 2026
 
 The job reader checked the canonical URL immediately after navigation, then waited for the company header. LinkedIn could redirect to an authentication wall during that wait, leaving a generic locator timeout rather than a useful session diagnostic. The same race affected search and profile discovery, and a login heading could also satisfy a profile selector before semantic extraction failed.

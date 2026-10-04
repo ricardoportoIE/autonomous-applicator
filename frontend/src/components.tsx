@@ -400,7 +400,9 @@ export function WorkerMonitor({
               {run.error_code && (
                 <p className="error">
                   Failure at {run.stage.replaceAll("_", " ")}: {run.error_code}.
-                  Inspect the application activity log before retrying.
+                  {run.application_id === null
+                    ? " Check the last stage and the dedicated browser session before retrying."
+                    : " Inspect the application activity log before retrying."}
                 </p>
               )}
             </>

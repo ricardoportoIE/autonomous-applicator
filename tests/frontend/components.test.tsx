@@ -130,6 +130,28 @@ it("keeps idle, terminal failures and total/stage elapsed time visible without p
   expect(
     screen.getByText("Total: 10s · Stage: 8s · Run run-test"),
   ).toBeVisible();
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "Inspect the application activity log before retrying.",
+  );
+  view.rerender(
+    <WorkerMonitor
+      record={{
+        ...record,
+        run: {
+          ...record.run!,
+          application_id: null,
+          stage: "reading_job_results",
+        },
+      }}
+      error=""
+    />,
+  );
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "Check the last stage and the dedicated browser session before retrying.",
+  );
+  expect(screen.getByRole("status")).not.toHaveTextContent(
+    "Inspect the application activity log",
+  );
   view.rerender(
     <WorkerMonitor record={record} error="Live status unavailable" />,
   );

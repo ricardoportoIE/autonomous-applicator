@@ -84,7 +84,7 @@ def linkedin_page(context: BrowserContext) -> Iterator[Page]:
         raise
 
 
-def job_details(page: Page, expected_id: str) -> Job:
+def job_details(page: Page, expected_id: str, *, timeout: int = 10000) -> Job:
     """Read the primary job header and description on a verified detail URL."""
     ensure_linkedin(page)
     if linkedin_job_id(page.url) != expected_id:
@@ -92,7 +92,7 @@ def job_details(page: Page, expected_id: str) -> Job:
     main = page.get_by_role("main")
     main.locator(
         '.job-details-jobs-unified-top-card__company-name, [aria-label^="Company, "]'
-    ).first.wait_for(timeout=10000)
+    ).first.wait_for(timeout=timeout)
     legacy = main.locator(".job-details-jobs-unified-top-card__company-name")
     if legacy.count():
         selectors = {
@@ -101,7 +101,7 @@ def job_details(page: Page, expected_id: str) -> Job:
             "location": ".job-details-jobs-unified-top-card__tertiary-description-container",
             "description": "#job-details",
         }
-        main.locator("#job-details").wait_for(timeout=10000)
+        main.locator("#job-details").wait_for(timeout=timeout)
         if any(main.locator(selector).count() != 1 for selector in selectors.values()):
             raise ReviewRequired("LinkedIn job details are ambiguous; review this job manually")
         details = {
@@ -109,7 +109,7 @@ def job_details(page: Page, expected_id: str) -> Job:
         }
         details["location"] = details["location"].split("\u00b7")[0].strip()
     else:
-        main.get_by_role("heading", name="About the job", exact=True).wait_for(timeout=10000)
+        main.get_by_role("heading", name="About the job", exact=True).wait_for(timeout=timeout)
         details = main.evaluate(r"""main => {
           const text = el => el?.textContent.trim() || '';
           // Current job detail pages use paragraphs and generated CSS classes.
@@ -605,6 +605,20 @@ class LinkedInBrowser:
         if self.progress:
             self.progress(stage, detail)
 
+    @contextmanager
+    def discovery_step(self, stage: str, detail: str) -> Iterator[None]:
+        """Persist the precise read step and controlled failure advice, never raw errors."""
+        self.report(stage, detail)
+        try:
+            yield
+        except BrowserError:
+            self.report(
+                stage,
+                detail + " LinkedIn did not complete this read step. Check the dedicated browser "
+                "session and page layout before retrying. Discovery has not sent any applications.",
+            )
+            raise
+
     def context(self, playwright: Playwright, *, headless: bool = True) -> BrowserContext:
         return playwright.chromium.launch_persistent_context(
             str(self.data / "browser" / "linkedin"),
@@ -623,12 +637,14 @@ class LinkedInBrowser:
             self.context(playwright) as context,
             linkedin_page(context) as page,
         ):
-            page.goto(
-                "https://www.linkedin.com/jobs/search/?"
-                + urlencode({"keywords": keywords, "location": location, "f_AL": "true"}),
-                wait_until="domcontentloaded",
-            )
-            ensure_linkedin(page)
+            with self.discovery_step("opening_job_search", "Opening the LinkedIn job search."):
+                page.goto(
+                    "https://www.linkedin.com/jobs/search/?"
+                    + urlencode({"keywords": keywords, "location": location, "f_AL": "true"}),
+                    wait_until="domcontentloaded",
+                    timeout=60000,
+                )
+                ensure_linkedin(page)
             main = page.get_by_role("main")
             links_locator = main.locator('a[href*="/jobs/view/"]')
             empty = main.get_by_role(
@@ -637,15 +653,16 @@ class LinkedInBrowser:
                     r"^(?:No (?:matching )?jobs found|No (?:matching )?results found)[.!]?$", re.I
                 ),
             )
-            links_locator.or_(empty).filter(visible=True).first.wait_for(timeout=15000)
-            ensure_linkedin(page)
-            if not links_locator.count() and empty.filter(visible=True).count():
-                return []
-            results = main.locator(".jobs-search-results-list, .scaffold-layout__list")
-            if results.count():
-                links_locator = results.locator('a[href*="/jobs/view/"]')
-                links_locator.first.wait_for(timeout=10000)
-            links = links_locator.evaluate_all("nodes => nodes.map(n=>n.href)")
+            with self.discovery_step("reading_job_results", "Reading the LinkedIn search results."):
+                links_locator.or_(empty).filter(visible=True).first.wait_for(timeout=30000)
+                ensure_linkedin(page)
+                if not links_locator.count() and empty.filter(visible=True).count():
+                    return []
+                results = main.locator(".jobs-search-results-list, .scaffold-layout__list")
+                if results.count():
+                    links_locator = results.locator('a[href*="/jobs/view/"]')
+                    links_locator.first.wait_for(timeout=30000)
+                links = links_locator.evaluate_all("nodes => nodes.map(n=>n.href)")
             ids: list[str] = []
             for link in links:
                 try:
@@ -658,10 +675,15 @@ class LinkedInBrowser:
                 raise ReviewRequired(
                     "LinkedIn search has no supported job links; review the search manually"
                 )
-            for job_id in ids[:limit]:
+            for index, job_id in enumerate(ids[:limit], start=1):
                 url = f"https://www.linkedin.com/jobs/view/{job_id}/"
-                page.goto(url, wait_until="domcontentloaded")
-                jobs.append(job_details(page, job_id))
+                identity = f"Opportunity {index}/{min(len(ids), limit)}: {url}"
+                with self.discovery_step("opening_discovered_job", identity + " Opening the page."):
+                    page.goto(url, wait_until="domcontentloaded", timeout=60000)
+                with self.discovery_step(
+                    "reading_discovered_job", identity + " Reading job details."
+                ):
+                    jobs.append(job_details(page, job_id, timeout=30000))
         return jobs
 
     def contacts(
