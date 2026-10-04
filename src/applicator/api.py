@@ -23,6 +23,8 @@ from .documents import validate_manifest
 from .models import Advice, Contract, DailyUsage, Evidence, Job, Preflight, Profile, Settings, State
 from .networking import Networking
 from .photos import stored_photo
+from .question_adviser import MODEL as QUESTION_MODEL
+from .question_adviser import suggest_answer
 from .service import PreparationError, Service
 from .store import Store
 from .workspace import server_owner
@@ -299,6 +301,36 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
     @app.get("/api/applications/{app_id}/events", dependencies=auth)
     def application_events(app_id: int) -> list[dict[str, Any]]:
         return store.events(app_id)
+
+    @app.post("/api/applications/{app_id}/questions/{question_id}/suggest", dependencies=auth)
+    def answer_idea(
+        app_id: int, question_id: str, if_match: Annotated[int, Header(ge=1)]
+    ) -> dict[str, Any]:
+        profile, revision = store.profile()
+        job = Job.model_validate(store.application(app_id)["job"])
+        question = next((item for item in job.questions if item.id == question_id), None)
+        if question is None:
+            raise KeyError(question_id)
+        if revision != if_match:
+            raise ValueError("Candidate facts changed. Refresh before requesting an answer idea")
+        if not profile.confirmed or question.sensitive:
+            raise ValueError("Confirmed candidate facts and a non-sensitive question are required")
+        if not os.getenv("OPENAI_API_KEY"):
+            raise HTTPException(503, "Set OPENAI_API_KEY locally to generate an answer idea")
+        if os.getenv("OPENAI_MODEL", QUESTION_MODEL) != QUESTION_MODEL:
+            raise HTTPException(503, "Set OPENAI_MODEL=gpt-6.1-sol to generate an answer idea")
+        try:
+            with OpenAI(timeout=180, max_retries=0) as ai_client:
+                idea = suggest_answer(ai_client, profile, job, question)
+        except Exception as exc:
+            raise HTTPException(
+                502, "The AI answer idea could not be generated. No answer was changed or approved."
+            ) from exc
+        if store.profile()[1] != revision or store.application(app_id)["job"] != job.model_dump():
+            raise ValueError(
+                "Candidate facts or the question changed. Generate a fresh answer idea"
+            )
+        return {**idea.model_dump(), "model": QUESTION_MODEL, "profile_revision": revision}
 
     @app.post("/api/jobs", dependencies=auth)
     def add_job(job: Job) -> dict[str, Any]:

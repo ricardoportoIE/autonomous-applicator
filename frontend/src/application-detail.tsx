@@ -1,15 +1,16 @@
-import { useEffect, useState } from "react";
-import { X, FileText, ShieldCheck } from "lucide-react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { X, FileText, ShieldCheck, Sparkles, LoaderCircle } from "lucide-react";
 import { Badge, Events, ExternalLink, Tabs } from "./components";
 import type {
   Application,
   ApplicationDetail,
+  AnswerIdea,
   Profile,
   Question,
 } from "./contracts";
 import type { Workspace } from "./workspace";
 
-function Answer({
+export function Answer({
   question,
   profile,
   workspace,
@@ -20,6 +21,13 @@ function Answer({
   workspace: Workspace;
   id: number;
 }) {
+  const { revision, pending } = useSyncExternalStore(
+    workspace.subscribe,
+    workspace.getSnapshot,
+  );
+  const [idea, setIdea] = useState<AnswerIdea | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const generation = useRef(0);
   const key =
     question.answer_key ||
     "question:" + question.label.toLowerCase().trim().replace(/\s+/g, " ");
@@ -38,6 +46,42 @@ function Answer({
       ),
     [approved, question],
   );
+  useEffect(() => {
+    generation.current += 1;
+    setIdea(null);
+    setGenerating(false);
+    return () => {
+      generation.current += 1;
+    };
+  }, [question, profile, id, revision]);
+  const suggest = () => {
+    void workspace.action(async () => {
+      const session = workspace.api.session();
+      const request = ++generation.current;
+      setIdea(null);
+      setGenerating(true);
+      try {
+        const result = await workspace.api.json<AnswerIdea>(
+          `/applications/${id}/questions/${encodeURIComponent(question.id)}/suggest`,
+          "POST",
+          undefined,
+          revision,
+        );
+        if (
+          generation.current === request &&
+          workspace.api.isCurrent(session) &&
+          workspace.getSnapshot().revision === result.profile_revision
+        ) {
+          setIdea(result);
+          workspace.message(
+            "AI answer idea ready. Review it before approving.",
+          );
+        }
+      } finally {
+        if (generation.current === request) setGenerating(false);
+      }
+    });
+  };
   if (question.sensitive)
     return (
       <p className="review-note">{question.label}: requires manual handling.</p>
@@ -56,6 +100,7 @@ function Answer({
             { ...profile, answers: { ...profile.answers, [key]: value } },
             "Answer approved. Regenerate documents before submission.",
             id,
+            revision,
           );
         });
       }}
@@ -75,11 +120,13 @@ function Answer({
             ))}
           </select>
         ) : (
-          <input
+          <textarea
             aria-label={question.label}
             value={value}
             onChange={(event) => setValue(event.target.value)}
             required
+            rows={3}
+            maxLength={3000}
           />
         )}
       </label>
@@ -87,7 +134,98 @@ function Answer({
         {question.required ? "Required" : "Optional"} · Exact approved answer
         only
       </small>
-      <button className="secondary">Approve answer</button>
+      <div className="question-actions">
+        <button
+          className="secondary"
+          type="button"
+          disabled={pending || !profile?.confirmed}
+          onClick={suggest}
+        >
+          {generating ? (
+            <LoaderCircle
+              size={16}
+              className="animate-spin"
+              aria-hidden="true"
+            />
+          ) : (
+            <Sparkles size={16} aria-hidden="true" />
+          )}
+          {generating ? "Generating answer idea…" : "Suggest with GPT-6.1 Sol"}
+        </button>
+        <button className="secondary" disabled={pending}>
+          Approve answer
+        </button>
+      </div>
+      {generating && (
+        <p role="status">
+          Generating an idea from your approved candidate facts…
+        </p>
+      )}
+      {idea && (
+        <section
+          className="answer-idea"
+          aria-label={`AI answer idea for ${question.label}`}
+        >
+          <p className="eyebrow">GPT-6.1 Sol · Draft for review</p>
+          {idea.draft && <p className="answer-idea-text">{idea.draft}</p>}
+          <p className={idea.needs_clarification ? "review-note" : undefined}>
+            {idea.review_notes}
+          </p>
+          {idea.evidence_ids.length > 0 && (
+            <p>
+              Evidence:{" "}
+              {idea.evidence_ids
+                .map(
+                  (evidenceId) =>
+                    profile?.evidence.find((item) => item.id === evidenceId)
+                      ?.title ?? evidenceId,
+                )
+                .join("; ")}
+              .
+            </p>
+          )}
+          {idea.fact_keys.length > 0 && (
+            <div>
+              <p>Approved facts used:</p>
+              {idea.fact_keys.map((factKey) => (
+                <p key={factKey}>
+                  {factKey === "location"
+                    ? `Location: ${profile?.location}`
+                    : factKey === "sponsorship_required"
+                      ? `Employer sponsorship: ${profile?.sponsorship_required ? "required" : "not required"}`
+                      : `${factKey
+                          .slice(7)
+                          .replace(/^question:/, "")
+                          .replaceAll(
+                            "_",
+                            " ",
+                          )}: ${profile?.answers[factKey.slice(7)] ?? ""}`}
+                </p>
+              ))}
+            </div>
+          )}
+          <small>Using a draft does not save or approve the answer.</small>
+          <button
+            className="secondary"
+            type="button"
+            disabled={
+              pending ||
+              !idea.draft ||
+              (question.choices.length > 0 &&
+                (idea.needs_clarification ||
+                  !question.choices.includes(idea.draft)))
+            }
+            onClick={() => setValue(idea.draft)}
+          >
+            Use as editable draft
+          </button>
+          {question.choices.length > 0 && idea.needs_clarification && (
+            <small>
+              Review the explanation and choose the exact answer yourself.
+            </small>
+          )}
+        </section>
+      )}
     </form>
   );
 }

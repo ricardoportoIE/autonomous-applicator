@@ -12,7 +12,7 @@ The local dashboard is implemented in React and strict TypeScript, built with Vi
 | Opportunities | Manual import, LinkedIn discovery with progress, Greenhouse board import, search/status/sort/clear filters | Queue plus compact discovery controls; imports in dialogues |
 | Application overview | Original opportunity, named passed/blocked checks, local snapshot timestamp, fit reasons/blockers/matches/gaps, preparation origin, model/revision/evidence count, prepare/AI/submit/download actions, job editing | Overview tab; expandable full description, requirements, sponsorship, cover-letter requirement and source identity |
 | Documents | Current PDF/DOCX CV and cover-letter downloads, manual approved-evidence selection | Documents tab; manual selection is explicitly recorded as a different origin |
-| Questions | Exact approved keys/choices, required indicators, sensitive-question holds, profile revision invalidation after approval | Questions tab; provider prefills never approve answers |
+| Questions | Exact approved keys/choices, required indicators, sensitive-question holds, profile revision invalidation after approval, optional grounded GPT-6.1 Sol answer ideas | Questions tab; suggestions remain separate editable drafts and never approve answers |
 | Application record | Manual receipt reconciliation, confirmed receipt, interview/offer/rejected/no-response/withdrawn outcomes, scoped latest 200 events | Activity & outcome tab |
 | Candidate | Name, e-mail, phone, location, summary, professional links, sponsorship, fact confirmation, approved JSON answers, current revision | Readable record; Edit candidate profile dialogue |
 | Qualifications | Identifier, category, title, factual text, dates, technology tags, source, approval flag, edit/remove | Evidence cards; add/edit dialogue; edits still invalidate old documents |
@@ -29,7 +29,7 @@ Background pause remains available during long workspace actions. A native modal
 - `frontend/src/workspace.ts`: immutable snapshots consumed by React’s `useSyncExternalStore`, mutation ownership, global pause, periodic queue observation, selected invitation observation and private image cache.
 - `frontend/src/App.tsx`: navigation, overview, queue filtering, candidate display and dialogue orchestration.
 - `frontend/src/forms.tsx`: contract-preserving candidate, evidence, opportunity, contact, board and settings forms.
-- `frontend/src/application-detail.tsx`: readiness, document provenance, question approval and journal/outcomes.
+- `frontend/src/application-detail.tsx`: readiness, document provenance, grounded question ideas, explicit answer approval and journal/outcomes.
 - `frontend/src/networking.tsx`: active/archive cards, private portraits and selected invitation progress.
 - `frontend/src/components.tsx`: labelled native dialogues, keyboard tabs, tables, badges, events and processing monitor.
 - `frontend/src/ui.ts`: pure parsing, identity, status and queue-order helpers.
@@ -37,6 +37,8 @@ Background pause remains available during long workspace actions. A native modal
 The API, browser adapters, scoring, FIFO application lease, attempt reservations, CV renderer and GPT-6.1 Sol defaults retain their existing contracts. React does not send invitations or applications from effects: observation and explicit commands are separate. Poll failures never retry external actions. Profile edits retain `If-Match` revision checks. Candidate content is rendered as text, and portrait object URLs are revoked on lock. The existing same-origin Content Security Policy remains enabled; assets, icons and fonts require no CDN.
 
 Read requests have one bounded retry after a transport failure, provided the same session still owns them. HTTP errors and mutation requests are not retried. A failed application action refreshes the opportunity and readiness snapshot through authenticated reads, so cleared documents, review holds or recorded receipts are reflected without repeating the command. Opportunity identity hashing also retains its opening session: a locked draft cannot be imported after another unlock.
+
+The authenticated `POST /api/applications/{id}/questions/{question_id}/suggest` requires the reviewed profile revision in `If-Match`. It uses [GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol) and the SDK’s [structured response parsing](https://developers.openai.com/api/docs/guides/structured-outputs), with `store=False`, a 180-second timeout and no provider retries. It validates cited evidence/fact identifiers and actual model identity, rejects stale snapshots, omits contact fields and sensitive questionnaire answers, and writes no records. Choice suggestions cannot replace missing or different exact approvals. React keeps ideas in component memory, clears them when the profile/question changes or the workspace locks, and uses a separate copy action before explicit approval.
 
 ## Development and checks
 

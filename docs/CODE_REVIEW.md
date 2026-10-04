@@ -1,5 +1,11 @@
 # Source review, 2 October 2026
 
+## Questionnaire idea review, 4 October 2026
+
+The new structured adviser, authenticated suggestion endpoint, React question controls and their regression tests were reviewed for grounding, candidate ownership and side effects. Drafts use verified evidence and approved facts, exclude contact fields and sensitive questionnaire answers, validate source identifiers and the actual model, and remain outside persistence and submission policy. Revision preconditions and a post-response job/profile comparison reject changed snapshots. Provider exceptions are sanitised; requests have no automatic retries or alternative model.
+
+React keeps the current answer unchanged during generation, displays the model draft separately and requires a copy/edit step followed by explicit approval. Choices lacking the same exact prior approval remain explanatory only. Lock/session generations, component ownership and revision checks discard late ideas; stale results cannot overwrite another question or restore locked data. Approval retains the reviewed profile revision. Technical examples preserve independent project status, and conditional work permission is never converted into automatic Yes/No approval.
+
 ## React migration review, 4 October 2026
 
 The new authored TypeScript/TSX modules, build/test configuration and migrated interaction tests were reviewed against every control and data field in the previous JavaScript dashboard. The [feature parity map](FRONTEND.md) records the replacement locations. Generated bundles and source maps are checked by reproducible production builds rather than hand-edited. Backend contracts, FIFO ownership, provider scope, CV generation and submission gates remain in place.

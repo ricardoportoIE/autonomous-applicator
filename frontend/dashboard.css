@@ -651,6 +651,18 @@
   .question-card small {
     @apply block;
   }
+  .question-actions {
+    @apply flex flex-wrap gap-3;
+  }
+  .question-actions button {
+    @apply inline-flex items-center justify-center gap-2;
+  }
+  .answer-idea {
+    @apply mt-5 space-y-3 break-words rounded-xl border border-[#cbded3] bg-[#f0f6ef] p-4;
+  }
+  .answer-idea-text {
+    @apply whitespace-pre-wrap break-words;
+  }
   .review-note {
     @apply rounded-xl border border-amber-200 bg-amber-50 p-4;
   }

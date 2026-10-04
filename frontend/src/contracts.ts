@@ -45,6 +45,15 @@ export interface Question {
   required: boolean;
   sensitive: boolean;
 }
+export interface AnswerIdea {
+  draft: string;
+  evidence_ids: string[];
+  fact_keys: string[];
+  review_notes: string;
+  needs_clarification: boolean;
+  model: string;
+  profile_revision: number;
+}
 export interface Job {
   source: "manual" | "greenhouse" | "linkedin" | "fixture" | "permitted";
   source_id: string;
