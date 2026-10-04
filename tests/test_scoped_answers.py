@@ -211,6 +211,24 @@ def test_invalid_or_concurrent_approval_does_not_change_profile_or_other_applica
     assert store.application(ids[0])["approved_answers"] == {}
 
 
+def test_storage_rejects_a_missing_application_without_writing_an_approval(scoped):
+    app, _, ids, profile = scoped
+    store = app.state.store
+    before = [store.application(app_id) for app_id in ids]
+    events = store.events()
+    job = Job.model_validate(before[0]["job"])
+
+    with pytest.raises(KeyError) as error:
+        store.approve_answer(999, "availability", "Next month", 1, job)
+
+    assert error.value.args == (999,)
+    assert store.profile() == (profile, 1)
+    assert [store.application(app_id) for app_id in ids] == before
+    assert store.events() == events
+    with store.connect() as db:
+        assert db.execute("SELECT COUNT(*) FROM approved_answers").fetchone()[0] == 0
+
+
 def test_scoped_approval_overrides_shared_answer_and_expires_with_changed_facts(scoped):
     app, session, ids, profile = scoped
     store = app.state.store
