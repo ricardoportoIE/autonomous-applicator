@@ -7,9 +7,11 @@ from typing import Any, Protocol
 
 from .browser import LinkedInBrowser, ReviewRequired, linkedin_job_id
 from .documents import fingerprint, generate, validate_generation, validate_manifest
-from .models import Advice, Job, Preflight, Profile, State, SubmissionCheck
+from .models import Advice, Job, Preflight, Profile, Question, State, SubmissionCheck
 from .operations import Operation, Operations
 from .policy import answer_questions, evaluate, select_evidence
+from .question_adviser import question_key
+from .routine_answers import Selector, routine_answer
 from .store import Store
 
 
@@ -36,10 +38,12 @@ class Service:
         adapters: dict[str, Adapter] | None = None,
         *,
         selector: Callable[[Profile, Job, dict[str, Any]], Advice] | None = None,
+        question_selector: Selector | None = None,
     ):
         self.store, self.data = store, data
         self.adapters = adapters or {}
         self.selector = selector
+        self.question_selector = question_selector
         self.operations = Operations(store)
 
     def preflight(self, app_id: int, sources: set[str] | None = None) -> Preflight:
@@ -66,9 +70,10 @@ class Service:
         )
         check(
             "quota",
-            "Daily attempt budget",
+            "Daily sent-application budget",
             usage.remaining > 0,
-            f"{usage.used}/{usage.limit} attempts used on {usage.day} (Europe/London); {usage.remaining} remaining.",
+            f"{usage.used}/{usage.limit} applications sent on {usage.day} (Europe/London); "
+            f"{usage.held} pending or uncertain; {usage.remaining} sending slots remaining. Preparation may continue.",
         )
         check(
             "state",
@@ -123,7 +128,8 @@ class Service:
                 if profile.confirmed
                 else "Confirm the candidate facts first.",
             )
-            evaluation = evaluate(job, profile, settings)
+            effective = self.store.effective_profile(app_id, profile, job)
+            evaluation = evaluate(job, effective, settings)
             check(
                 "policy",
                 "Current fit and eligibility",
@@ -137,7 +143,7 @@ class Service:
                 row["revision"] == revision,
                 f"Prepared revision {row['revision']}; current revision {revision}.",
             )
-            _, unresolved = answer_questions(job, profile)
+            _, unresolved = answer_questions(job, effective)
             check(
                 "questions",
                 "Required questionnaire answers",
@@ -201,7 +207,27 @@ class Service:
             raise ValueError("This application is already submitted or needs reconciliation")
         job = Job.model_validate(row["job"])
         profile, revision = self.store.profile()
-        evaluation = evaluate(job, profile, self.store.settings())
+        if self.store.settings().routine_answers_enabled and profile.confirmed:
+            for question in job.questions:
+                effective = self.store.effective_profile(app_id, profile, job)
+                if (
+                    question.id
+                    in answer_questions(
+                        job.model_copy(update={"questions": [question]}), effective
+                    )[0]
+                ):
+                    continue
+                report(
+                    "answering_routine_questions",
+                    "Resolving routine questions from approved facts.",
+                )
+                try:
+                    self.resolve_question(app_id, profile, revision, job, question)
+                except ValueError as exc:
+                    with self.store.connect() as db:
+                        self.store.event(db, "routine_question_review", type(exc).__name__, app_id)
+        effective = self.store.effective_profile(app_id, profile, job)
+        evaluation = evaluate(job, effective, self.store.settings())
         manifest = {}
 
         def hold_preparation(error: PreparationError) -> None:
@@ -308,7 +334,8 @@ class Service:
         row = self.store.application(app_id)
         profile, revision = self.store.profile()
         job = Job.model_validate(row["job"])
-        evaluation = evaluate(job, profile, self.store.settings())
+        effective = self.store.effective_profile(app_id, profile, job)
+        evaluation = evaluate(job, effective, self.store.settings())
         if evaluation.state != State.READY or row["state"] != State.READY:
             raise ValueError("Application does not pass current submission policy")
         if job.source not in self.adapters:
@@ -326,19 +353,37 @@ class Service:
         )
         if job.cover_letter_required and "cover_pdf" not in row["manifest"]["files"]:
             raise ValueError("Generate the required cover letter before submission")
-        answers, unresolved = answer_questions(job, profile)
+        answers, unresolved = answer_questions(job, effective)
         if unresolved:
             raise ValueError("Required questions remain unanswered")
         report(
             "reserving_attempt",
-            "Reserving one daily attempt before accessing the application form.",
+            "Holding one sending slot until confirmation or a proven pre-submission stop.",
         )
         attempt = self.store.reserve(app_id, revision)
         adapter = self.adapters[job.source]
         previous_progress = adapter.progress if isinstance(adapter, LinkedInBrowser) else None
+        previous_resolver = (
+            adapter.question_resolver if isinstance(adapter, LinkedInBrowser) else None
+        )
+        previous_before_submit = (
+            adapter.before_submit if isinstance(adapter, LinkedInBrowser) else None
+        )
         if isinstance(adapter, LinkedInBrowser):
-            adapter.profile = profile
+            adapter.profile = effective
             adapter.progress = progress
+            adapter.before_submit = lambda: self.store.mark_sending(app_id, attempt, revision, job)
+
+            def resolve_live(question: Question) -> str | None:
+                report(
+                    "answering_routine_questions",
+                    "Resolving a live routine question from approved facts.",
+                )
+                return self.resolve_question(app_id, profile, revision, job, question)
+
+            adapter.question_resolver = (
+                resolve_live if self.store.settings().routine_answers_enabled else None
+            )
         try:
             report(
                 "opening_opportunity", "Opening the reviewed opportunity in the dedicated browser."
@@ -351,7 +396,7 @@ class Service:
             )
             self.store.finish(app_id, attempt, receipt)
         except ReviewRequired as exc:
-            self.store.hold(app_id, str(exc))
+            self.store.hold(app_id, str(exc), attempt=attempt)
             raise
         except Exception:
             self.store.finish(app_id, attempt, None)
@@ -359,7 +404,37 @@ class Service:
         finally:
             if isinstance(adapter, LinkedInBrowser):
                 adapter.progress = previous_progress
+                adapter.question_resolver = previous_resolver
+                adapter.before_submit = previous_before_submit
         return receipt
+
+    def resolve_question(
+        self, app_id: int, profile: Profile, revision: int, job: Job, question: Question
+    ) -> str | None:
+        if not self.store.settings().routine_answers_enabled:
+            return None
+        if (
+            self.store.profile()[1] != revision
+            or self.store.application(app_id)["job"] != job.model_dump()
+        ):
+            raise ValueError("Candidate or opportunity changed before resolving a routine question")
+        effective = self.store.effective_profile(app_id, profile, job)
+        cached = effective.answers.get(question_key(question))
+        if cached and (not question.choices or cached in question.choices):
+            return cached
+        resolution = routine_answer(profile, job, question, self.question_selector)
+        if resolution is None:
+            return None
+        self.store.save_routine_answer(
+            app_id,
+            question,
+            resolution.answer,
+            resolution.source,
+            resolution.evidence_ids,
+            revision,
+            job,
+        )
+        return resolution.answer
 
     def tick(
         self, operation: Operation | None = None, *, stopping: Callable[[], bool] | None = None
@@ -378,9 +453,6 @@ class Service:
                 break
             if not self.store.settings().automation_enabled:
                 operation.completion_status = "paused"
-                break
-            if not self.store.daily_usage().remaining:
-                operation.completion_status = "limit_reached"
                 break
             row = self.store.application(candidate["id"])
             _, revision = self.store.profile()
@@ -405,8 +477,31 @@ class Service:
                     operation.completion_status = "paused"
                     break
                 row = self.store.application(app_id)
+                profile, revision = self.store.profile()
+                job = Job.model_validate(row["job"])
+                current = evaluate(
+                    job, self.store.effective_profile(app_id, profile, job), self.store.settings()
+                )
+                if row["state"] == State.READY and current.state != State.READY:
+                    self.store.prepare(
+                        app_id,
+                        revision,
+                        current.model_dump_json(),
+                        current.state,
+                        row["manifest"],
+                        expected_job=job,
+                    )
+                    row = self.store.application(app_id)
                 if row["state"] != State.READY:
                     operation.result(row["state"])
+                    continue
+                if not self.store.daily_usage().remaining:
+                    operation.progress(
+                        "waiting_for_capacity",
+                        "Documents ready; waiting for daily sending capacity.",
+                    )
+                    operation.result("awaiting_daily_capacity")
+                    operation.completion_status = "limit_reached"
                     continue
                 result[str(app_id)] = self.submit(app_id, progress=operation.progress)
                 operation.result("submitted")

@@ -207,6 +207,7 @@ export class Workspace {
     void poll();
   }
   async openDetail(id: number) {
+    const profile_revision = this.state.revision;
     const [row, report, events] = await Promise.all([
       this.api.json<Application>(`/applications/${id}`),
       this.api.json<ApplicationDetail["report"]>(
@@ -214,7 +215,10 @@ export class Workspace {
       ),
       this.api.json<Event[]>(`/applications/${id}/events`),
     ]);
-    this.update({ view: "applications", detail: { row, report, events } });
+    this.update({
+      view: "applications",
+      detail: { row, report, events, profile_revision },
+    });
   }
   closeDetail() {
     this.update({ detail: null });

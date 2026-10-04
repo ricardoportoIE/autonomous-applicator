@@ -1,6 +1,16 @@
 # Delivery and validation record
 
-Version 0.3.0 reviewed through the questionnaire assistance follow-up on 4 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+## Sending capacity and routine answers, 4 October 2026
+
+The daily application limit now counts confirmed sends. Safe stops before sending release their reservation atomically with the review record; uncertain or pending sends hold capacity separately across calendar days. Confirmed manual receipts count towards the cap. FIFO preparation continues at exhausted capacity, retaining unchanged ready documents and showing **waiting for capacity**. Negative reconciliation requires the candidate to check the provider, preserves the attempt journal and leaves a manual preparation hold before retrying.
+
+Routine questions use exact approved fields or verified evidence. GPT-6.1 Sol selects sources for supported professional prose; approved source wording is copied exactly. Missing, sensitive, unusual, legal or personal-decision answers stay in review. Numeric durations require complete explicit approved statements, with no inferred years or conversion of independent projects into paid employment. Derived answers are scoped by application, revision and vacancy fingerprint, with source information and existing review controls in **Questions**.
+
+City/remote-country, same-country and configured-country preferences are available in Agent settings. Distant or overseas opportunities still receive documents; explicit location acceptance is specific to the current vacancy and candidate version and cannot approve eligibility or sponsorship. The default uses the candidate's current city or remote work explicitly in the same country.
+
+A real isolated GPT-6.1 Sol source-selection request using fictional facts completed in **4.227 seconds** and selected the expected source. The final answer matched its canonical approved wording exactly. This single example verifies integration and provenance, not a general accuracy or performance benchmark. No provider application or invitation was sent by that test. A separate SQLite snapshot audit verified the legacy journal migration without changing the live workspace.
+
+Version 0.3.0 reviewed through the sending-capacity and routine-answer follow-up on 4 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
 
 ## Questionnaire answer ideas, 4 October 2026
 

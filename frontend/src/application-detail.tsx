@@ -7,6 +7,7 @@ import type {
   AnswerIdea,
   Profile,
   Question,
+  RoutineAnswerRecord,
 } from "./contracts";
 import type { Workspace } from "./workspace";
 
@@ -15,11 +16,13 @@ export function Answer({
   profile,
   workspace,
   id,
+  automatic,
 }: {
   question: Question;
   profile: Profile | null;
   workspace: Workspace;
   id: number;
+  automatic?: RoutineAnswerRecord;
 }) {
   const { revision, pending } = useSyncExternalStore(
     workspace.subscribe,
@@ -31,7 +34,7 @@ export function Answer({
   const key =
     question.answer_key ||
     "question:" + question.label.toLowerCase().trim().replace(/\s+/g, " ");
-  const approved = profile?.answers[key] ?? "";
+  const approved = profile?.answers[key] ?? automatic?.answer ?? "";
   const [value, setValue] = useState(
     question.choices.length && !question.choices.includes(approved)
       ? ""
@@ -134,6 +137,15 @@ export function Answer({
         {question.required ? "Required" : "Optional"} · Exact approved answer
         only
       </small>
+      {automatic && (
+        <p className="document-origin">
+          Answered automatically from{" "}
+          {automatic.source === "gpt-6.1-sol"
+            ? "verified evidence selected with GPT-6.1 Sol"
+            : "approved candidate facts"}
+          . You can review and edit this answer.
+        </p>
+      )}
       <div className="question-actions">
         <button
           className="secondary"
@@ -275,6 +287,21 @@ export function ApplicationDetails({
   edit: (row: Application) => void;
 }) {
   const { row, report, events } = detail;
+  const routine = row.routine_answers ?? [];
+  const keyFor = (question: Question) =>
+    question.answer_key ||
+    "question:" + question.label.toLowerCase().trim().replace(/\s+/g, " ");
+  const questions = [
+    ...row.job.questions,
+    ...routine
+      .filter(
+        (answer) =>
+          !row.job.questions.some(
+            (question) => keyFor(question) === answer.answer_key,
+          ),
+      )
+      .map((answer) => answer.question),
+  ];
   const [tab, setTab] = useState("summary");
   const [selected, setSelected] = useState<string[]>(
     row.manifest.evidence_ids ?? [],
@@ -328,7 +355,7 @@ export function ApplicationDetails({
         items={[
           { id: "summary", label: "Overview" },
           { id: "documents", label: `Documents (${files.length})` },
-          { id: "questions", label: `Questions (${row.job.questions.length})` },
+          { id: "questions", label: `Questions (${questions.length})` },
           { id: "history", label: "Activity & outcome" },
         ]}
       >
@@ -375,6 +402,42 @@ export function ApplicationDetails({
                 >
                   Recheck readiness
                 </button>
+                {!protectedState &&
+                  report.evaluation?.blockers?.some((blocker) =>
+                    /Location needs|Distance or country/.test(blocker),
+                  ) && (
+                    <form
+                      className="review-note"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        const revision =
+                          detail.profile_revision ??
+                          workspace.getSnapshot().revision;
+                        void workspace.action(async () => {
+                          await workspace.api.json(
+                            `/applications/${row.id}/location-review`,
+                            "POST",
+                            { location: row.job.location },
+                            revision,
+                          );
+                          await workspace.refresh();
+                          await workspace.openDetail(row.id);
+                          workspace.message(
+                            "Location accepted for this opportunity. The queue can recheck readiness.",
+                          );
+                        });
+                      }}
+                    >
+                      <p>Location review: {row.job.location}</p>
+                      <label className="check">
+                        <input type="checkbox" required />I accept this
+                        opportunity's location
+                      </label>
+                      <button className="secondary">
+                        Accept location for this opportunity
+                      </button>
+                    </form>
+                  )}
               </section>
               {row.evaluation.score !== undefined && (
                 <section className="fit-report">
@@ -539,16 +602,21 @@ export function ApplicationDetails({
               <h3>Approved questionnaire answers</h3>
               <p>
                 Unknown or sensitive answers hold the application for review. A
-                prefilled provider field does not approve an answer.
+                prefilled provider field does not approve an answer. Routine
+                questions can be answered from your approved facts and verified
+                evidence.
               </p>
-              {row.job.questions.length ? (
-                row.job.questions.map((question) => (
+              {questions.length ? (
+                questions.map((question) => (
                   <Answer
                     key={question.id}
                     question={question}
                     profile={profile}
                     workspace={workspace}
                     id={row.id}
+                    automatic={routine.find(
+                      (answer) => answer.answer_key === keyFor(question),
+                    )}
                   />
                 ))
               ) : (
@@ -560,6 +628,42 @@ export function ApplicationDetails({
             </>
           ) : (
             <>
+              {row.state === "uncertain" && (
+                <form
+                  className="review-note"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const revision =
+                      detail.profile_revision ??
+                      workspace.getSnapshot().revision;
+                    void workspace.action(async () => {
+                      await workspace.api.json(
+                        `/applications/${row.id}/not-sent`,
+                        "POST",
+                        { checked: true },
+                        revision,
+                      );
+                      await workspace.refresh();
+                      await workspace.openDetail(row.id);
+                      workspace.message(
+                        "Confirmed as not sent. Capacity released; prepare again manually before retrying.",
+                      );
+                    });
+                  }}
+                >
+                  <p>
+                    Check the original opportunity before resolving an uncertain
+                    submission.
+                  </p>
+                  <label className="check">
+                    <input type="checkbox" required />I checked the provider and
+                    this application was not sent
+                  </label>
+                  <button className="secondary">
+                    Confirm application was not sent
+                  </button>
+                </form>
+              )}
               {row.receipt && (
                 <p className="receipt">Recorded receipt: {row.receipt}</p>
               )}

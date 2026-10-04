@@ -151,14 +151,18 @@ def test_unknown_required_answer_is_held_and_the_next_job_can_complete(queue):
     assert app.state.store.daily_usage().used == 2
 
 
-def test_daily_limit_stops_before_paying_for_the_next_cv(queue):
+def test_daily_limit_stops_sends_but_prepares_the_remaining_fifo_queue(queue):
     app, session, ids, trace, _ = queue
     settings = app.state.store.settings()
     settings.daily_limit = 1
     app.state.store.set_settings(settings)
     session.post("/api/worker/tick")
-    assert trace == [("ai", "1"), ("submit", "1")]
-    assert app.state.store.application(ids[1])["manifest"] == {}
+    assert trace == [("ai", "1"), ("submit", "1"), ("ai", "2"), ("ai", "3")]
+    assert all(app.state.store.application(app_id)["manifest"]["files"] for app_id in ids)
+    assert all(app.state.store.application(app_id)["state"] == State.READY for app_id in ids[1:])
+    assert app.state.store.daily_usage().used == 1
+    session.post("/api/worker/tick")
+    assert trace == [("ai", "1"), ("submit", "1"), ("ai", "2"), ("ai", "3")]
     assert session.get("/api/worker/status").json()["run"]["status"] == "limit_reached"
 
 

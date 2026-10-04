@@ -19,7 +19,7 @@ Preserve these distinctions: Military Police Officer, Sep 2012–Apr 2026, with 
 3. Explain a reproducible 0–100 fit score with evidence identifiers and gaps. Route boundary values 49/50/79/80/100 correctly.
 4. Exclude explicit sponsorship incompatibility; do not exclude silence, seniority or years of experience alone.
 5. Prepare job-specific A4, single-column, black-text PDFs with selectable text, professional contact information in the body and editable DOCX counterparts. Use Aptos or Arial when installed; verify page count and text extraction.
-6. Answer only known, explicitly approved form facts; hold unknown, ambiguous, sensitive or unsupported questions.
+6. Answer routine questions from approved candidate facts and verified source wording; hold unknown, ambiguous, sensitive or unsupported questions. Independent project experience must never become paid employment.
 7. Apply automatically only through permitted configured adapters, with verified profile, ready documents, resolved questions, daily limit, kill switch, deduplication and durable attempt journal.
 8. A crash after starting submission becomes uncertain and requires reconciliation. Never automatically retry an uncertain submission.
 9. Record application events and manually reported outcomes. Suggest changes from feedback without silently modifying facts, thresholds or authorisation.
@@ -29,4 +29,4 @@ Preserve these distinctions: Military Police Officer, Sep 2012–Apr 2026, with 
 
 ## Questions awaiting candidate decisions
 
-Resolved: public `ricardoportoIE/autonomous-applicator` repository; ten daily application attempts; candidate-declared LinkedIn scope for discovery, Easy Apply and invitations; no public profile changes. Remaining setup: current profile/contact confirmation, salary expectations, availability, local browser sign-in, a rotated API key and initial live selector validation.
+Resolved: public `ricardoportoIE/autonomous-applicator` repository; ten daily confirmed applications sent; preparation continues after the sending cap; routine factual answers enabled; exceptional locations reviewed with documents still prepared; candidate-declared LinkedIn scope for discovery, Easy Apply and invitations; no public profile changes. Remaining setup: current profile/contact confirmation, salary expectations, availability, local browser sign-in, a rotated API key and initial live selector validation.

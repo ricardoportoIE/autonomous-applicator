@@ -1,5 +1,6 @@
 """Dedicated local browser automation with fixed origins and explicit form contracts."""
 
+import hashlib
 import os
 import re
 from collections.abc import Callable
@@ -496,11 +497,29 @@ def upload_resume(page: Page, dialog: Locator, document: Path) -> set[str] | Non
 
 
 def fill_questions(
-    page: Page, profile: Profile, *, resume_field_ids: set[str] | None = None
+    page: Page,
+    profile: Profile,
+    *,
+    resume_field_ids: set[str] | None = None,
+    resolver: Callable[[Question], str | None] | None = None,
 ) -> None:
     fields = form_questions(page)
     phone_answers = contact_phone_answers(fields, profile)
     dialog = page.get_by_role("dialog").filter(visible=True)
+    resolved: dict[tuple[str, tuple[str, ...]], str | None] = {}
+
+    def answer(label: str, choices: list[str], required: bool) -> str | None:
+        approved = approved_answer(label, profile)
+        if approved or resolver is None:
+            return approved
+        key = (label, tuple(choices))
+        if key not in resolved:
+            question_id = "q_" + hashlib.sha256(label.casefold().encode()).hexdigest()[:16]
+            resolved[key] = resolver(
+                Question(id=question_id, label=label, choices=choices, required=required)
+            )
+        return resolved[key]
+
     for field in fields:
         label, field_id = str(field["label"]).strip(), str(field["id"])
         if resume_field_ids and field_id in resume_field_ids:
@@ -514,7 +533,7 @@ def fill_questions(
             group = field["group"]
             if not group or not field["group_choices"]:
                 raise ValueError("Unlabelled radio group requires manual review")
-            value = approved_answer(group, profile)
+            value = answer(group, field["group_choices"], field["required"])
             if not value or not value.strip():
                 raise ValueError(f"Approve an exact answer for: {group}")
             if value not in field["group_choices"]:
@@ -536,7 +555,7 @@ def fill_questions(
                 locator.uncheck()
                 continue
             raise ValueError(f"Explicit selection or consent requires manual review: {label}")
-        value = phone_answers.get(label) or approved_answer(label, profile)
+        value = phone_answers.get(label) or answer(label, field["choices"], field["required"])
         if not value or not value.strip():
             # Existing values also need validation; never assume a prefilled legal answer is correct.
             if field["required"] or field["value"]:
@@ -556,6 +575,8 @@ class LinkedInBrowser:
     def __init__(self, data: Path, profile: Profile | None = None):
         self.data, self.profile = data, profile
         self.progress: Callable[[str, str], None] | None = None
+        self.question_resolver: Callable[[Question], str | None] | None = None
+        self.before_submit: Callable[[], None] | None = None
 
     def report(self, stage: str, detail: str) -> None:
         if self.progress:
@@ -727,7 +748,12 @@ class LinkedInBrowser:
                     "answering_questions",
                     f"Completing form step {_step + 1} using approved answers only.",
                 )
-                fill_questions(page, self.profile, resume_field_ids=resume_fields)
+                fill_questions(
+                    page,
+                    self.profile,
+                    resume_field_ids=resume_fields,
+                    resolver=self.question_resolver,
+                )
                 self.report(
                     "uploading_documents",
                     f"Checking remaining document fields: form step {_step + 1}.",
@@ -757,6 +783,8 @@ class LinkedInBrowser:
                     if follow.count():
                         follow.uncheck()
                     self.report("submitting", "Sending the application to LinkedIn.")
+                    if self.before_submit:
+                        self.before_submit()
                     progress["submitted"] = True
                     submit.click()
                     self.report(

@@ -122,7 +122,7 @@ def test_dashboard_full_journey(data, profile, tmp_path):
         page.get_by_text("Documents prepared from approved evidence.").wait_for()
         assert app.state.store.applications()[0]["evaluation"]["score"] == 100
         page.get_by_role("button", name="Agent settings", exact=True).click()
-        page.get_by_label("Daily application attempt limit").fill("10")
+        page.get_by_label("Daily sent-application limit").fill("10")
         page.get_by_role("button", name="Save agent settings").click()
         page.get_by_text("Agent settings saved.").wait_for()
         page.get_by_role("button", name="Overview", exact=True).click()

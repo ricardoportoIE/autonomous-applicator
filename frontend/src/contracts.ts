@@ -25,6 +25,9 @@ export interface Profile {
 export interface Settings {
   automation_enabled: boolean;
   ai_document_preparation: boolean;
+  routine_answers_enabled: boolean;
+  automatic_location_policy:
+    "same_city" | "same_country" | "configured_countries";
   linkedin_authorised: boolean;
   connections_enabled: boolean;
   discovery_enabled: boolean;
@@ -75,6 +78,7 @@ export interface Application {
   state: ApplicationState;
   outcome: string | null;
   receipt: string | null;
+  routine_answers?: RoutineAnswerRecord[];
   evaluation: {
     score?: number;
     matched?: string[];
@@ -95,6 +99,7 @@ export interface Application {
   };
 }
 export interface Preflight {
+  evaluation?: Application["evaluation"] | null;
   checked_at: string;
   can_submit: boolean;
   checks: { code: string; label: string; passed: boolean; detail: string }[];
@@ -109,8 +114,18 @@ export interface Usage {
   day: string;
   timezone: string;
   used: number;
+  held: number;
+  attempts: number;
   limit: number;
   remaining: number;
+}
+export interface RoutineAnswerRecord {
+  answer_key: string;
+  question: Question;
+  answer: string;
+  source: string;
+  evidence_ids: string[];
+  revision: number;
 }
 export interface Insights {
   submitted: number;
@@ -152,6 +167,7 @@ export interface WorkerRecord {
   }[];
 }
 export interface ApplicationDetail {
+  profile_revision?: number;
   row: Application;
   report: Preflight;
   events: Event[];

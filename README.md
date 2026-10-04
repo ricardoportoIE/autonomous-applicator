@@ -2,7 +2,7 @@
 
 A local job application workbench that links every candidate claim to evidence, explains job fit, prepares tailored CVs and cover letters, and controls application queues.
 
-Inspect submission readiness without opening a browser or consuming a daily attempt. Search and sort the queue, follow an individual application's activity, and see the remaining London-day attempt budget.
+Inspect submission readiness without opening a browser or consuming a daily attempt. Search and sort the queue, follow an individual application's activity, and see confirmed applications sent and any pending sending reservations for the London day.
 
 The agent processes opportunities in arrival order, completing each vacancy's evidence selection, documents, checks and submission before starting the next. A live monitor shows the current opportunity, stage, elapsed time and run identifier. Failed and interrupted work retains its recorded stage for review. See [Application queue operation](docs/APPLICATION_QUEUE.md).
 
@@ -22,6 +22,8 @@ The implementation and validation record is maintained in [docs/STATUS.md](docs/
 - **50–79:** manual review queue.
 - **0–49:** not prioritised.
 - Explicit incompatibilities, missing required answers, stale evidence, an uncertain previous submission or disabled automation prevent automatic submission regardless of score.
+
+The daily limit applies to confirmed applications sent. Planning, routine answers and CV preparation continue when the limit is reached; pending or uncertain sends reserve capacity separately. Interesting distant or overseas vacancies still receive documents and wait for location review. Agent settings provide city, country or configured-country preferences.
 
 The fit score is a transparent heuristic, not an ATS score or a hiring probability. Seniority and requested years alone are not rejection rules. Unmentioned sponsorship is unknown rather than refused.
 
@@ -82,7 +84,7 @@ Use **Add opportunity**, **Add evidence**, **Add contact** or **Edit candidate p
 
 ## AI integration
 
-The optional adviser uses the OpenAI Responses API with `gpt-6.1-sol`, structured output and `store=False`. It selects and ranks existing evidence identifiers; the renderer preserves approved factual wording. Unknown form answers require candidate input. No hidden chain of thought is stored. Documents retain model provenance, evidence references and candidate/job fingerprints.
+The optional adviser uses the OpenAI Responses API with `gpt-6.1-sol`, structured output and `store=False`. It selects and ranks existing evidence identifiers; the renderer preserves approved factual wording. Routine questions can use exact approved candidate facts and verified source wording. Missing or exceptional facts require candidate review. No hidden chain of thought is stored. Documents retain model provenance, evidence references and candidate/job fingerprints.
 
 In an application's **Questions** tab, **Suggest with GPT-6.1 Sol** drafts a grounded answer idea from the vacancy and approved facts. Review the separate suggestion, choose **Use as editable draft**, edit it and explicitly **Approve answer**. Ideas never save or approve themselves; sensitive questions and unapproved choices require manual handling.
 

@@ -30,6 +30,8 @@ export const profile: Profile = {
 export const settings: Settings = {
   automation_enabled: false,
   ai_document_preparation: true,
+  routine_answers_enabled: true,
+  automatic_location_policy: "same_city",
   linkedin_authorised: true,
   connections_enabled: false,
   discovery_enabled: false,
@@ -95,6 +97,8 @@ export function payload(path: string): unknown {
       day: "2026-10-04",
       timezone: "Europe/London",
       used: 0,
+      held: 0,
+      attempts: 0,
       limit: 10,
       remaining: 10,
     };

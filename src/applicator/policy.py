@@ -2,6 +2,7 @@
 
 import re
 
+from .location_policy import location_confirmed, location_needs_review
 from .models import Evaluation, Job, Profile, Settings, State
 
 ALIASES = {
@@ -123,7 +124,9 @@ def evaluate(job: Job, profile: Profile, settings: Settings) -> Evaluation:
     gaps = [need for need in needs if need not in matched]
     # Technical evidence is the primary signal. Seniority/years are deliberately not vetoes.
     technical = round(70 * len(matched) / len(needs)) if needs else 0
-    target = any(contains(job.location, country) for country in settings.allowed_countries)
+    target = any(
+        contains(job.location, country) for country in settings.allowed_countries
+    ) or location_confirmed(job, profile)
     role = any(
         contains(job.title, term)
         for term in (
@@ -158,8 +161,12 @@ def evaluate(job: Job, profile: Profile, settings: Settings) -> Evaluation:
         state = State.SKIPPED
     if not needs:
         blockers.append("No assessable requirements; review the job description.")
-    if not target:
+    if not target and not location_confirmed(job, profile):
         blockers.append("Location needs candidate confirmation.")
+    if location_needs_review(job, profile, settings):
+        blockers.append(
+            "Distance or country requires location review; documents may still be prepared."
+        )
     if any(
         contains(job.title, term)
         for term in ("staff", "principal", "director", "head", "engineering manager")

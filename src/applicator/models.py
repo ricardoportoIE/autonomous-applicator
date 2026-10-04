@@ -88,6 +88,10 @@ class Job(Contract):
 class Settings(Contract):
     automation_enabled: bool = False
     ai_document_preparation: bool = False
+    routine_answers_enabled: bool = True
+    automatic_location_policy: Literal["same_city", "same_country", "configured_countries"] = (
+        "same_city"
+    )
     daily_limit: int = Field(default=10, ge=1, le=50)
     auto_threshold: int = Field(default=80, ge=80, le=100)
     review_threshold: int = Field(default=50, ge=50, le=79)
@@ -140,6 +144,8 @@ class DailyUsage(Contract):
     day: str
     timezone: Literal["Europe/London"] = "Europe/London"
     used: int = Field(ge=0)
+    held: int = Field(default=0, ge=0)
+    attempts: int = Field(default=0, ge=0)
     limit: int = Field(ge=1)
     remaining: int = Field(ge=0)
 

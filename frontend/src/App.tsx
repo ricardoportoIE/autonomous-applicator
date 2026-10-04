@@ -252,7 +252,7 @@ export function App({ workspace }: { workspace: Workspace }) {
                     ? "Profile confirmed"
                     : "Profile review needed"}
                 </Badge>
-                <Badge>{usage.remaining} attempts remaining today</Badge>
+                <Badge>{usage.remaining} sending slots remaining today</Badge>
               </>
             )}
           </div>
@@ -327,22 +327,30 @@ export function App({ workspace }: { workspace: Workspace }) {
                   {usage && (
                     <>
                       <strong className="usage-number">
-                        {usage.used} / {usage.limit} attempts used
+                        {usage.used} / {usage.limit} applications sent
                       </strong>
                       <p>
-                        {usage.remaining} remaining · {usage.day}
+                        {usage.remaining} sending slots remaining · {usage.day}
                       </p>
+                      {(usage.held ?? 0) > 0 && (
+                        <p>
+                          {usage.held} sending slots held for pending or
+                          uncertain submissions.
+                        </p>
+                      )}
                       <progress
                         max={usage.limit}
                         value={Math.min(usage.used, usage.limit)}
-                        aria-label="Daily application attempt usage"
+                        aria-label="Daily confirmed application usage"
                       />
                     </>
                   )}
                 </div>
                 <p>
-                  Reserved attempts include interrupted or uncertain
-                  submissions. Limits reset at midnight in Europe/London.
+                  The limit applies to confirmed sends. Queue planning and
+                  document preparation continue when full. Pending or uncertain
+                  sends hold capacity separately. Limits reset at midnight in
+                  Europe/London.
                 </p>
               </Panel>
               <Panel

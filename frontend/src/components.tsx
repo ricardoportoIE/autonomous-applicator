@@ -335,7 +335,7 @@ export function WorkerMonitor({
     interrupted: "Interrupted — review before retrying",
     paused: "Paused",
     stopped: "Stopped",
-    limit_reached: "Daily application limit reached",
+    limit_reached: "Daily sending limit reached; preparation continues",
   };
   const end = run?.finished ? new Date(run.finished).getTime() : Date.now();
   const seconds = (date: string) =>

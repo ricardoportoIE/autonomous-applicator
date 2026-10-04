@@ -39,6 +39,15 @@ class Store:
                     detail TEXT NOT NULL, created TEXT NOT NULL);
                 CREATE INDEX IF NOT EXISTS events_application ON events(application_id, id DESC);
                 CREATE INDEX IF NOT EXISTS attempts_day ON attempts(day);
+                CREATE TABLE IF NOT EXISTS routine_answers (
+                    application_id INTEGER NOT NULL, answer_key TEXT NOT NULL,
+                    question TEXT NOT NULL, answer TEXT NOT NULL, source TEXT NOT NULL,
+                    evidence_ids TEXT NOT NULL, revision INTEGER NOT NULL,
+                    job_fingerprint TEXT NOT NULL, created TEXT NOT NULL,
+                    PRIMARY KEY(application_id,answer_key));
+                CREATE TABLE IF NOT EXISTS location_reviews (
+                    application_id INTEGER PRIMARY KEY, revision INTEGER NOT NULL,
+                    job_fingerprint TEXT NOT NULL, created TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS application_runs (
                     id TEXT PRIMARY KEY, kind TEXT NOT NULL, status TEXT NOT NULL,
                     application_id INTEGER, stage TEXT NOT NULL, detail TEXT NOT NULL,
@@ -56,6 +65,57 @@ class Store:
                 (Settings().model_dump_json(),),
             )
             db.execute("INSERT OR IGNORE INTO config VALUES ('revision', '0')")
+            columns = {row[1] for row in db.execute("PRAGMA table_info(attempts)")}
+            if "status" not in columns:
+                db.execute("ALTER TABLE attempts ADD COLUMN status TEXT NOT NULL DEFAULT 'held'")
+                db.execute(
+                    "UPDATE attempts SET status='confirmed' WHERE receipt IS NOT NULL AND receipt!=''"
+                )
+                # Existing review stops happened before the provider's irreversible click.
+                db.execute(
+                    "UPDATE attempts SET status='released' WHERE receipt IS NULL AND application_id IN "
+                    "(SELECT id FROM applications WHERE state IN ('review','ready','skipped'))"
+                )
+                db.execute(
+                    "UPDATE attempts SET status='released' WHERE receipt IS NULL AND id NOT IN (SELECT MAX(id) FROM attempts GROUP BY application_id)"
+                )
+            if "confirmed_day" not in columns:
+                db.execute("ALTER TABLE attempts ADD COLUMN confirmed_day TEXT")
+                db.execute("UPDATE attempts SET confirmed_day=day WHERE status='confirmed'")
+                for row in db.execute(
+                    "SELECT a.id,a.receipt,MAX(t.id) AS attempt FROM applications a LEFT JOIN attempts t ON t.application_id=a.id WHERE a.state='submitted' AND a.receipt IS NOT NULL GROUP BY a.id"
+                ).fetchall():
+                    if db.execute(
+                        "SELECT 1 FROM attempts WHERE application_id=? AND status='confirmed'",
+                        (row[0],),
+                    ).fetchone():
+                        continue
+                    event = db.execute(
+                        "SELECT created FROM events WHERE application_id=? AND kind='manual_receipt' ORDER BY id DESC LIMIT 1",
+                        (row[0],),
+                    ).fetchone()
+                    confirmed_day = (
+                        day_key(datetime.fromisoformat(event[0])) if event else day_key()
+                    )
+                    if row[2]:
+                        db.execute(
+                            "UPDATE attempts SET receipt=?,status='confirmed',confirmed_day=? WHERE id=?",
+                            (row[1], confirmed_day, row[2]),
+                        )
+                    else:
+                        db.execute(
+                            "INSERT INTO attempts(application_id,day,started,receipt,status,confirmed_day) VALUES(?,?,?,?,?,?)",
+                            (
+                                row[0],
+                                confirmed_day,
+                                event[0] if event else datetime.now(UTC).isoformat(),
+                                row[1],
+                                "confirmed",
+                                confirmed_day,
+                            ),
+                        )
+            if "sent_day" not in columns:
+                db.execute("ALTER TABLE attempts ADD COLUMN sent_day TEXT")
 
     @contextmanager
     def connect(self, immediate: bool = False) -> Iterator[sqlite3.Connection]:
@@ -187,7 +247,131 @@ class Store:
             result = dict(row)
             for key in ("job", "evaluation", "manifest"):
                 result[key] = json.loads(result[key])
+            result["routine_answers"] = self._routine_answers(
+                db, app_id, Job.model_validate(result["job"])
+            )
             return result
+
+    def _routine_answers(
+        self, db: sqlite3.Connection, app_id: int, job: Job
+    ) -> list[dict[str, Any]]:
+        from .documents import fingerprint
+
+        revision = int(db.execute("SELECT value FROM config WHERE key='revision'").fetchone()[0])
+        rows = []
+        for entry in db.execute(
+            "SELECT * FROM routine_answers WHERE application_id=? AND revision=? AND job_fingerprint=?",
+            (app_id, revision, fingerprint(job)),
+        ):
+            item = dict(entry)
+            item["question"] = json.loads(item["question"])
+            item["evidence_ids"] = json.loads(item["evidence_ids"])
+            rows.append(item)
+        return rows
+
+    def effective_profile(
+        self, app_id: int, profile: Profile, job: Job, db: sqlite3.Connection | None = None
+    ) -> Profile:
+        from .documents import fingerprint
+        from .location_policy import normalise_location
+
+        if db is None:
+            with self.connect() as connection:
+                return self.effective_profile(app_id, profile, job, connection)
+        settings = Settings.model_validate_json(
+            db.execute("SELECT value FROM config WHERE key='settings'").fetchone()[0]
+        )
+        answers = (
+            {item["answer_key"]: item["answer"] for item in self._routine_answers(db, app_id, job)}
+            if settings.routine_answers_enabled
+            else {}
+        )
+        revision = int(db.execute("SELECT value FROM config WHERE key='revision'").fetchone()[0])
+        if db.execute(
+            "SELECT 1 FROM location_reviews WHERE application_id=? AND revision=? AND job_fingerprint=?",
+            (app_id, revision, fingerprint(job)),
+        ).fetchone():
+            answers["condition:location:" + normalise_location(job.location)] = "Confirmed"
+        return profile.model_copy(update={"answers": {**answers, **profile.answers}})
+
+    def save_routine_answer(
+        self,
+        app_id: int,
+        question: Question,
+        answer: str,
+        source: str,
+        evidence_ids: list[str],
+        revision: int,
+        expected_job: Job,
+    ) -> None:
+        from .documents import fingerprint
+        from .question_adviser import question_key
+
+        with self.connect(True) as db:
+            row = db.execute("SELECT job,state FROM applications WHERE id=?", (app_id,)).fetchone()
+            current = int(db.execute("SELECT value FROM config WHERE key='revision'").fetchone()[0])
+            if not row or current != revision or Job.model_validate_json(row[0]) != expected_job:
+                raise ValueError(
+                    "Candidate or opportunity changed while resolving a routine question"
+                )
+            if row[1] not in {State.REVIEW, State.READY, State.SUBMITTING}:
+                raise ValueError("This application cannot receive a routine answer")
+            if (
+                not answer
+                or len(answer) > 3000
+                or question.sensitive
+                or (question.choices and answer not in question.choices)
+            ):
+                raise ValueError("The routine answer is not valid for this question")
+            db.execute(
+                "INSERT OR REPLACE INTO routine_answers VALUES(?,?,?,?,?,?,?,?,?)",
+                (
+                    app_id,
+                    question_key(question),
+                    question.model_dump_json(),
+                    answer,
+                    source,
+                    json.dumps(evidence_ids),
+                    revision,
+                    fingerprint(expected_job),
+                    datetime.now(UTC).isoformat(),
+                ),
+            )
+            self.event(
+                db,
+                "routine_question_answered",
+                json.dumps(
+                    {"question_id": question.id, "source": source, "evidence_ids": evidence_ids}
+                ),
+                app_id,
+            )
+
+    def confirm_location(self, app_id: int, revision: int, location: str) -> None:
+        from .documents import fingerprint
+
+        with self.connect(True) as db:
+            row = db.execute("SELECT job,state FROM applications WHERE id=?", (app_id,)).fetchone()
+            current = int(db.execute("SELECT value FROM config WHERE key='revision'").fetchone()[0])
+            if not row:
+                raise KeyError(app_id)
+            job = Job.model_validate_json(row[0])
+            if (
+                current != revision
+                or job.location != location
+                or row[1] not in {State.REVIEW, State.READY}
+            ):
+                raise ValueError("Location or candidate changed; review the current opportunity")
+            db.execute(
+                "INSERT OR REPLACE INTO location_reviews VALUES(?,?,?,?)",
+                (app_id, revision, fingerprint(job), datetime.now(UTC).isoformat()),
+            )
+            db.execute("UPDATE applications SET evaluation='{}' WHERE id=?", (app_id,))
+            self.event(
+                db,
+                "location_confirmed",
+                "Candidate accepted the reviewed opportunity's location.",
+                app_id,
+            )
 
     def update_job(self, app_id: int, job: Job) -> None:
         with self.connect(True) as db:
@@ -223,16 +407,28 @@ class Store:
         return rows
 
     def daily_usage(self) -> DailyUsage:
-        # Read the limit and reservations in one SQLite statement/snapshot.
+        # Confirmations consume the daily limit; uncertain sends hold capacity separately.
         day = day_key()
         with self.connect() as db:
             row = db.execute(
-                "SELECT value, (SELECT COUNT(*) FROM attempts WHERE day=?) AS used FROM config WHERE key='settings'",
-                (day,),
+                "SELECT value, "
+                "(SELECT COUNT(*) FROM attempts WHERE status='confirmed' AND confirmed_day=?) AS used, "
+                "(SELECT COUNT(*) FROM attempts WHERE status='held') AS held, "
+                "(SELECT COUNT(*) FROM attempts WHERE day=?) AS attempts "
+                "FROM config WHERE key='settings'",
+                (day, day),
             ).fetchone()
         limit = Settings.model_validate_json(row["value"]).daily_limit
         used = int(row["used"])
-        return DailyUsage(day=day, used=used, limit=limit, remaining=max(0, limit - used))
+        held = int(row["held"])
+        return DailyUsage(
+            day=day,
+            used=used,
+            held=held,
+            attempts=int(row["attempts"]),
+            limit=limit,
+            remaining=max(0, limit - used - held),
+        )
 
     def prepare(
         self,
@@ -277,7 +473,10 @@ class Store:
                 "SELECT state,revision FROM applications WHERE id=?", (app_id,)
             ).fetchone()
             count = int(
-                db.execute("SELECT COUNT(*) FROM attempts WHERE day=?", (day_key(),)).fetchone()[0]
+                db.execute(
+                    "SELECT COUNT(*) FROM attempts WHERE status='held' OR (status='confirmed' AND confirmed_day=?)",
+                    (day_key(),),
+                ).fetchone()[0]
             )
             if not settings.automation_enabled:
                 raise ValueError("Automation is paused")
@@ -296,7 +495,10 @@ class Store:
             profile = Profile.model_validate_json(
                 db.execute("SELECT value FROM config WHERE key='profile'").fetchone()[0]
             )
-            evaluation = evaluate(Job.model_validate_json(application["job"]), profile, settings)
+            vacancy = Job.model_validate_json(application["job"])
+            evaluation = evaluate(
+                vacancy, self.effective_profile(app_id, profile, vacancy, db), settings
+            )
             if (
                 Job.model_validate_json(application["job"]).source == "linkedin"
                 and not settings.linkedin_authorised
@@ -307,7 +509,7 @@ class Store:
             ):
                 raise ValueError("Current policy or documents do not allow submission")
             if count >= settings.daily_limit:
-                raise ValueError("Daily attempt limit reached")
+                raise ValueError("Daily sent-application limit reached; preparation may continue")
             cursor = db.execute(
                 "INSERT INTO attempts(application_id,day,started) VALUES(?,?,?)",
                 (app_id, day_key(), datetime.now(UTC).isoformat()),
@@ -331,13 +533,103 @@ class Store:
                 raise ValueError("Only the reserved submission attempt can be finished")
             state = State.SUBMITTED if receipt else State.UNCERTAIN
             db.execute(
-                "UPDATE attempts SET receipt=? WHERE id=? AND application_id=?",
-                (receipt, attempt, app_id),
+                "UPDATE attempts SET receipt=?,status=?,confirmed_day=CASE WHEN ? IS NULL THEN NULL ELSE COALESCE(sent_day,?) END WHERE id=? AND application_id=?",
+                (
+                    receipt,
+                    "confirmed" if receipt else "held",
+                    receipt,
+                    day_key(),
+                    attempt,
+                    app_id,
+                ),
             )
             db.execute(
                 "UPDATE applications SET state=?, receipt=? WHERE id=?", (state, receipt, app_id)
             )
             self.event(db, "submission_finished", str(state), app_id)
+
+    def mark_sending(self, app_id: int, attempt: int, revision: int, job: Job) -> None:
+        """Repeat mutable gates immediately before the browser's irreversible click."""
+        with self.connect(True) as db:
+            settings = Settings.model_validate_json(
+                db.execute("SELECT value FROM config WHERE key='settings'").fetchone()[0]
+            )
+            current = int(db.execute("SELECT value FROM config WHERE key='revision'").fetchone()[0])
+            row = db.execute("SELECT state,job FROM applications WHERE id=?", (app_id,)).fetchone()
+            held = db.execute(
+                "SELECT 1 FROM attempts WHERE id=? AND application_id=? AND status='held'",
+                (attempt, app_id),
+            ).fetchone()
+            count = db.execute(
+                "SELECT COUNT(*) FROM attempts WHERE status='held' OR (status='confirmed' AND confirmed_day=?)",
+                (day_key(),),
+            ).fetchone()[0]
+            if not settings.automation_enabled or (
+                job.source == "linkedin" and not settings.linkedin_authorised
+            ):
+                raise ValueError("Submission permission changed before sending")
+            if (
+                current != revision
+                or not row
+                or row[0] != State.SUBMITTING
+                or not held
+                or Job.model_validate_json(row[1]) != job
+            ):
+                raise ValueError("Candidate or opportunity changed before sending")
+            if count > settings.daily_limit:
+                raise ValueError("Daily sending capacity changed before sending")
+            from .policy import evaluate
+
+            profile = Profile.model_validate_json(
+                db.execute("SELECT value FROM config WHERE key='profile'").fetchone()[0]
+            )
+            if (
+                evaluate(job, self.effective_profile(app_id, profile, job, db), settings).state
+                != State.READY
+            ):
+                raise ValueError("Submission policy changed before sending")
+            db.execute("UPDATE attempts SET sent_day=? WHERE id=?", (day_key(), attempt))
+
+    def confirm_not_sent(self, app_id: int, revision: int) -> None:
+        with self.connect(True) as db:
+            current = int(db.execute("SELECT value FROM config WHERE key='revision'").fetchone()[0])
+            row = db.execute("SELECT state FROM applications WHERE id=?", (app_id,)).fetchone()
+            attempt = db.execute(
+                "SELECT id,status,receipt FROM attempts WHERE application_id=? ORDER BY id DESC LIMIT 1",
+                (app_id,),
+            ).fetchone()
+            if (
+                current != revision
+                or not row
+                or row[0] != State.UNCERTAIN
+                or not attempt
+                or attempt[1] != "held"
+                or attempt[2]
+            ):
+                raise ValueError("Only a current uncertain submission can be confirmed as not sent")
+            db.execute("UPDATE attempts SET status='released' WHERE id=?", (attempt[0],))
+            db.execute(
+                "UPDATE applications SET state=?,revision=?,evaluation=?,manifest='{}' WHERE id=?",
+                (
+                    State.REVIEW,
+                    current,
+                    json.dumps(
+                        {
+                            "state": "review",
+                            "blockers": [
+                                "Candidate confirmed no submission; prepare again manually before retrying."
+                            ],
+                        }
+                    ),
+                    app_id,
+                ),
+            )
+            self.event(
+                db,
+                "submission_confirmed_not_sent",
+                "Candidate checked the provider; no submission was sent. Fresh preparation is required.",
+                app_id,
+            )
 
     def recover(self) -> int:
         with self.connect(True) as db:
@@ -403,11 +695,23 @@ class Store:
                 self.event(db, "recovery", f"{count} interrupted attempts require reconciliation.")
             return count
 
-    def hold(self, app_id: int, detail: str) -> None:
+    def hold(self, app_id: int, detail: str, *, attempt: int | None = None) -> None:
         with self.connect(True) as db:
-            row = db.execute("SELECT job FROM applications WHERE id=?", (app_id,)).fetchone()
+            row = db.execute("SELECT job,state FROM applications WHERE id=?", (app_id,)).fetchone()
             if not row:
                 raise KeyError(app_id)
+            if attempt is not None:
+                held = db.execute(
+                    "SELECT 1 FROM attempts WHERE id=? AND application_id=? AND status='held' "
+                    "AND id=(SELECT MAX(id) FROM attempts WHERE application_id=?)",
+                    (attempt, app_id, app_id),
+                ).fetchone()
+                if row[1] != State.SUBMITTING or not held:
+                    raise ValueError("Only the current held submission can stop before sending")
+                db.execute("UPDATE attempts SET status='released' WHERE id=?", (attempt,))
+                self.event(
+                    db, "submission_capacity_released", "No submission click was attempted.", app_id
+                )
             job = Job.model_validate_json(row[0])
             prefix = "Approve an exact answer for: "
             if detail.startswith(prefix):
@@ -431,6 +735,27 @@ class Store:
                 "UPDATE applications SET state=?,receipt=? WHERE id=?",
                 (State.SUBMITTED, receipt, app_id),
             )
+            latest = db.execute(
+                "SELECT id,status FROM attempts WHERE application_id=? ORDER BY id DESC LIMIT 1",
+                (app_id,),
+            ).fetchone()
+            if latest:
+                db.execute(
+                    "UPDATE attempts SET receipt=?,status='confirmed',confirmed_day=? WHERE id=?",
+                    (receipt, day_key(), latest[0]),
+                )
+            else:
+                db.execute(
+                    "INSERT INTO attempts(application_id,day,started,receipt,status,confirmed_day) VALUES(?,?,?,?,?,?)",
+                    (
+                        app_id,
+                        day_key(),
+                        datetime.now(UTC).isoformat(),
+                        receipt,
+                        "confirmed",
+                        day_key(),
+                    ),
+                )
             self.event(db, "manual_receipt", "Candidate recorded a submission receipt.", app_id)
 
     def outcome(self, app_id: int, outcome: str) -> None:

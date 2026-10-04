@@ -20,11 +20,23 @@ from .adviser import advise
 from .browser import LinkedInBrowser
 from .discovery import greenhouse
 from .documents import validate_manifest
-from .models import Advice, Contract, DailyUsage, Evidence, Job, Preflight, Profile, Settings, State
+from .models import (
+    Advice,
+    Contract,
+    DailyUsage,
+    Evidence,
+    Job,
+    Preflight,
+    Profile,
+    Question,
+    Settings,
+    State,
+)
 from .networking import Networking
 from .photos import stored_photo
 from .question_adviser import MODEL as QUESTION_MODEL
 from .question_adviser import suggest_answer
+from .routine_answers import RoutineSelection, select_routine_sources
 from .service import PreparationError, Service
 from .store import Store
 from .workspace import server_owner
@@ -45,6 +57,14 @@ class Outcome(Contract):
 
 class Board(Contract):
     board: str
+
+
+class LocationReview(Contract):
+    location: str = Field(min_length=1, max_length=200)
+
+
+class NotSent(Contract):
+    checked: Literal[True]
 
 
 class Connection(Contract):
@@ -93,7 +113,21 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
                 "AI advice failed; no documents or applications were sent"
             ) from exc
 
-    service = Service(store, data, selector=select_ai)
+    def select_question(profile: Profile, job: Job, question: Question) -> RoutineSelection:
+        if (
+            not os.getenv("OPENAI_API_KEY")
+            or os.getenv("OPENAI_MODEL", QUESTION_MODEL) != QUESTION_MODEL
+        ):
+            raise ValueError("Configure gpt-6.1-sol for routine source selection")
+        try:
+            with OpenAI(timeout=180, max_retries=0) as ai_client:
+                return select_routine_sources(ai_client, profile, job, question)
+        except Exception as exc:
+            raise ValueError(
+                "Routine sources could not be verified; manual review is required"
+            ) from exc
+
+    service = Service(store, data, selector=select_ai, question_selector=select_question)
     browser_lock = threading.Lock()
     stop = threading.Event()
 
@@ -307,8 +341,13 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
         app_id: int, question_id: str, if_match: Annotated[int, Header(ge=1)]
     ) -> dict[str, Any]:
         profile, revision = store.profile()
-        job = Job.model_validate(store.application(app_id)["job"])
-        question = next((item for item in job.questions if item.id == question_id), None)
+        row = store.application(app_id)
+        job = Job.model_validate(row["job"])
+        questions = [
+            *job.questions,
+            *[Question.model_validate(item["question"]) for item in row["routine_answers"]],
+        ]
+        question = next((item for item in questions if item.id == question_id), None)
         if question is None:
             raise KeyError(question_id)
         if revision != if_match:
@@ -336,6 +375,15 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
     def add_job(job: Job) -> dict[str, Any]:
         app_id, created = store.add_job(job)
         return {"id": app_id, "created": created}
+
+    @app.post("/api/applications/{app_id}/location-review", dependencies=auth)
+    def review_location(
+        app_id: int, review: LocationReview, if_match: Annotated[int, Header(ge=1)]
+    ) -> dict[str, str]:
+        with service.operations.run("location_review", app_id) as operation:
+            store.confirm_location(app_id, if_match, review.location)
+            operation.result("location_confirmed")
+        return {"status": "confirmed"}
 
     @app.put("/api/applications/{app_id}/job", dependencies=auth)
     def update_job(app_id: int, job: Job) -> dict[str, str]:
@@ -395,6 +443,15 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
     def receipt(app_id: int, receipt: Receipt) -> dict[str, str]:
         store.reconcile(app_id, receipt.receipt)
         return {"status": "submitted"}
+
+    @app.post("/api/applications/{app_id}/not-sent", dependencies=auth)
+    def not_sent(
+        app_id: int, confirmation: NotSent, if_match: Annotated[int, Header(ge=1)]
+    ) -> dict[str, str]:
+        with service.operations.run("reconcile", app_id) as operation:
+            store.confirm_not_sent(app_id, if_match)
+            operation.result("confirmed_not_sent")
+        return {"status": "review"}
 
     @app.post("/api/applications/{app_id}/outcome", dependencies=auth)
     def outcome(app_id: int, outcome: Outcome) -> dict[str, str]:

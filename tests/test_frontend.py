@@ -159,7 +159,7 @@ def test_queue_monitor_displays_terminal_stage_and_failure_code(dashboard, outco
         "failed": "Failed",
         "interrupted": "Interrupted",
         "paused": "Paused",
-        "limit_reached": "Daily application limit reached",
+        "limit_reached": "Daily sending limit reached; preparation continues",
     }
     expect(monitor).to_contain_text(labels[outcome])
     expect(monitor).to_contain_text("Last stage: awaiting confirmation")
@@ -494,7 +494,7 @@ def test_enlarged_text_and_keyboard_navigation_are_usable(dashboard):
     page.keyboard.press("Enter")
     expect(page.locator("#page-title")).to_have_text("Applications")
     page.get_by_role("button", name="Agent settings", exact=True).click()
-    expect(page.get_by_label("Daily application attempt limit")).to_be_visible()
+    expect(page.get_by_label("Daily sent-application limit")).to_be_visible()
 
 
 @pytest.mark.browser
@@ -983,11 +983,11 @@ def test_daily_budget_displays_reserved_uncertain_attempts(dashboard):
     attempt = app.state.store.reserve(row["id"], row["revision"])
     app.state.store.finish(row["id"], attempt, None)
     page.reload()
-    expect(page.locator("#daily-usage")).to_contain_text("1 / 1 attempts used")
-    expect(page.locator("#readiness")).to_contain_text("0 attempts remaining today")
+    expect(page.locator("#daily-usage")).to_contain_text("0 / 1 applications sent")
+    expect(page.locator("#readiness")).to_contain_text("0 sending slots remaining today")
     expect(
-        page.get_by_role("progressbar", name="Daily application attempt usage")
-    ).to_have_attribute("value", "1")
+        page.get_by_role("progressbar", name="Daily confirmed application usage")
+    ).to_have_attribute("value", "0")
     assert app.state.store.daily_usage().remaining == 0
 
 
@@ -1028,7 +1028,7 @@ def test_preflight_recheck_and_mocked_submission_update_budget_and_timeline(dash
     expect(page.locator("#notice")).to_have_text("Provider receipt recorded.")
     assert app.state.store.application(app_id)["receipt"] == "fixture:confirmed-readiness"
     adapter.assert_called_once()
-    expect(page.locator("#daily-usage")).to_contain_text("1 / 10 attempts used")
+    expect(page.locator("#daily-usage")).to_contain_text("1 / 10 applications sent")
     page.get_by_role("tab", name="Activity & outcome", exact=True).click()
     page.get_by_text("Activity for this application", exact=True).click()
     expect(page.locator(".timeline")).to_contain_text("submission finished")

@@ -124,7 +124,7 @@ def test_invalid_linkedin_targets_are_blocked_before_reserving(data, profile, jo
     adapter.submit.assert_not_called()
 
 
-def test_daily_usage_counts_uncertain_attempts_and_resets_on_london_day(
+def test_daily_usage_separates_uncertain_capacity_from_confirmed_sends(
     data, profile, job, monkeypatch
 ):
     import applicator.store as module
@@ -135,10 +135,17 @@ def test_daily_usage_counts_uncertain_attempts_and_resets_on_london_day(
     attempt = store.reserve(app_id, 1)
     store.finish(app_id, attempt, None)
     usage = store.daily_usage()
-    assert (usage.used, usage.limit, usage.remaining, usage.timezone) == (1, 1, 0, "Europe/London")
+    assert (usage.used, usage.held, usage.limit, usage.remaining, usage.timezone) == (
+        0,
+        1,
+        1,
+        0,
+        "Europe/London",
+    )
     assert {"quota", "state"} <= blocked(service.preflight(app_id))
     monkeypatch.setattr(module, "day_key", lambda: "2026-10-03")
-    assert store.daily_usage().remaining == 1 and store.daily_usage().used == 0
+    assert store.daily_usage().remaining == 0 and store.daily_usage().used == 0
+    assert store.daily_usage().held == 1
 
 
 def test_daily_usage_handles_lowered_limit_and_submission_rechecks_snapshot(data, profile, job):
@@ -154,7 +161,7 @@ def test_daily_usage_handles_lowered_limit_and_submission_rechecks_snapshot(data
             [(app_id, store.daily_usage().day, "test")] * 12,
         )
     assert store.daily_usage().remaining == 0
-    assert store.daily_usage().used == 12
+    assert store.daily_usage().used == 0 and store.daily_usage().held == 12
 
 
 def test_application_events_include_older_entries_and_exclude_other_records(data, profile, job):

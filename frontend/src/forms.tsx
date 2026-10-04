@@ -491,6 +491,7 @@ export function SettingsForm({
             "connections_enabled",
             "discovery_enabled",
             "ai_document_preparation",
+            "routine_answers_enabled",
           ] as const)
             value[name] = checked(form, name);
           for (const name of [
@@ -504,6 +505,10 @@ export function SettingsForm({
           value.allowed_countries = splitList(text(form, "allowed_countries"));
           value.search_keywords = text(form, "search_keywords");
           value.search_location = text(form, "search_location");
+          value.automatic_location_policy = text(
+            form,
+            "automatic_location_policy",
+          ) as Settings["automatic_location_policy"];
           await workspace.mutate(
             "/settings",
             "PUT",
@@ -537,7 +542,7 @@ export function SettingsForm({
             checked={settings.discovery_enabled}
           />
           <Field
-            label="Daily application attempt limit"
+            label="Daily sent-application limit"
             name="daily_limit"
             type="number"
             min={1}
@@ -545,6 +550,31 @@ export function SettingsForm({
             value={settings.daily_limit}
             required
           />
+          <Check
+            name="routine_answers_enabled"
+            label="Answer routine questions from approved facts"
+            checked={settings.routine_answers_enabled}
+          />
+          <label>
+            Automatic application locations
+            <select
+              name="automatic_location_policy"
+              aria-label="Automatic application locations"
+              defaultValue={settings.automatic_location_policy}
+            >
+              <option value="same_city">
+                My current city or remote in my country
+              </option>
+              <option value="same_country">My current country</option>
+              <option value="configured_countries">
+                All configured target countries
+              </option>
+            </select>
+          </label>
+          <small>
+            Other locations require review; interesting opportunities can still
+            have documents prepared.
+          </small>
           <Field
             label="Agent interval (seconds)"
             name="poll_seconds"

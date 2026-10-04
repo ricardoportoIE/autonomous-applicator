@@ -51,6 +51,21 @@ def path(app_id, question_id="python_example"):
     return f"/api/applications/{app_id}/questions/{question_id}/suggest"
 
 
+def test_live_routine_question_remains_editable_with_manual_ai_ideas(question_workspace):
+    from applicator.models import Job
+
+    app, session, app_id, _, _, _ = question_workspace
+    row = app.state.store.application(app_id)
+    job = Job.model_validate(row["job"])
+    question = Question(id="live_project", label="Outline your project experience")
+    app.state.store.save_routine_answer(
+        app_id, question, "Reviewed source wording.", "verified_evidence", ["python"], 1, job
+    )
+    before = app.state.store.application(app_id)
+    assert session.post(path(app_id, question.id)).status_code == 200
+    assert app.state.store.application(app_id) == before
+
+
 def test_idea_uses_requested_model_verified_facts_and_does_not_mutate_records(question_workspace):
     app, session, app_id, factory, sdk, _ = question_workspace
     profile, revision = app.state.store.profile()

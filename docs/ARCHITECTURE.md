@@ -8,7 +8,7 @@ The dashboard is a React/TypeScript application built with Vite and locally comp
 
 The deterministic policy engine owns score thresholds and submission gates. An optional OpenAI adviser selects evidence for a job. Model output never grants browser or submission permissions. Web pages and attached documents are untrusted content rather than executable instructions.
 
-The renderer copies approved evidence into tailored PDF/DOCX documents. Questions are matched to explicit candidate-approved answer keys. The LinkedIn adapter uses a dedicated local browser session and the candidate's declared authorisation scope. It verifies job identity and description, bounds the number of steps, rejects unsupported fields and requires a visible confirmation. Its selectors are tested on intercepted fixtures and still require live account validation. No adapter modifies the public profile.
+The renderer copies approved evidence into tailored PDF/DOCX documents. Questions first use explicit candidate-approved answer keys. Routine factual questions can also use exact candidate fields or verified evidence, scoped to the application, profile revision and opportunity fingerprint. GPT-6.1 Sol selects evidence identifiers for supported professional prose; the system copies the approved source text rather than accepting generated factual claims. The LinkedIn adapter uses a dedicated local browser session and the candidate's declared authorisation scope. It verifies job identity and description, bounds the number of steps, rejects unsupported fields and requires a visible confirmation. Its selectors are tested on intercepted fixtures and still require live account validation. No adapter modifies the public profile.
 
 ## Submission invariants
 
@@ -33,13 +33,13 @@ The worker checks the kill switch before each attempt. It cannot undo a submissi
 
 | Authenticated read endpoint | Result |
 | --- | --- |
-| `GET /api/usage` | Current London-day application reservations, configured limit and remaining capacity |
+| `GET /api/usage` | Confirmed London-day sends, separate pending/uncertain holds, diagnostic attempts, configured limit and remaining capacity |
 | `GET /api/applications/{id}/preflight` | Current fit evaluation and named local submission checks with passed/blocked explanations |
 | `GET /api/applications/{id}/events` | Latest 200 events belonging to this application, newest first |
 
 Preflight calls read local records and verify document files. They do not reserve an attempt, generate materials, start a browser, call the adviser or append events. Each report has a UTC timestamp. It is an advisory snapshot rather than a transaction locking the candidate record; actual submission repeats the gates. Provider sign-in, changed descriptions, newly discovered questions and uploads remain live adapter responsibilities.
 
-Daily usage reads the saved limit and counted reservations in one SQLite statement. Every reserved attempt counts, regardless of receipt or uncertainty; manual receipts do not create reservations. Europe/London calendar boundaries use timezone rules, including summer time. Remaining capacity cannot become negative if the candidate lowers a limit.
+Daily usage reads the saved limit, confirmed sends and held capacity in one SQLite statement. Only confirmed sends increment `used`; pending or uncertain sends increment `held` and reduce available sending capacity until reconciliation. Proven pre-submission stops release their hold in the same transaction as the review record. Manual confirmed receipts count as sent applications. The journal retains every attempt for diagnostics. The worker continues preparation when sending capacity is exhausted. Europe/London calendar boundaries use timezone rules, including summer time. Remaining capacity cannot become negative if the candidate lowers a limit.
 
 Queue listings fetch and decode records in one connection. Journal and attempt-day indexes support scoped histories and budget counts. Dashboard search/status/sort operations work on the loaded records without mutating them. A pure helper supplies consistent, tested ordering, with record identifiers breaking ties. Filtering does not change routing or eligibility.
 

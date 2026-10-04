@@ -1,5 +1,15 @@
 # Source review, 2 October 2026
 
+## Sending capacity and routine answers review, 4 October 2026
+
+Reviewed the changed accounting, migration, FIFO orchestration, scoped question storage, routine source selector, location policy, authenticated decision routes and dashboard controls. Confirmed sends now count separately from pending/uncertain reservations and raw diagnostic attempts. Safe provider stops record the review and release capacity atomically; uncertain outcomes keep a hold across midnight. Explicit negative reconciliation preserves the journal and requires manual preparation before a retry.
+
+Final sending gates recheck mutable permission, revision, opportunity identity, capacity and location/factual policy immediately before the LinkedIn click. Preparation continues after the cap and unchanged ready documents are reused. Derived answers and location acceptance are scoped by application, candidate revision and job fingerprint; they cannot silently change another opportunity or the approved global profile. Existing explicitly approved answers retain priority.
+
+GPT-6.1 Sol selects evidence identifiers for supported routine professional questions. Canonical source text supplies the answer, so generated claims cannot enter a form through this path. Unsupported modifiers, missing skills, sensitive topics, legal eligibility and personal decisions require review. Numeric durations accept complete explicit approved statements and reject ranges, negations, approximate values and inferred dates. Independent projects cannot establish paid experience. A review pass also retained manual AI suggestions for routine questions first discovered in a provider form.
+
+Regression coverage includes legacy journals, exact send-day boundaries, uncertain capacity, pre-click permission changes, per-opportunity location acceptance, stale source invalidation, source/model validation, explicit negative reconciliation and real Chromium controls with all provider traffic intercepted. Live model source selection uses fictional data and sends no application.
+
 ## Questionnaire idea review, 4 October 2026
 
 The new structured adviser, authenticated suggestion endpoint, React question controls and their regression tests were reviewed for grounding, candidate ownership and side effects. Drafts use verified evidence and approved facts, exclude contact fields and sensitive questionnaire answers, validate source identifiers and the actual model, and remain outside persistence and submission policy. Revision preconditions and a post-response job/profile comparison reject changed snapshots. Provider exceptions are sanitised; requests have no automatic retries or alternative model.

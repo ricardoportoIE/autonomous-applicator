@@ -23,6 +23,21 @@ describe("workspace ownership and operations", () => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
+  it("keeps the reviewed candidate revision when a background refresh changes facts", async () => {
+    await workspace.unlock("fixture");
+    await workspace.openDetail(1);
+    const reviewed = workspace.getSnapshot().detail?.profile_revision;
+    vi.spyOn(workspace.api, "json").mockImplementation(
+      async (path) =>
+        (path === "/profile"
+          ? { profile, revision: 2 }
+          : payload("/api" + path)) as never,
+    );
+    await workspace.refresh();
+    expect(workspace.getSnapshot().revision).toBe(2);
+    expect(workspace.getSnapshot().detail?.profile_revision).toBe(reviewed);
+    expect(reviewed).toBe(1);
+  });
   it("refreshes a changed application after failed preparation without repeating the mutation", async () => {
     await workspace.unlock("fixture");
     await workspace.openDetail(1);
