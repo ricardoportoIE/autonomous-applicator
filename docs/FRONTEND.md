@@ -4,7 +4,7 @@ The local dashboard is implemented in React and strict TypeScript, built with Vi
 
 The main automation control toggles **Start agent / Pause agent** and shows **Starting agent… / Pausing agent…** while saving. It suppresses duplicate control requests separately from ordinary workspace work, so pausing remains possible during a slow operation. Start wakes the background queue immediately. The global pause preserves the user's separate networking switch, and stale responses cannot repopulate a locked workspace.
 
-The current React unit suite has 154 cases and measures 100% in all ten runtime modules: 817 statements, 740 lines, 294 functions and 862 branch outcomes. The earlier migration measurements below refer to their own source revisions. Production Chromium tests additionally exercise the actual background Start/Pause flow with fictional records.
+The current React unit suite has 155 cases and measures 100% in all ten runtime modules: 817 statements, 740 lines, 294 functions and 864 branch outcomes. The earlier migration measurements below refer to their own source revisions. Production Chromium tests additionally exercise the actual background Start/Pause flow with fictional records. Progress retains the requested action while refreshed settings already show completion.
 
 ## Feature parity
 

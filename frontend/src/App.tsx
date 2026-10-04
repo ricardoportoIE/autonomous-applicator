@@ -185,9 +185,11 @@ export function App({ workspace }: { workspace: Workspace }) {
               className={settings?.automation_enabled ? "danger" : ""}
               type="button"
               disabled={
-                !state.unlocked || !settings || state.automationChanging
+                !state.unlocked ||
+                !settings ||
+                Boolean(state.automationChanging)
               }
-              aria-busy={state.automationChanging}
+              aria-busy={Boolean(state.automationChanging)}
               onClick={() => void workspace.toggleAutomation()}
             >
               {settings?.automation_enabled ? (
@@ -196,7 +198,7 @@ export function App({ workspace }: { workspace: Workspace }) {
                 <CirclePlay size={16} aria-hidden="true" />
               )}
               {state.automationChanging
-                ? settings?.automation_enabled
+                ? state.automationChanging === "pausing"
                   ? "Pausing agent…"
                   : "Starting agent…"
                 : settings?.automation_enabled

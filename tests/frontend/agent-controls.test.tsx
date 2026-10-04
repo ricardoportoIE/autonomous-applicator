@@ -118,14 +118,41 @@ it("discards a late start response after locking the workspace", async () => {
   const response = deferred<never>();
   vi.spyOn(h.workspace.api, "json").mockReturnValue(response.promise);
   const starting = h.workspace.toggleAutomation();
-  expect(h.workspace.getSnapshot().automationChanging).toBe(true);
+  expect(h.workspace.getSnapshot().automationChanging).toBe("starting");
   h.workspace.lock();
   response.resolve({} as never);
   await starting;
   expect(h.workspace.getSnapshot()).toMatchObject({
     unlocked: false,
-    automationChanging: false,
+    automationChanging: null,
     settings: null,
     notice: "",
   });
+});
+
+it("retains the requested phase while refreshed settings already reflect completion", async () => {
+  await h.unlock();
+  for (const phase of ["starting", "pausing"] as const) {
+    const enabled = phase === "starting";
+    h.responses.set("/api/settings", {
+      ...settings,
+      automation_enabled: enabled,
+    });
+    const snapshots: { phase: string; enabled: boolean }[] = [];
+    const unsubscribe = h.workspace.subscribe(() => {
+      const state = h.workspace.getSnapshot();
+      if (state.automationChanging)
+        snapshots.push({
+          phase: state.automationChanging,
+          enabled: state.settings!.automation_enabled,
+        });
+    });
+    await h.workspace.toggleAutomation();
+    unsubscribe();
+    expect(snapshots.every((snapshot) => snapshot.phase === phase)).toBe(true);
+    expect(snapshots.some((snapshot) => snapshot.enabled === enabled)).toBe(
+      true,
+    );
+    expect(h.workspace.getSnapshot().automationChanging).toBeNull();
+  }
 });

@@ -16,7 +16,7 @@ import type {
 export interface WorkspaceState {
   unlocked: boolean;
   pending: boolean;
-  automationChanging: boolean;
+  automationChanging: "starting" | "pausing" | null;
   view: View;
   notice: string;
   error: boolean;
@@ -42,7 +42,7 @@ export interface WorkspaceState {
 const empty = (): WorkspaceState => ({
   unlocked: false,
   pending: false,
-  automationChanging: false,
+  automationChanging: null,
   view: "overview",
   notice: "",
   error: false,
@@ -429,7 +429,11 @@ export class Workspace {
   async toggleAutomation() {
     if (this.state.automationChanging || !this.state.settings) return;
     const session = this.api.session();
-    this.update({ automationChanging: true });
+    this.update({
+      automationChanging: this.state.settings.automation_enabled
+        ? "pausing"
+        : "starting",
+    });
     try {
       if (this.state.settings.automation_enabled) await this.pause();
       else
@@ -443,7 +447,7 @@ export class Workspace {
         }, true);
     } finally {
       if (this.api.isCurrent(session))
-        this.update({ automationChanging: false });
+        this.update({ automationChanging: null });
     }
   }
   tick() {
