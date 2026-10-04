@@ -462,16 +462,14 @@ class Service:
                 nonlocal pending_question
                 report(
                     "answering_routine_questions",
-                    "Resolving a live routine question from approved facts.",
+                    "Checking approved answers for a live question.",
                 )
                 answer = self.resolve_question(app_id, profile, revision, job, question)
                 if answer is None:
                     pending_question = question
                 return answer
 
-            adapter.question_resolver = (
-                resolve_live if self.store.settings().routine_answers_enabled else None
-            )
+            adapter.question_resolver = resolve_live
         try:
             report(
                 "opening_opportunity", "Opening the reviewed opportunity in the dedicated browser."

@@ -817,12 +817,15 @@ class Store:
             job = Job.model_validate_json(row[0])
             prefix = "Approve an exact answer for: "
             if detail.startswith(prefix):
+                from .documents import fingerprint
+                from .question_adviser import question_key
+
+                previous_fingerprint = fingerprint(job)
                 label = detail[len(prefix) :].strip()[:500]
                 key = "question:" + " ".join(label.casefold().split())
                 question_id = "q_" + hashlib.sha256(key.encode()).hexdigest()[:16]
                 if question is not None and question.label == label:
-                    from .question_adviser import question_key
-
+                    key = question_key(question)
                     existing = next(
                         (item for item in job.questions if question_key(item) == key), None
                     )
@@ -833,6 +836,13 @@ class Store:
                     job.questions.append(observed)
                 elif not any(q.id == question_id for q in job.questions):
                     job.questions.append(Question(id=question_id, label=label, answer_key=key))
+                # A newly observed question must not erase unrelated approvals.
+                # Only matching snapshots move forward; changed question answers expire.
+                db.execute(
+                    "UPDATE approved_answers SET job_fingerprint=? WHERE application_id=? "
+                    "AND job_fingerprint=? AND answer_key!=?",
+                    (fingerprint(job), app_id, previous_fingerprint, key),
+                )
             db.execute(
                 "UPDATE applications SET state=?,job=? WHERE id=?",
                 (State.REVIEW, job.model_dump_json(), app_id),

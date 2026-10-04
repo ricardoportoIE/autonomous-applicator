@@ -341,8 +341,9 @@ def test_answer_expires_when_the_opportunity_changes(scoped):
 
 
 @pytest.mark.parametrize("existing", [False, True])
+@pytest.mark.parametrize("automatic", [False, True])
 def test_unknown_live_question_keeps_exact_choices_and_resumes_only_after_approval(
-    scoped, data, existing
+    scoped, data, existing, automatic
 ):
     from applicator.browser import LinkedInBrowser, ReviewRequired
 
@@ -355,7 +356,7 @@ def test_unknown_live_question_keeps_exact_choices_and_resumes_only_after_approv
         store.update_job(ids[0], job)
     else:
         approve(session, ids[0])
-    store.set_settings(store.settings().model_copy(update={"routine_answers_enabled": True}))
+    store.set_settings(store.settings().model_copy(update={"routine_answers_enabled": automatic}))
     service.prepare(ids[0])
     browser = LinkedInBrowser(data, profile)
     question = Question(
@@ -394,6 +395,41 @@ def test_unrelated_observed_question_cannot_replace_the_requested_review_questio
     assert saved["choices"] == []
 
 
+@pytest.mark.parametrize("exact_metadata", [False, True])
+def test_later_question_retains_other_approvals_and_never_revives_stale_facts(
+    scoped, exact_metadata
+):
+    app, session, ids, profile = scoped
+    store = app.state.store
+    assert approve(session, ids[0]).status_code == 200
+    question = Question(
+        id="later", label="Preferred interview format?", choices=["Online", "Office"]
+    )
+    store.hold(
+        ids[0],
+        "Approve an exact answer for: " + question.label,
+        question=question if exact_metadata else None,
+    )
+    row = store.application(ids[0])
+    assert row["approved_answers"] == {"question:preferred start date?": "Next month"}
+    observed = next(item for item in row["job"]["questions"] if item["label"] == question.label)
+    assert approve(session, ids[0], "Online", question=observed["id"]).status_code == 200
+    assert len(store.application(ids[0])["approved_answers"]) == 2
+    # Changed choices expire this question's answer, whilst the other stays approved.
+    changed = question.model_copy(update={"choices": ["Office", "Phone"]})
+    store.hold(ids[0], "Approve an exact answer for: " + question.label, question=changed)
+    assert store.application(ids[0])["approved_answers"] == {
+        "question:preferred start date?": "Next month"
+    }
+    store.save_profile(profile)
+    store.hold(
+        ids[0],
+        "Approve an exact answer for: A new question",
+        question=Question(id="new", label="A new question"),
+    )
+    assert store.application(ids[0])["approved_answers"] == {}
+
+
 def test_new_observed_question_keeps_other_known_questions(scoped):
     app, _, ids, _ = scoped
     observed = Question(id="observed", label="New required answer", choices=["Yes", "No"])
@@ -403,6 +439,31 @@ def test_new_observed_question_keeps_other_known_questions(scoped):
     questions = app.state.store.application(ids[0])["job"]["questions"]
     assert [item["id"] for item in questions] == ["availability", "observed"]
     assert questions[-1]["choices"] == ["Yes", "No"]
+
+
+def test_changed_custom_answer_key_question_expires_only_its_own_approval(scoped):
+    app, session, ids, _ = scoped
+    store = app.state.store
+    job = Job.model_validate(store.application(ids[0])["job"])
+    question = Question(
+        id="format",
+        label="Interview format?",
+        answer_key="interview_format",
+        choices=["Online", "Office"],
+    )
+    job.questions.append(question)
+    store.update_job(ids[0], job)
+    assert approve(session, ids[0]).status_code == 200
+    assert approve(session, ids[0], "Online", question="format").status_code == 200
+    store.hold(
+        ids[0],
+        "Approve an exact answer for: Interview format?",
+        question=question.model_copy(update={"choices": ["Office", "Phone"]}),
+    )
+    assert store.application(ids[0])["approved_answers"] == {
+        "question:preferred start date?": "Next month"
+    }
+    assert len(store.application(ids[0])["job"]["questions"]) == 2
 
 
 def test_unexpected_preparation_failure_keeps_approval_without_automatically_retrying(scoped):
