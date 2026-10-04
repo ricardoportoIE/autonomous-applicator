@@ -14,6 +14,7 @@ The local dashboard is implemented in React and strict TypeScript, built with Vi
 | Documents | Current PDF/DOCX CV and cover-letter downloads, manual approved-evidence selection | Documents tab; manual selection is explicitly recorded as a different origin |
 | Questions | Exact approved keys/choices, required indicators, sensitive-question holds, profile revision invalidation after approval, optional grounded GPT-6.1 Sol answer ideas | Questions tab; suggestions remain separate editable drafts and never approve answers |
 | Application record | Manual receipt reconciliation, confirmed receipt, interview/offer/rejected/no-response/withdrawn outcomes, scoped latest 200 events | Activity & outcome tab |
+| Full application record | Original URL, recorded dates, per-attempt candidate/opportunity/evidence snapshots, archived documents and hashes, actual form observations, receipts and private provider confirmation screenshots, complete paginated journal | Dedicated bookmarkable page from the queue and management view; management actions remain in the existing tabs |
 | Candidate | Name, e-mail, phone, location, summary, professional links, sponsorship, fact confirmation, approved JSON answers, current revision | Readable record; Edit candidate profile dialogue |
 | Qualifications | Identifier, category, title, factual text, dates, technology tags, source, approval flag, edit/remove | Evidence cards; add/edit dialogue; edits still invalidate old documents |
 | Networking | Discovery limit/progress, manual contact queueing, independent selected-member send, member link, private 64-pixel portrait/initials, highlighted location, live invitation status, uncertainty/history | Active/Archived tabs; sent requests are archived rather than deleted |
@@ -31,6 +32,7 @@ Background pause remains available during long workspace actions. A native modal
 - `frontend/src/forms.tsx`: contract-preserving candidate, evidence, opportunity, contact, board and settings forms.
 - `frontend/src/application-detail.tsx`: readiness, document provenance, grounded question ideas, explicit answer approval and journal/outcomes.
 - `frontend/src/networking.tsx`: active/archive cards, private portraits and selected invitation progress.
+- `frontend/src/application-record.tsx`: dated submission history, immutable materials, observed fields and authenticated confirmation preview/download.
 - `frontend/src/components.tsx`: labelled native dialogues, keyboard tabs, tables, badges, events and processing monitor.
 - `frontend/src/ui.ts`: pure parsing, identity, status and queue-order helpers.
 

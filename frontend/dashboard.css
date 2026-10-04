@@ -791,4 +791,63 @@
   .sidebar-bottom > small {
     @apply text-slate-300;
   }
+  .record-link {
+    @apply ml-3 inline-block text-sm font-semibold text-[#174c45] underline underline-offset-4;
+  }
+  .application-record {
+    @apply grid gap-6;
+  }
+  .record-navigation {
+    @apply flex flex-wrap justify-between gap-3;
+  }
+  .record-hero {
+    @apply rounded-2xl border border-[#cddfd6] bg-gradient-to-br from-[#edf4ee] to-white p-6 md:p-8;
+  }
+  .record-hero h2 {
+    @apply mb-2 text-2xl font-semibold tracking-tight text-[#174c45] md:text-3xl;
+  }
+  .record-url {
+    @apply flex items-start gap-2 break-all text-sm;
+  }
+  .record-dates {
+    @apply my-6 grid grid-cols-2 gap-4 lg:grid-cols-4;
+  }
+  .record-dates small,
+  .record-dates strong {
+    @apply block;
+  }
+  .record-dates strong {
+    @apply mt-1 text-sm text-[#174c45];
+  }
+  .record-grid {
+    @apply grid gap-6 xl:grid-cols-2;
+  }
+  .record-facts {
+    @apply grid gap-x-4 gap-y-2;
+  }
+  .record-facts dt {
+    @apply text-sm font-semibold capitalize text-[#174c45];
+  }
+  .record-facts dd {
+    @apply mb-3 min-w-0 break-words text-sm;
+  }
+  .record-facts dd small {
+    @apply mt-2 block;
+  }
+  .record-fact {
+    @apply border-b border-[#e4e9e2] pb-2;
+  }
+  .record-document {
+    @apply my-4 grid gap-2;
+  }
+  .record-document button,
+  .record-document code {
+    @apply max-w-full break-all whitespace-normal;
+  }
+  .confirmation-preview {
+    @apply my-5 grid gap-4;
+  }
+  .confirmation-preview img {
+    @apply max-h-[36rem] w-full rounded-xl border border-[#cddfd6] bg-white object-contain object-top;
+  }
 }

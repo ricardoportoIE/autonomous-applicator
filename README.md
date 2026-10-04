@@ -4,6 +4,8 @@ A local job application workbench that links every candidate claim to evidence, 
 
 Inspect submission readiness without opening a browser or consuming a daily attempt. Search and sort the queue, follow an individual application's activity, and see confirmed applications sent and any pending sending reservations for the London day.
 
+Open **Full record** for a dated application page with the original opportunity link, per-attempt candidate and evidence snapshots, archived document downloads, observed form answers, provider receipts and the complete journal. New supported browser submissions save a private screenshot after visible confirmation; historical missing evidence is explicitly shown. See [Full application records](docs/OPERATIONS.md#full-application-records).
+
 The agent processes opportunities in arrival order, completing each vacancy's evidence selection, documents, checks and submission before starting the next. A live monitor shows the current opportunity, stage, elapsed time and run identifier. Failed and interrupted work retains its recorded stage for review. See [Application queue operation](docs/APPLICATION_QUEUE.md).
 
 Manage European hiring contacts in active and archived queues, with private circular portraits, highlighted locations, profile links and visible invitation progress.

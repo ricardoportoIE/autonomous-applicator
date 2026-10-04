@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
-from .browser import LinkedInBrowser, ReviewRequired, linkedin_job_id
+from .browser import FixtureBrowser, LinkedInBrowser, ReviewRequired, linkedin_job_id
 from .documents import fingerprint, generate, validate_generation, validate_manifest
 from .models import Advice, Job, Preflight, Profile, Question, State, SubmissionCheck
 from .operations import Operation, Operations
@@ -13,6 +13,7 @@ from .policy import answer_questions, evaluate, select_evidence
 from .question_adviser import question_key
 from .routine_answers import Selector, routine_answer
 from .store import Store
+from .submission_records import SubmissionRecords
 
 
 class Adapter(Protocol):
@@ -45,6 +46,7 @@ class Service:
         self.selector = selector
         self.question_selector = question_selector
         self.operations = Operations(store)
+        self.records = SubmissionRecords(store, data)
 
     def preflight(self, app_id: int, sources: set[str] | None = None) -> Preflight:
         """Inspect current local gates without reserving, browsing or generating documents.
@@ -361,7 +363,36 @@ class Service:
             "Holding one sending slot until confirmation or a proven pre-submission stop.",
         )
         attempt = self.store.reserve(app_id, revision)
+        try:
+            self.records.begin(app_id, attempt, effective, revision, job, row["manifest"], answers)
+        except Exception:
+            self.store.hold(
+                app_id,
+                "Submission materials could not be archived; no provider action was started.",
+                attempt=attempt,
+            )
+            raise
         adapter = self.adapters[job.source]
+        submission_folder = self.records.folder(app_id, attempt) / "documents"
+        previous_observer = (
+            adapter.observe_fields
+            if isinstance(adapter, (LinkedInBrowser, FixtureBrowser))
+            else None
+        )
+        previous_folder = (
+            adapter.confirmation_folder
+            if isinstance(adapter, (LinkedInBrowser, FixtureBrowser))
+            else None
+        )
+        previous_evidence = (
+            adapter.confirmation_evidence
+            if isinstance(adapter, (LinkedInBrowser, FixtureBrowser))
+            else {}
+        )
+        if isinstance(adapter, (LinkedInBrowser, FixtureBrowser)):
+            adapter.observe_fields = lambda fields: self.records.observe(app_id, attempt, fields)
+            adapter.confirmation_folder = self.records.folder(app_id, attempt)
+            adapter.confirmation_evidence = {}
         previous_progress = adapter.progress if isinstance(adapter, LinkedInBrowser) else None
         previous_resolver = (
             adapter.question_resolver if isinstance(adapter, LinkedInBrowser) else None
@@ -372,7 +403,12 @@ class Service:
         if isinstance(adapter, LinkedInBrowser):
             adapter.profile = effective
             adapter.progress = progress
-            adapter.before_submit = lambda: self.store.mark_sending(app_id, attempt, revision, job)
+
+            def final_gate() -> None:
+                validate_manifest(row["manifest"], submission_folder, revision)
+                self.store.mark_sending(app_id, attempt, revision, job)
+
+            adapter.before_submit = final_gate
 
             def resolve_live(question: Question) -> str | None:
                 report(
@@ -388,7 +424,7 @@ class Service:
             report(
                 "opening_opportunity", "Opening the reviewed opportunity in the dedicated browser."
             )
-            receipt = adapter.submit(job, answers, folder)
+            receipt = adapter.submit(job, answers, submission_folder)
             if not receipt.strip():
                 raise ValueError("Provider did not return a confirmation receipt")
             report(
@@ -402,6 +438,18 @@ class Service:
             self.store.finish(app_id, attempt, None)
             raise
         finally:
+            if isinstance(adapter, (LinkedInBrowser, FixtureBrowser)):
+                if self.store.application(app_id)["state"] == State.SUBMITTED:
+                    try:
+                        self.records.confirmation(app_id, attempt, adapter.confirmation_evidence)
+                    except Exception as exc:
+                        with self.store.connect() as db:
+                            self.store.event(
+                                db, "confirmation_evidence_unavailable", type(exc).__name__, app_id
+                            )
+                adapter.observe_fields = previous_observer
+                adapter.confirmation_folder = previous_folder
+                adapter.confirmation_evidence = previous_evidence
             if isinstance(adapter, LinkedInBrowser):
                 adapter.progress = previous_progress
                 adapter.question_resolver = previous_resolver

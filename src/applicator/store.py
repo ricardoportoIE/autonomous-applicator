@@ -39,6 +39,11 @@ class Store:
                     detail TEXT NOT NULL, created TEXT NOT NULL);
                 CREATE INDEX IF NOT EXISTS events_application ON events(application_id, id DESC);
                 CREATE INDEX IF NOT EXISTS attempts_day ON attempts(day);
+                CREATE TABLE IF NOT EXISTS submission_records (
+                    attempt_id INTEGER PRIMARY KEY,application_id INTEGER NOT NULL,
+                    created TEXT NOT NULL,sent_at TEXT,confirmed_at TEXT,
+                    snapshot TEXT NOT NULL,fields TEXT NOT NULL DEFAULT '[]',
+                    confirmation TEXT NOT NULL DEFAULT '{}');
                 CREATE TABLE IF NOT EXISTS routine_answers (
                     application_id INTEGER NOT NULL, answer_key TEXT NOT NULL,
                     question TEXT NOT NULL, answer TEXT NOT NULL, source TEXT NOT NULL,
@@ -546,6 +551,11 @@ class Store:
             db.execute(
                 "UPDATE applications SET state=?, receipt=? WHERE id=?", (state, receipt, app_id)
             )
+            if receipt:
+                db.execute(
+                    "UPDATE submission_records SET confirmed_at=? WHERE attempt_id=?",
+                    (datetime.now(UTC).isoformat(), attempt),
+                )
             self.event(db, "submission_finished", str(state), app_id)
 
     def mark_sending(self, app_id: int, attempt: int, revision: int, job: Job) -> None:
@@ -589,6 +599,10 @@ class Store:
             ):
                 raise ValueError("Submission policy changed before sending")
             db.execute("UPDATE attempts SET sent_day=? WHERE id=?", (day_key(), attempt))
+            db.execute(
+                "UPDATE submission_records SET sent_at=? WHERE attempt_id=?",
+                (datetime.now(UTC).isoformat(), attempt),
+            )
 
     def confirm_not_sent(self, app_id: int, revision: int) -> None:
         with self.connect(True) as db:
@@ -757,6 +771,11 @@ class Store:
                     ),
                 )
             self.event(db, "manual_receipt", "Candidate recorded a submission receipt.", app_id)
+            if latest:
+                db.execute(
+                    "UPDATE submission_records SET confirmed_at=? WHERE attempt_id=?",
+                    (datetime.now(UTC).isoformat(), latest[0]),
+                )
 
     def outcome(self, app_id: int, outcome: str) -> None:
         with self.connect(True) as db:

@@ -2,6 +2,7 @@ import { ApiClient, ApiError } from "./api";
 import type {
   Application,
   ApplicationDetail,
+  ApplicationRecord,
   Connection,
   Event,
   Insights,
@@ -27,6 +28,7 @@ export interface WorkspaceState {
   usage: Usage | null;
   insights: Insights | null;
   detail: ApplicationDetail | null;
+  record: ApplicationRecord | null;
   worker: WorkerRecord | null;
   workerError: string;
   searchJobs: string;
@@ -51,6 +53,7 @@ const empty = (): WorkspaceState => ({
   usage: null,
   insights: null,
   detail: null,
+  record: null,
   worker: null,
   workerError: "",
   searchJobs: "",
@@ -69,6 +72,7 @@ const reason = (error: unknown) =>
 export class Workspace {
   private state = empty();
   private refreshSequence = 0;
+  private recordSequence = 0;
   private listeners = new Set<() => void>();
   readonly api = new ApiClient((message) => {
     this.lock();
@@ -97,11 +101,14 @@ export class Workspace {
   message(notice: string, error = false) {
     this.update({ notice, error });
   }
-  navigate(view: View) {
+  navigate(view: View, updateUrl = true) {
+    this.recordSequence++;
+    if (updateUrl) history.pushState(null, "", "#" + view);
     this.update({ view });
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }
   lock() {
+    this.recordSequence++;
     this.api.setToken("");
     sessionStorage.removeItem("applicator-token");
     clearTimeout(this.workerTimer);
@@ -135,6 +142,8 @@ export class Workspace {
       await this.refresh();
       sessionStorage.setItem("applicator-token", token);
       this.update({ unlocked: true });
+      const match = window.location.hash.match(/^#\/applications\/([1-9]\d*)$/);
+      if (match) await this.openRecord(Number(match[1]), false);
       if (!restored) this.message("Local workspace unlocked.");
       this.pollWorker();
       const running = this.state.connections.find(
@@ -219,6 +228,54 @@ export class Workspace {
       view: "applications",
       detail: { row, report, events, profile_revision },
     });
+  }
+  async openRecord(id: number, updateUrl = true) {
+    const sequence = ++this.recordSequence;
+    const session = this.api.session();
+    if (updateUrl) history.pushState(null, "", `#/applications/${id}`);
+    const route = window.location.hash;
+    this.update({ view: "record", record: null });
+    const record = await this.api.json<ApplicationRecord>(
+      `/applications/${id}/record`,
+    );
+    if (
+      sequence === this.recordSequence &&
+      this.api.isCurrent(session) &&
+      route === window.location.hash
+    )
+      this.update({ record });
+  }
+  async olderRecordEvents() {
+    const record = this.state.record;
+    if (!record?.next_event) return;
+    const session = this.api.session();
+    const older = await this.api.json<ApplicationRecord>(
+      `/applications/${record.application.id}/record?before=${record.next_event}`,
+    );
+    if (this.api.isCurrent(session) && this.state.record === record)
+      this.update({
+        record: {
+          ...record,
+          events: [...record.events, ...older.events],
+          next_event: older.next_event,
+        },
+      });
+  }
+  async downloadSubmission(
+    id: number,
+    attempt: number,
+    key: string,
+    filename: string,
+  ) {
+    const blob = await this.api.blob(
+      `/applications/${id}/submissions/${attempt}/artifacts/${encodeURIComponent(key)}`,
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   closeDetail() {
     this.update({ detail: null });

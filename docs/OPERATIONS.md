@@ -18,6 +18,20 @@ The dashboard detects stale profile edits using a revision precondition. If anot
 
 The module commands avoid unsigned console launchers sometimes blocked by Windows Application Control. If a compiled mypy installation is blocked, install the same locked mypy version from source with `uv pip install --reinstall --no-binary mypy mypy==<locked-version>`. Do not disable Windows security policy.
 
+## Full application records
+
+In **Applications**, choose **Full record** beside an opportunity, or **View full application record** from its management view. Each record has its own local address, `/#/applications/{id}`, which can be bookmarked. Unlocking the workspace is still required. **Manage this application** returns to the existing preparation, question and outcome controls.
+
+The page shows the original opportunity URL, imported/prepared/submitted dates, current decision, provider receipts and every recorded attempt. Times use Europe/London. The application journal loads 200 entries at a time; **Load older activity** reads the remaining entries without starting any browser action.
+
+New submissions preserve the reviewed candidate contacts, selected evidence text, opportunity, profile revision, preparation metadata and document hashes for each attempt. The adapter uploads the archived copies, and the LinkedIn final gate verifies them again before clicking Submit. **Archived documents for this attempt** downloads these copies rather than a later replacement CV. **Observed application form** shows values and file names actually observed in the provider form, separately from approved answers supplied to the adapter. Observations include the form step when available. An archived DOCX is a prepared editable copy; the observed upload list identifies what the browser supplied.
+
+After LinkedIn visibly confirms submission, the adapter attempts a full-page PNG capture. The supported local employer fixture follows the same confirmation workflow; external employer sites need a compatible adapter before they can provide automatic evidence. The confirmation panel shows the captured provider URL and offers authenticated image preview/download. A recorded URL is the page seen at confirmation time, not a guaranteed permanent receipt link. A failed screenshot leaves the confirmed receipt intact and does not retry the send.
+
+Snapshots, archived documents and screenshots stay in ignored local storage under `data/submissions/{application}/{attempt}/`. They are served only through authenticated API routes, are checked against their recorded hashes and are never published to GitHub. Locking removes the visible record and releases preview URLs. Include both SQLite and the local submissions directory in a private backup.
+
+Historical attempts may have no archived materials, form observations, exact sending time or screenshot. The page explicitly marks absent evidence; it never reconstructs sent information from today's profile. A manual receipt confirms the outcome but cannot manufacture a provider screenshot.
+
 ## Candidate setup
 
 Review the Candidate profile tab. The private working copy has a profile translated from the supplied documents in `data/ricardo-profile.json`, imported into local SQLite. This file is excluded from Git and is not supplied to repository visitors. A fresh clone starts without a candidate profile.

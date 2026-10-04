@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Annotated, Any, Literal, cast
 
 import httpx
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from openai import OpenAI
@@ -323,6 +323,19 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
     @app.get("/api/applications/{app_id}", dependencies=auth)
     def application(app_id: int) -> dict[str, Any]:
         return store.application(app_id)
+
+    @app.get("/api/applications/{app_id}/record", dependencies=auth)
+    def application_record(
+        app_id: int, before: Annotated[int | None, Query(ge=1)] = None
+    ) -> dict[str, Any]:
+        return service.records.read(app_id, before)
+
+    @app.get("/api/applications/{app_id}/submissions/{attempt}/artifacts/{key}", dependencies=auth)
+    def submission_artifact(app_id: int, attempt: int, key: str) -> FileResponse:
+        path = service.records.artifact(app_id, attempt, key)
+        return FileResponse(
+            path, media_type="image/png" if key == "confirmation" else None, filename=path.name
+        )
 
     @app.get("/api/usage", dependencies=auth)
     def usage() -> DailyUsage:

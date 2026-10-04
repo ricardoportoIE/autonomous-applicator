@@ -45,6 +45,7 @@ for (const filename of [
   "forms.tsx",
   "components.tsx",
   "application-detail.tsx",
+  "application-record.tsx",
   "networking.tsx",
   "ui.ts",
 ]) {

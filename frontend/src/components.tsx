@@ -31,12 +31,13 @@ export function Panel({
   id?: string;
   className?: string;
 }) {
+  const titleId = useId();
   return (
-    <article className={"panel " + className} id={id}>
+    <article className={"panel " + className} id={id} aria-labelledby={titleId}>
       <div className="panel-heading">
         <div>
           {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-          <h2>{title}</h2>
+          <h2 id={titleId}>{title}</h2>
         </div>
         {action}
       </div>
@@ -253,7 +254,11 @@ export function Events({ events }: { events: Event[] }) {
         <div className="entry" key={event.id}>
           <strong>{event.kind.replaceAll("_", " ")}</strong>
           <p>{event.detail}</p>
-          <small>{new Date(event.created).toLocaleString("en-GB")}</small>
+          <small>
+            {new Date(event.created).toLocaleString("en-GB", {
+              timeZone: "Europe/London",
+            })}
+          </small>
         </div>
       ))}
     </>
@@ -305,6 +310,13 @@ export function ApplicationTable({
                   >
                     Open
                   </button>
+                  <a
+                    className="record-link"
+                    href={`#/applications/${row.id}`}
+                    aria-label={`Full record for ${row.job.title} at ${row.job.company}`}
+                  >
+                    Full record
+                  </a>
                 </td>
               </tr>
             ))}

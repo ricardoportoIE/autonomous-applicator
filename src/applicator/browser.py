@@ -14,6 +14,7 @@ from playwright.sync_api import Error as BrowserError
 from .documents import filename_stem
 from .models import Job, Profile, Question
 from .photos import save_photo
+from .submission_records import capture_confirmation
 
 
 class BrowserOptions(TypedDict, total=False):
@@ -577,6 +578,9 @@ class LinkedInBrowser:
         self.progress: Callable[[str, str], None] | None = None
         self.question_resolver: Callable[[Question], str | None] | None = None
         self.before_submit: Callable[[], None] | None = None
+        self.observe_fields: Callable[[list[dict[str, Any]]], None] | None = None
+        self.confirmation_folder: Path | None = None
+        self.confirmation_evidence: dict[str, Any] = {}
 
     def report(self, stage: str, detail: str) -> None:
         if self.progress:
@@ -744,6 +748,10 @@ class LinkedInBrowser:
                     f"Checking and uploading the verified CV: form step {_step + 1}.",
                 )
                 resume_fields = upload_resume(page, dialog, cv)
+                if resume_fields is not None and self.observe_fields:
+                    self.observe_fields(
+                        [{"label": "CV", "type": "file", "value": cv.name, "step": _step + 1}]
+                    )
                 self.report(
                     "answering_questions",
                     f"Completing form step {_step + 1} using approved answers only.",
@@ -776,7 +784,22 @@ class LinkedInBrowser:
                             "Expected the verified document for this job and candidate"
                         )
                     upload.set_input_files(str(candidate))
+                    if self.observe_fields:
+                        self.observe_fields(
+                            [
+                                {
+                                    "label": "Cover letter" if is_cover else "CV",
+                                    "type": "file",
+                                    "value": candidate.name,
+                                    "step": _step + 1,
+                                }
+                            ]
+                        )
                 submit = dialog.get_by_role("button", name="Submit application", exact=True)
+                if self.observe_fields:
+                    self.observe_fields(
+                        [{**field, "step": _step + 1} for field in form_questions(page)]
+                    )
                 if submit.count():
                     # Do not follow companies as an implicit side effect of submission.
                     follow = dialog.get_by_label(re.compile(r"^Follow .+ to stay up to date"))
@@ -794,6 +817,14 @@ class LinkedInBrowser:
                     page.get_by_text(
                         re.compile(r"Your application was sent|Application submitted"), exact=False
                     ).first.wait_for(timeout=15000)
+                    if self.confirmation_folder:
+                        self.report(
+                            "capturing_confirmation",
+                            "Saving a private screenshot of the provider's submission confirmation.",
+                        )
+                    self.confirmation_evidence = capture_confirmation(
+                        page, self.confirmation_folder
+                    )
                     return f"linkedin:{job.source_id}:confirmed"
                 next_button = dialog.get_by_role("button", name=re.compile(r"^(Next|Review)$"))
                 if next_button.count() != 1:
@@ -807,6 +838,11 @@ class LinkedInBrowser:
 
 class FixtureBrowser:
     """A real-browser submission adapter for the explicitly local test fixture."""
+
+    def __init__(self) -> None:
+        self.observe_fields: Callable[[list[dict[str, Any]]], None] | None = None
+        self.confirmation_folder: Path | None = None
+        self.confirmation_evidence: dict[str, Any] = {}
 
     def submit(self, job: Job, answers: dict[str, str], folder: Path) -> str:
         parsed = urlsplit(job.url)
@@ -824,10 +860,26 @@ class FixtureBrowser:
                 page.get_by_label("CV", exact=True).set_input_files(
                     str(next(folder.glob("*_CV.pdf")))
                 )
+                if self.observe_fields:
+                    self.observe_fields(
+                        [
+                            {
+                                "label": "CV",
+                                "type": "file",
+                                "value": next(folder.glob("*_CV.pdf")).name,
+                            }
+                        ]
+                    )
+                    self.observe_fields(
+                        page.locator("input:not([type=file]),textarea,select").evaluate_all(
+                            "nodes => nodes.map(el=>({label:[...el.labels].map(label=>label.textContent.trim()).join(' '),type:el.type,value:el.value,checked:el.checked}))"
+                        )
+                    )
                 page.get_by_role("button", name="Submit application", exact=True).click()
                 receipt = page.locator("#receipt").inner_text(timeout=10000)
                 if not receipt.startswith("fixture:"):
                     raise ValueError("Missing fixture receipt")
+                self.confirmation_evidence = capture_confirmation(page, self.confirmation_folder)
                 return receipt
             finally:
                 browser.close()

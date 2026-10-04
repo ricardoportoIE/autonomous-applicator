@@ -1,5 +1,13 @@
 # Source review, 2 October 2026
 
+## Application records and confirmation evidence review, 4 October 2026
+
+Reviewed the submission archive, atomic sending/confirmation timestamps, token-protected record/artifact routes, adapter observations, screenshot capture and React routes. Each new attempt keeps its own reviewed job/contact/evidence/document snapshot; later candidate edits and regenerated CVs cannot replace it. The browser uploads archived files, and the LinkedIn final gate repeats their integrity check. Actual observed fields remain separate from the facts and answers offered to the adapter.
+
+The provider must visibly confirm submission before capture. Screenshot errors leave the confirmed receipt unchanged, are displayed in the record and cannot start another submission. Downloads reject wrong application ownership, traversal, missing files, excessive size and hash mismatch. Existing screenshots cannot be overwritten by the capture helper. All artifacts remain local and ignored by Git. Legacy missing evidence is represented as missing rather than reconstructed from the current profile.
+
+The dedicated page retains management access, dates, the original link, individual attempt selection, metadata, private preview/download and the complete cursor-paginated journal. Deep links require authentication. Session generations and route ownership reject late record reads; locking clears the record and releases preview URLs. Browser fixtures cover confirmed LinkedIn/employer pages, capture failure, desktop/mobile accessibility, downloads, historical/uncertain attempts and missing records. No live provider send was performed by these checks.
+
 ## Sending capacity and routine answers review, 4 October 2026
 
 Reviewed the changed accounting, migration, FIFO orchestration, scoped question storage, routine source selector, location policy, authenticated decision routes and dashboard controls. Confirmed sends now count separately from pending/uncertain reservations and raw diagnostic attempts. Safe provider stops record the review and release capacity atomically; uncertain outcomes keep a hold across midnight. Explicit negative reconciliation preserves the journal and requires manual preparation before a retry.

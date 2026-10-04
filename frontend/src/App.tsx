@@ -21,6 +21,7 @@ import {
   WorkerMonitor,
 } from "./components";
 import { ApplicationDetails } from "./application-detail";
+import { ApplicationRecordPage } from "./application-record";
 import {
   BoardForm,
   ContactForm,
@@ -58,7 +59,32 @@ export function App({ workspace }: { workspace: Workspace }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const [sort, setSort] = useState("recent");
-  const current = navigation.find((item) => item.id === state.view)!;
+  const current = navigation.find(
+    (item) =>
+      item.id === (state.view === "record" ? "applications" : state.view),
+  )!;
+  useEffect(() => {
+    const followRoute = () => {
+      if (!workspace.getSnapshot().unlocked) return;
+      const match = window.location.hash.match(/^#\/applications\/([1-9]\d*)$/);
+      if (match)
+        void workspace.action(
+          () => workspace.openRecord(Number(match[1]), false),
+          true,
+        );
+      else {
+        const view = window.location.hash.slice(1);
+        if (navigation.some((item) => item.id === view))
+          workspace.navigate(view as View, false);
+      }
+    };
+    window.addEventListener("hashchange", followRoute);
+    window.addEventListener("popstate", followRoute);
+    return () => {
+      window.removeEventListener("hashchange", followRoute);
+      window.removeEventListener("popstate", followRoute);
+    };
+  }, [workspace]);
   useEffect(() => {
     const saved = sessionStorage.getItem("applicator-token");
     if (saved) void workspace.unlock(saved, true);
@@ -113,8 +139,8 @@ export function App({ workspace }: { workspace: Workspace }) {
               type="button"
               key={item.id}
               data-view={item.id}
-              className={state.view === item.id ? "active" : ""}
-              aria-current={state.view === item.id ? "page" : undefined}
+              className={current.id === item.id ? "active" : ""}
+              aria-current={current.id === item.id ? "page" : undefined}
               onClick={() => workspace.navigate(item.id as View)}
             >
               <item.icon size={20} className="nav-icon" aria-hidden="true" />
@@ -141,7 +167,9 @@ export function App({ workspace }: { workspace: Workspace }) {
             <p className="eyebrow">
               A little more clarity. A better next step.
             </p>
-            <h1 id="page-title">{current.label}</h1>
+            <h1 id="page-title">
+              {state.view === "record" ? "Application record" : current.label}
+            </h1>
           </div>
           <div className="topbar-actions">
             <button
@@ -439,6 +467,32 @@ export function App({ workspace }: { workspace: Workspace }) {
                 )}
               </div>
             </Panel>
+          </section>
+          <section data-section="record" hidden={state.view !== "record"}>
+            {state.unlocked &&
+              state.view === "record" &&
+              (state.record ? (
+                <ApplicationRecordPage
+                  key={state.record.application.id}
+                  record={state.record}
+                  workspace={workspace}
+                />
+              ) : (
+                <Panel title="Application record">
+                  <p role="status">
+                    {state.pending
+                      ? "Loading application record…"
+                      : "Application record unavailable. Check the message above."}
+                  </p>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => workspace.navigate("applications")}
+                  >
+                    Back to application queue
+                  </button>
+                </Panel>
+              ))}
           </section>
           <section
             data-section="applications"

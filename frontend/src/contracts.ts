@@ -172,10 +172,66 @@ export interface ApplicationDetail {
   report: Preflight;
   events: Event[];
 }
+export interface SubmissionAttempt {
+  id: number;
+  status: "held" | "released" | "confirmed";
+  started: string;
+  receipt: string | null;
+  sent_at: string | null;
+  confirmed_at: string | null;
+  snapshot: {
+    job: Job;
+    profile_revision: number;
+    candidate: Pick<
+      Profile,
+      | "name"
+      | "email"
+      | "phone"
+      | "location"
+      | "links"
+      | "summary"
+      | "sponsorship_required"
+    >;
+    manifest: Application["manifest"];
+    selected_evidence?: Evidence[];
+    provided_answers: { id: string; label: string; answer: string }[];
+  } | null;
+  fields:
+    | {
+        label: string;
+        type: string;
+        value: string;
+        checked: boolean | null;
+        observed_at: string;
+        step?: number | null;
+      }[]
+    | null;
+  confirmation: {
+    url?: string;
+    captured_at?: string;
+    name?: string;
+    sha256?: string;
+    capture_error?: string;
+  } | null;
+}
+export interface ApplicationRecord {
+  application: Application;
+  dates: {
+    imported_at: string | null;
+    last_activity_at: string | null;
+    event_count: number;
+    prepared_at?: string | null;
+    submitted_at?: string | null;
+  };
+  attempts: SubmissionAttempt[];
+  events: Event[];
+  next_event: number | null;
+}
 export type View =
   | "overview"
   | "applications"
   | "profile"
   | "networking"
   | "settings"
-  | "activity";
+  | "activity"
+  | "record";

@@ -12,6 +12,10 @@ The renderer copies approved evidence into tailored PDF/DOCX documents. Question
 
 ## Submission invariants
 
+`submission_records` stores one private snapshot per reserved attempt, linked to the existing application/attempt journal. Before provider activity, the service verifies and copies prepared materials into `data/submissions/{application}/{attempt}/documents/`. The adapter receives this archive rather than the replaceable preparation directory. LinkedIn repeats manifest integrity checks in its final pre-click gate. Contact facts, selected evidence wording, job details, known approved answers and generation metadata are preserved independently of later profile or opportunity edits.
+
+Supported adapters record actual observed form values and uploads, including step numbers when available. Checked radio choices are stored under their question group; observations for different steps remain distinct. Sending/confirmation timestamps are recorded in the same SQLite transactions as the corresponding attempt transitions. Visible provider confirmation precedes PNG capture. Capture errors are metadata, not uncertainty or a reason to repeat the send. Authenticated artifact reads require matching application ownership, safe local paths, bounded size and the archived hash. Existing attempts without snapshots remain explicitly incomplete.
+
 ```mermaid
 flowchart LR
     Sources[Job text and LinkedIn discovery] --> Policy[Evidence and eligibility checks]
@@ -36,6 +40,8 @@ The worker checks the kill switch before each attempt. It cannot undo a submissi
 | `GET /api/usage` | Confirmed London-day sends, separate pending/uncertain holds, diagnostic attempts, configured limit and remaining capacity |
 | `GET /api/applications/{id}/preflight` | Current fit evaluation and named local submission checks with passed/blocked explanations |
 | `GET /api/applications/{id}/events` | Latest 200 events belonging to this application, newest first |
+| `GET /api/applications/{id}/record?before={event_id}` | Per-attempt submission snapshots, timestamps, observations, confirmation metadata and cursor-paginated journal |
+| `GET /api/applications/{id}/submissions/{attempt}/artifacts/{key}` | Authenticated, hash-verified archived document or confirmation PNG belonging to this application and attempt |
 
 Preflight calls read local records and verify document files. They do not reserve an attempt, generate materials, start a browser, call the adviser or append events. Each report has a UTC timestamp. It is an advisory snapshot rather than a transaction locking the candidate record; actual submission repeats the gates. Provider sign-in, changed descriptions, newly discovered questions and uploads remain live adapter responsibilities.
 

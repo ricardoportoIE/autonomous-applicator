@@ -1,6 +1,12 @@
 # Delivery and validation record
 
-Version 0.3.0 reviewed through the sending-capacity and routine-answer follow-up on 4 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+Version 0.3.0 reviewed through the application-record and confirmation-evidence follow-up on 4 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+
+## Application records and confirmation evidence, 4 October 2026
+
+A dedicated authenticated page now shows the original opportunity, recorded dates, current decision, per-attempt candidate/evidence/job snapshots, archived documents and generation metadata, actual form observations, receipts and the complete paginated journal. New supported browser submissions attempt a private full-page screenshot after visible provider confirmation. Image failure preserves the successful receipt; legacy missing evidence is never fabricated. Each attempt uploads its preserved document copies, and LinkedIn rechecks their integrity immediately before submission.
+
+Focused current-source checks passed **32 new Python cases**, including seven real-browser provider/UI regressions, and **95 backend cases** covering existing submission, capacity, readiness and API behaviour. Frontend checks passed **61 unit tests**, strict TypeScript, lint and formatting; helper line coverage is 100%. Strict Python typing and lint also passed. A complete current-source regression run and updated coverage measurement are in progress; the final results will be recorded after completion. All browser sends in these checks used intercepted or loopback fixtures, never a real candidate application.
 
 ## Sending capacity and routine answers, 4 October 2026
 

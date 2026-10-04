@@ -16,7 +16,7 @@ def check_accessibility(page):
     page.route(
         "**/__test/axe.js", lambda route: route.fulfill(content_type="text/javascript", body=axe)
     )
-    page.add_script_tag(url=page.url + "__test/axe.js")
+    page.add_script_tag(url=page.url.split("#", 1)[0] + "__test/axe.js")
     result = page.evaluate(
         "async () => await axe.run(document, {runOnly: {type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})"
     )

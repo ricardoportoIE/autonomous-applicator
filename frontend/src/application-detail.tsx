@@ -346,6 +346,9 @@ export function ApplicationDetails({
         <ExternalLink href={row.job.url}>
           Open original opportunity
         </ExternalLink>
+        <a href={`#/applications/${row.id}`} className="external-link">
+          View full application record
+        </a>
       </div>
       <Tabs
         prefix="application"
