@@ -1,6 +1,29 @@
 # Delivery and validation record
 
-Version 0.3.0 reviewed and locally validated on 3 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+Version 0.3.0 reviewed and locally validated through the React migration on 4 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+
+## React migration validation, 4 October 2026
+
+The six workspace areas now use React, strict TypeScript, Vite and locally compiled Tailwind CSS. All existing data fields and controls are retained in the [feature parity map](FRONTEND.md). Creation/editing forms open native dialogues; application tabs organise readiness, documents, approved questions and journal/outcome information. Active/Archived networking, private portraits and independent invitation observation remain available. No backend submission, scoring, FIFO, provider-authorisation or GPT-6.1 Sol contract was changed.
+
+The first complete Windows/Python 3.14 pass ran 425 tests: 424 passed and one dashboard fixture encountered a transient local read transport failure. All 97 affected frontend cases subsequently passed. The final review added three regressions for bounded read recovery, refreshing a failed preparation's review/document state and rejecting a locked opportunity draft after asynchronous hashing. The final production-bundle run passed all **100 dashboard cases** in 269 seconds. Together with the unchanged backend cases from the complete run, this covers **428 distinct passing Python tests**. No failed assertion was removed.
+
+| Check | Local result |
+| --- | --- |
+| Vitest/React Testing Library | 45 tests passed |
+| Core TypeScript coverage | 100% lines; 99.31% statements; 93.20% branches; 98.59% functions |
+| Production React browser coverage | 98.77% lines; 94.09% branches; 97.03% functions, mapped to authored TypeScript with dependencies excluded |
+| Combined Python coverage | 97.65%; 98.44% statements (1,897/1,927); 95.21% branches (596/626) |
+| Accessibility and responsive layouts | Six views, native dialogues and application/connection tabs; axe WCAG checks; 390/768/1,440 pixels, keyboard use and enlarged text |
+| TypeScript / strict mypy | Passed; 15 Python runtime modules |
+| ESLint / Prettier / Ruff / formatting | Passed |
+| Production assets | Rebuilt byte-for-byte without changes; four packaged assets verified against the wheel |
+| Dependency audits | npm and Python reported no known vulnerabilities |
+| Repository hygiene | 92 tracked files checked; no credentials or local contact fields |
+
+Authenticated read-only inspection of the actual local workspace verified all six React views, desktop/mobile layout, native dialogue opening/closing, actual GPT-6.1 Sol CV provenance and the unresolved exact work-authorisation question. Application/invitation attempt totals stayed at three/seven and all nine application records remained in review. Automation remains paused. No paid model request, actual application or invitation was sent during this migration. Personal records, portraits, CVs, tokens and live screenshots remain ignored.
+
+Implementation commits: `cf2d898` (React migration) and `8a6920f` (failed-action reconciliation and asynchronous draft protection). The [complete GitHub Actions run](https://github.com/ricardoportoIE/autonomous-applicator/actions/runs/37182102270) passed all four Linux/Windows and Python 3.12/3.14 combinations at `8a6920f`, including all 428 Python tests, 45 frontend unit tests and the production browser coverage checks. The subsequent validation-record commit changes documentation only.
 
 ## Implemented
 
