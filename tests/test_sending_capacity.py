@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from applicator.api import create_app
-from applicator.browser import ReviewRequired
+from applicator.browser import LinkedInBrowser, ReviewRequired
 from applicator.documents import fingerprint
 from applicator.location_policy import country, location_needs_review
 from applicator.models import Question, Settings, State
@@ -146,6 +146,62 @@ def test_last_moment_mutable_gates_stop_the_submit_click(prepared, profile, job,
         assert (
             db.execute("SELECT sent_day FROM attempts WHERE id=?", (attempt,)).fetchone()[0] is None
         )
+
+
+@pytest.mark.parametrize("outcome", ["success", "pause", "personal"])
+def test_service_wires_live_answers_and_final_gate_without_browser_side_effects(
+    prepared, job, monkeypatch, outcome
+):
+    store, service, app_id, _ = prepared
+    job.source, job.source_id, job.url = (
+        "linkedin",
+        "123",
+        "https://www.linkedin.com/jobs/view/123/",
+    )
+    app_id, _ = store.add_job(job)
+    store.set_settings(Settings(automation_enabled=True, linkedin_authorised=True))
+    service.prepare(app_id)
+    adapter = LinkedInBrowser(service.data, store.profile()[0])
+
+    def previous_resolver(_):
+        return None
+
+    def previous_gate():
+        return None
+
+    adapter.question_resolver = previous_resolver
+    adapter.before_submit = previous_gate
+    service.adapters["linkedin"] = adapter
+    clicks = []
+
+    def intercepted_submit(self, vacancy, answers, folder, progress):
+        label = "Expected salary?" if outcome == "personal" else "Have you used Python?"
+        question = Question(
+            id="live", label=label, choices=[] if outcome == "personal" else ["Yes", "No"]
+        )
+        value = self.question_resolver(question)
+        if value is None:
+            raise ValueError("Approve an exact answer for: " + label)
+        assert value == "Yes"
+        if outcome == "pause":
+            store.set_settings(Settings(automation_enabled=False, linkedin_authorised=True))
+        self.before_submit()
+        progress["submitted"] = True
+        clicks.append("sent")
+        return "fixture:live-confirmed"
+
+    monkeypatch.setattr(LinkedInBrowser, "_submit", intercepted_submit)
+    if outcome == "success":
+        assert service.submit(app_id) == "fixture:live-confirmed"
+        assert store.daily_usage().used == 1 and clicks == ["sent"]
+        assert store.application(app_id)["routine_answers"][0]["answer"] == "Yes"
+    else:
+        with pytest.raises(ReviewRequired):
+            service.submit(app_id)
+        assert not clicks
+        assert (store.daily_usage().used, store.daily_usage().held) == (0, 0)
+        assert store.application(app_id)["state"] == State.REVIEW
+    assert adapter.question_resolver is previous_resolver and adapter.before_submit is previous_gate
 
 
 @pytest.mark.parametrize(
