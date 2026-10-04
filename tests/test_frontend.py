@@ -259,7 +259,7 @@ def assert_networking_accessibility(page):
         "**/__test/networking-axe.js",
         lambda route: route.fulfill(content_type="text/javascript", body=axe),
     )
-    page.add_script_tag(url=page.url + "__test/networking-axe.js")
+    page.add_script_tag(url=page.url.split("#", 1)[0] + "__test/networking-axe.js")
     result = page.evaluate(
         "async () => await axe.run(document, {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa']}})"
     )
@@ -287,7 +287,7 @@ def test_all_views_pass_axe_wcag_checks(dashboard, section, width):
     page.route(
         "**/__test/axe.js", lambda route: route.fulfill(content_type="text/javascript", body=axe)
     )
-    page.add_script_tag(url=page.url + "__test/axe.js")
+    page.add_script_tag(url=page.url.split("#", 1)[0] + "__test/axe.js")
     result = page.evaluate(
         "async () => await axe.run(document, {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa']}})"
     )
@@ -487,7 +487,7 @@ def test_enlarged_text_and_keyboard_navigation_are_usable(dashboard):
         "**/__test/zoom.css",
         lambda route: route.fulfill(content_type="text/css", body="html { font-size: 200%; }"),
     )
-    page.add_style_tag(url=page.url + "__test/zoom.css")
+    page.add_style_tag(url=page.url.split("#", 1)[0] + "__test/zoom.css")
     assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
     page.get_by_role("button", name="Overview", exact=True).focus()
     page.keyboard.press("Tab")
@@ -580,7 +580,7 @@ def test_networking_form_queues_a_contact_and_missing_scope_send_is_held(
     page.route(
         "**/__test/axe.js", lambda route: route.fulfill(content_type="text/javascript", body=axe)
     )
-    page.add_script_tag(url=page.url + "__test/axe.js")
+    page.add_script_tag(url=page.url.split("#", 1)[0] + "__test/axe.js")
     result = page.evaluate(
         "async () => await axe.run(document, {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa']}})"
     )
@@ -1071,7 +1071,7 @@ def test_preflight_blocks_changed_profile_and_passes_accessibility_checks(dashbo
     page.route(
         "**/__test/axe.js", lambda route: route.fulfill(content_type="text/javascript", body=axe)
     )
-    page.add_script_tag(url=page.url + "__test/axe.js")
+    page.add_script_tag(url=page.url.split("#", 1)[0] + "__test/axe.js")
     result = page.evaluate(
         "async () => await axe.run(document, {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa']}})"
     )
