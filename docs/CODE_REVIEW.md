@@ -1,5 +1,13 @@
 # Source review, 2 October 2026
 
+## Delayed LinkedIn authentication, 4 October 2026
+
+The job reader checked the canonical URL immediately after navigation, then waited for the company header. LinkedIn could redirect to an authentication wall during that wait, leaving a generic locator timeout rather than a useful session diagnostic. The same race affected search and profile discovery, and a login heading could also satisfy a profile selector before semantic extraction failed.
+
+All LinkedIn discovery and application pages now share an exception boundary that rechecks the current origin and authentication path on browser or validation errors, and checks the final URL on successful completion. Authentication diagnostics explain how to restore the dedicated browser session without including tracking parameters or raw locator call logs. Non-authentication layout errors retain their existing handling. The final sending-click boundary is unchanged: earlier failures become review and release the sending reservation; later failures remain uncertain and require reconciliation.
+
+Twelve new cases cover login, checkpoint and authwall diagnostics, foreign-origin rejection, preservation of ordinary browser errors, four discovery wait positions and three submission stages. Intercepted real-browser/API cases verify status 409, no partial imports, exact observed clicks, retained documents and immutable archived copies, the stored failure stage, released or held sending slots, and no automatic replay. All twelve passed in 41.21 seconds. Tests use fictitious candidate records and controlled provider pages.
+
 ## Complete backend coverage follow-up, 4 October 2026
 
 The full backend baseline measured 97.52% combined coverage: 2,448/2,489 statements and 812/854 branch outcomes. Reviewed the uncovered paths across all 19 application modules and added 76 cases, including tests for the enforcement script. The runtime implementation and sending policy were preserved. New cases cover stale/invalid answer writes, missing location records, discovery-only recovery, a pause between invitations, unsupported browser traversal/upload widgets, native/visual radio disagreement, ten-step form exhaustion, revoked scope and changed identity at invitation boundaries, actual CV observations, no implicit following, invalid fixture receipts and redirects, PDF extraction/length validation, optional fonts, archive tampering/overwrite/path races and both OS lock protocols.

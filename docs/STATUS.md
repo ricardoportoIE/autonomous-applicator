@@ -1,6 +1,12 @@
 # Delivery and validation record
 
-Version 0.3.0 reviewed through the complete backend coverage follow-up on 4 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+Version 0.3.0 reviewed through the delayed LinkedIn authentication follow-up on 4 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+
+## Delayed LinkedIn authentication, 4 October 2026
+
+Fixed an authentication redirect occurring after the initial job URL check, while the company locator was waiting. Discovery and submission now check the current page when browser or validation errors escape the operation, including login pages whose heading satisfies a profile selector. The user receives a dedicated-session sign-in instruction rather than the authwall URL or a locator timeout. Pre-send application stops release their reservation and enter review; a redirect after the final sending click retains an uncertain outcome, its held capacity and archived materials. No failed operation is automatically replayed and no provider receipt is fabricated.
+
+All **12 new regression cases passed in 41.21 seconds**, covering unit diagnostics and intercepted real-browser/API discovery and submission stages. **147 frontend unit cases passed**, retaining 100% coverage in all ten runtime modules. Ruff, formatting, strict mypy and whitespace checks passed. The complete Python suite and four-platform CI remain mandatory before claiming a new complete coverage measurement; the earlier measurements below are historical results, not measurements of this changed source revision. [Operations](OPERATIONS.md) documents recovery through the dedicated browser, and [Testing and coverage](TESTING.md) records the added assertions. No paid API calls or actual LinkedIn submissions were used for validation.
 
 ## Backend runtime coverage, 4 October 2026
 

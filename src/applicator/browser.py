@@ -3,7 +3,8 @@
 import hashlib
 import os
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, TypedDict
 from urllib.parse import urlencode, urlsplit
@@ -62,7 +63,26 @@ def ensure_linkedin(page: Page) -> None:
     if parsed.scheme != "https" or parsed.netloc != "www.linkedin.com":
         raise ValueError("Browser left the approved LinkedIn origin")
     if any(term in parsed.path for term in ("login", "checkpoint", "authwall")):
-        raise ValueError("Complete login or verification manually using browser-login")
+        raise ValueError(
+            "LinkedIn requires login or verification in the dedicated browser session. "
+            "Pause automation and run uv run python -m applicator.cli browser-login. "
+            "Complete sign-in there, then press Enter to retain the session. "
+            "Reprepare applications in review; reconcile uncertain submissions before retrying."
+        )
+
+
+@contextmanager
+def linkedin_page(context: BrowserContext) -> Iterator[Page]:
+    """Classify delayed authentication redirects without exposing provider diagnostics."""
+    page = context.new_page()
+    try:
+        yield page
+        ensure_linkedin(page)
+    except (BrowserError, ValueError):
+        # LinkedIn can redirect after DOMContentLoaded, while a locator is waiting.
+        # Recheck the current URL rather than reporting a missing job selector.
+        ensure_linkedin(page)
+        raise
 
 
 def job_details(page: Page, expected_id: str) -> Job:
@@ -599,8 +619,11 @@ class LinkedInBrowser:
         if not 1 <= limit <= 10:
             raise ValueError("Job discovery limit must be between 1 and 10")
         jobs: list[Job] = []
-        with sync_playwright() as playwright, self.context(playwright) as context:
-            page = context.new_page()
+        with (
+            sync_playwright() as playwright,
+            self.context(playwright) as context,
+            linkedin_page(context) as page,
+        ):
             page.goto(
                 "https://www.linkedin.com/jobs/search/?"
                 + urlencode({"keywords": keywords, "location": location, "f_AL": "true"}),
@@ -650,8 +673,11 @@ class LinkedInBrowser:
         if not 1 <= limit <= 10:
             raise ValueError("Recruiter discovery limit must be between 1 and 10")
         contacts: list[dict[str, str]] = []
-        with sync_playwright() as playwright, self.context(playwright) as context:
-            page = context.new_page()
+        with (
+            sync_playwright() as playwright,
+            self.context(playwright) as context,
+            linkedin_page(context) as page,
+        ):
             page.goto(
                 "https://www.linkedin.com/search/results/people/?"
                 + urlencode({"keywords": f"Technical recruiter {location}"}),
@@ -715,8 +741,11 @@ class LinkedInBrowser:
             raise ReviewRequired("Configure a candidate profile before submitting applications")
         if linkedin_job_id(job.url) != job.source_id:
             raise ValueError("LinkedIn job identifier does not match the reviewed opportunity")
-        with sync_playwright() as playwright, self.context(playwright) as context:
-            page = context.new_page()
+        with (
+            sync_playwright() as playwright,
+            self.context(playwright) as context,
+            linkedin_page(context) as page,
+        ):
             self.report("opening_opportunity", "Opening the reviewed LinkedIn opportunity.")
             page.goto(job.url, wait_until="domcontentloaded")
             self.report(

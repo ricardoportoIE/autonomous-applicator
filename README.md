@@ -142,7 +142,7 @@ The frontend review expanded measurement from three helpers to **all ten authore
 | Static and dependency checks | Strict TypeScript and mypy, ESLint, Ruff, Prettier, npm audit, pip-audit and tracked-file privacy checks. |
 | Packaging and CI | Reproducible committed assets and a Windows/Linux matrix on Python 3.12 and 3.14 with Node.js 24. |
 
-The backend requires **100% statement and branch coverage in every one of its 19 Python modules**: **2,489 statements on Python 3.14, 2,511 on Python 3.12 and 854 branch outcomes**. CI checks the complete source inventory and rejects missing paths or runtime exclusions on every Windows/Linux and Python 3.12/3.14 job. React unit tests retain their separate 100% per-file runtime coverage gate. [Testing and coverage](docs/TESTING.md) defines the scope, fixtures and reproduction commands.
+The backend requires **100% statement and branch coverage in every one of its 19 Python modules**. CI checks the complete source inventory and rejects missing paths or runtime exclusions on every Windows/Linux and Python 3.12/3.14 job; each run records its exact interpreter-specific statement and branch counts. React unit tests retain their separate 100% per-file runtime coverage gate. [Testing and coverage](docs/TESTING.md) defines the scope, fixtures and reproduction commands.
 
 Verification results, measured coverage and any outstanding checks are recorded in [delivery status](docs/STATUS.md). [Review findings](docs/CODE_REVIEW.md) explain corrected faults and their regressions. Coverage establishes execution, not compatibility with every live provider layout; behaviour assertions and isolated provider fixtures provide additional evidence.
 
