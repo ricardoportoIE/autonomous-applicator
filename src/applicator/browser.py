@@ -77,7 +77,6 @@ def linkedin_page(context: BrowserContext) -> Iterator[Page]:
     page = context.new_page()
     try:
         yield page
-        ensure_linkedin(page)
     except (BrowserError, ValueError):
         # LinkedIn can redirect after DOMContentLoaded, while a locator is waiting.
         # Recheck the current URL rather than reporting a missing job selector.

@@ -5,7 +5,7 @@ from urllib.parse import urlsplit
 
 import pytest
 from playwright.sync_api import Error as BrowserError
-from playwright.sync_api import Locator
+from playwright.sync_api import Locator, Page
 from test_api import client
 from test_browser import LINKEDIN_HTML
 
@@ -172,3 +172,41 @@ def test_submission_authentication_stop_preserves_capacity_stage_and_archived_ev
     assert service.records.artifact(app_id, record["id"], "cv_pdf").is_file()
     before_visits = visits.copy()
     assert service.tick() == {} and visits == before_visits  # No automatic replay.
+
+
+@pytest.mark.browser
+def test_session_change_during_optional_screenshot_preserves_confirmed_submission(
+    data, profile, job, delayed_redirect, monkeypatch
+):
+    trigger, visits, actions, _ = delayed_redirect
+    trigger["wait"] = 0
+    job.source, job.source_id = "linkedin", "123"
+    job.url, job.description = (
+        "https://www.linkedin.com/jobs/view/123/",
+        "Python FastAPI PostgreSQL",
+    )
+    app, session = client(data)
+    store, service = app.state.store, app.state.service
+    store.save_profile(profile)
+    store.set_settings(Settings(automation_enabled=True, linkedin_authorised=True, daily_limit=1))
+    app_id, _ = store.add_job(job)
+    service.prepare(app_id)
+
+    def interrupted_screenshot(page, **kwargs):
+        page.goto("https://www.linkedin.com/authwall?private-token=secret")
+        raise BrowserError("Optional screenshot failed after the visible receipt")
+
+    monkeypatch.setattr(Page, "screenshot", interrupted_screenshot)
+    response = session.post(f"/api/applications/{app_id}/submit")
+    assert response.status_code == 200 and response.json() == {"receipt": "linkedin:123:confirmed"}
+    assert store.application(app_id)["state"] == State.SUBMITTED
+    assert actions == ["easy", "submit"] and visits[-1] == "/authwall"
+    usage = store.daily_usage()
+    assert (usage.used, usage.held, usage.remaining) == (1, 0, 0)
+    record = service.records.read(app_id)["attempts"][0]
+    assert record["status"] == "confirmed" and record["receipt"] == "linkedin:123:confirmed"
+    assert record["confirmation"]["capture_error"] == BrowserError.__name__
+    assert record["confirmation"]["url"] == job.url
+    assert service.operations.status()["run"]["status"] == "completed"
+    before_visits = visits.copy()
+    assert service.tick() == {} and visits == before_visits
