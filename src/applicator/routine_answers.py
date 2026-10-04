@@ -64,7 +64,7 @@ def routine_answer(
         return RoutineAnswer(answer=contact, source="candidate_facts")
     sponsorship = bool(
         re.fullmatch(
-            r"(?:will|do) you (?:now or in the future )?require (?:visa |employer )?sponsorship(?: (?:now or in the future|for employment))?",
+            r"(?:will|do) you (?:now or in the future )?require (?:visa |employer )?sponsorship(?: (?:now or in the future|for employment(?: visa status)?))?",
             label,
         )
     )

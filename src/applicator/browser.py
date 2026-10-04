@@ -530,7 +530,7 @@ def fill_questions(
 
     def answer(label: str, choices: list[str], required: bool) -> str | None:
         approved = approved_answer(label, profile)
-        if approved or resolver is None:
+        if resolver is None or (approved and (not choices or approved in choices)):
             return approved
         key = (label, tuple(choices))
         if key not in resolved:

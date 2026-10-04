@@ -10,6 +10,10 @@ Existing eligible queue work takes precedence over further job discovery. A read
 
 Thirty-nine new scoped-approval regressions and one model-draft concurrency regression cover persistence, document hashes, model-call reuse, isolation, invalid input, stale snapshots, immutable states, queued preparation, genuine failures without replay, daily-cap discovery, networking independence and observed-question metadata. Production Chromium scenarios verify explicit approval on mobile and desktop. The normal suite uses fictitious records and controlled provider responses and sends no real applications or paid model requests.
 
+## Live provider choices, 4 October 2026
+
+An approved free-text answer could satisfy a label-only local question while the provider required a radio/select choice. The form filler previously bypassed the resolver whenever any approved text existed. It now returns an exact fitting approval unchanged, consults the grounded resolver for incompatible text, and stops for an exact review if no safe answer exists. The explicit candidate sponsorship flag handles the canonical employment-visa-status wording without inferring legal work authorisation. Ten additional unit and real Chromium regressions preserve manual-choice precedence, verify selected values and unchanged prefilled controls on review, retain exact offered options and reject compound legal questions. No provider invitation, application or paid model request is made by these tests.
+
 ## Job discovery timeout diagnostics, 4 October 2026
 
 Three recorded worker failures stopped at the coarse `discovering_jobs` stage with only `TimeoutError`. A read-only check of the dedicated session subsequently read all seven returned vacancies, so the historical failing page cannot be established from those records. No application, invitation, imported record or model call was made during that check.

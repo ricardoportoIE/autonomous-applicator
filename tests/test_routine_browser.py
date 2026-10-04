@@ -7,7 +7,120 @@ from test_browser import LINKEDIN_HTML
 
 from applicator.browser import LinkedInBrowser, ReviewRequired, browser_options, fill_questions
 from applicator.documents import generate
+from applicator.question_adviser import question_key
 from applicator.routine_answers import routine_answer
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("widget", ["radio", "select"])
+@pytest.mark.parametrize("resolution", ["known", "unknown", "disabled"])
+def test_incompatible_legacy_answer_checks_live_choices_before_any_selection(
+    profile, job, widget, resolution
+):
+    label = "Will you now or in the future require sponsorship for employment visa status?"
+    profile.answers["question:" + label.casefold()] = "Full-time work requires sponsorship."
+    profile.sponsorship_required = True
+    if widget == "radio":
+        html = SCREENING.replace("Are you legally authorised to work here?", label)
+        control = "#yes"
+    else:
+        html = (
+            f'<dialog open><label>{label}<select id="sponsor" required>'
+            "<option>No</option><option>Yes</option></select></label></dialog>"
+        )
+        control = "#sponsor"
+    calls = []
+
+    def resolve(question):
+        calls.append(question)
+        answer = routine_answer(profile, job, question) if resolution == "known" else None
+        return answer.answer if answer else None
+
+    with sync_playwright() as p, p.chromium.launch(headless=True, **browser_options()) as browser:
+        page = browser.new_page()
+        page.set_content(html)
+        before = (
+            page.locator(control).is_checked()
+            if widget == "radio"
+            else page.locator(control).input_value()
+        )
+        if resolution == "known":
+            fill_questions(page, profile, resolver=resolve)
+            assert (
+                page.locator(control).is_checked()
+                if widget == "radio"
+                else page.locator(control).input_value() == "Yes"
+            )
+        else:
+            message = "available choices" if resolution == "disabled" else "Approve an exact answer"
+            with pytest.raises(ValueError, match=message):
+                fill_questions(
+                    page, profile, resolver=None if resolution == "disabled" else resolve
+                )
+            assert (
+                page.locator(control).is_checked() == before
+                if widget == "radio"
+                else page.locator(control).input_value() == before
+            )
+        assert len(calls) == (0 if resolution == "disabled" else 1)
+        if calls:
+            assert calls[0].choices == (["Yes", "No"] if widget == "radio" else ["No", "Yes"])
+            assert calls[0].required
+            assert question_key(calls[0]) == "question:" + label.casefold()
+
+
+@pytest.mark.parametrize("required", [False, True])
+def test_employment_visa_status_uses_the_explicit_candidate_sponsorship_fact(
+    profile, job, required
+):
+    from applicator.models import Question
+
+    profile.sponsorship_required = required
+    question = Question(
+        id="sponsor",
+        choices=["Yes", "No"],
+        label="Will you now or in the future require sponsorship for employment visa status?",
+    )
+    answer = routine_answer(profile, job, question)
+    assert answer is not None and answer.source == "candidate_facts"
+    assert answer.answer == ("Yes" if required else "No")
+    assert (
+        routine_answer(
+            profile,
+            job,
+            question.model_copy(
+                update={"label": question.label + " and have unrestricted work authorisation?"}
+            ),
+        )
+        is None
+    )
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("widget", ["radio", "select"])
+def test_an_exact_approved_choice_keeps_precedence_over_automatic_resolution(profile, widget):
+    label = "Will you now or in the future require sponsorship for employment visa status?"
+    profile.answers["question:" + label.casefold()] = "No"
+    profile.sponsorship_required = True
+
+    def forbidden(question):
+        raise AssertionError("An exact approved choice must not trigger automatic resolution")
+
+    html = (
+        SCREENING.replace("Are you legally authorised to work here?", label)
+        if widget == "radio"
+        else f'<dialog open><label>{label}<select id="sponsor" required>'
+        "<option>Yes</option><option>No</option></select></label></dialog>"
+    )
+    with sync_playwright() as p, p.chromium.launch(headless=True, **browser_options()) as browser:
+        page = browser.new_page()
+        page.set_content(html)
+        fill_questions(page, profile, resolver=forbidden)
+        assert (
+            page.locator("#no").is_checked() and not page.locator("#yes").is_checked()
+            if widget == "radio"
+            else page.locator("#sponsor").input_value() == "No"
+        )
 
 
 @pytest.mark.browser
