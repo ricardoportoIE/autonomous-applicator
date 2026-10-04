@@ -305,6 +305,7 @@ it("includes newly observed routine questions without duplicating known question
     row: {
       ...application,
       job: { ...application.job, questions: [question] },
+      approved_answers: { [question.answer_key]: "Approved for this vacancy" },
       routine_answers: [
         {
           answer_key: question.answer_key,
@@ -332,6 +333,9 @@ it("includes newly observed routine questions without duplicating known question
   });
   fireEvent.click(screen.getByRole("tab", { name: "Questions (2)" }));
   expect(screen.getAllByLabelText("Used Python?")).toHaveLength(1);
+  expect(screen.getByLabelText("Used Python?")).toHaveValue(
+    "Approved for this vacancy",
+  );
   expect(screen.getByLabelText("Location?")).toHaveValue("Dublin");
 });
 

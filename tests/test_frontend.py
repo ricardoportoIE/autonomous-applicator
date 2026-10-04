@@ -13,7 +13,7 @@ from ui_coverage import save_coverage, start_coverage
 
 from applicator.api import create_app
 from applicator.browser import browser_options
-from applicator.models import Advice, Job, Question, Settings
+from applicator.models import Advice, Job, Question, Settings, State
 from applicator.operations import Operation
 from applicator.service import PreparationError
 
@@ -510,6 +510,8 @@ def test_approved_dropdown_answer_and_sensitive_question_handling(dashboard):
     ]
     app.state.store.update_job(row["id"], job)
     app.state.service.prepare(row["id"])
+    profile_before = app.state.store.profile()
+    manifest_before = app.state.store.application(row["id"])["manifest"]
     page.reload()
     expect(page.locator("#workspace")).to_be_visible()
     page.get_by_role("button", name="Applications", exact=True).click()
@@ -520,9 +522,12 @@ def test_approved_dropdown_answer_and_sensitive_question_handling(dashboard):
     ).to_be_visible()
     page.get_by_label("Expected salary?", exact=True).select_option("To be discussed")
     page.get_by_role("button", name="Approve answer", exact=True).click()
-    expect(page.locator("#notice")).to_contain_text("Answer approved.")
-    assert app.state.store.profile()[0].answers["question:expected salary?"] == "To be discussed"
-    assert not app.state.store.application(row["id"])["manifest"]
+    expect(page.locator("#notice")).to_contain_text("Answer saved for this application.")
+    updated = app.state.store.application(row["id"])
+    assert updated["approved_answers"]["question:expected salary?"] == "To be discussed"
+    assert app.state.store.profile() == profile_before
+    assert updated["manifest"] == manifest_before
+    assert updated["state"] == State.REVIEW
 
 
 @pytest.mark.browser

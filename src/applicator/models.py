@@ -133,6 +133,7 @@ class Evaluation(Contract):
     reasons: list[str]
     evidence_ids: list[str]
     blockers: list[str]
+    preparation_pending: bool = False
 
 
 class Advice(Contract):

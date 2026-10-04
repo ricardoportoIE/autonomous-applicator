@@ -16,6 +16,16 @@ export function Badge({
     </span>
   );
 }
+export function ApplicationBadge({ row }: { row: Application }) {
+  const preparing =
+    row.state === "review" &&
+    (row.evaluation.preparation_pending || row.evaluation.score === undefined);
+  return (
+    <Badge state={row.state}>
+      {preparing ? "Queued for preparation" : stateLabel(row.state)}
+    </Badge>
+  );
+}
 export function Panel({
   title,
   eyebrow,
@@ -299,7 +309,7 @@ export function ApplicationTable({
                 </td>
                 <td className="score">{row.evaluation.score ?? "—"}</td>
                 <td>
-                  <Badge state={row.state} />
+                  <ApplicationBadge row={row} />
                 </td>
                 <td>
                   <button

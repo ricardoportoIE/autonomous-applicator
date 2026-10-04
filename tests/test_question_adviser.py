@@ -51,6 +51,24 @@ def path(app_id, question_id="python_example"):
     return f"/api/applications/{app_id}/questions/{question_id}/suggest"
 
 
+def test_scoped_answer_change_during_suggestion_requires_a_fresh_draft(question_workspace):
+    from applicator.models import Job
+
+    app, session, app_id, _, sdk, response = question_workspace
+    job = Job.model_validate(app.state.store.application(app_id)["job"])
+    before = app.state.store.profile()
+
+    def changed(**kwargs):
+        app.state.store.approve_answer(app_id, "python_example", "My newly approved answer", 1, job)
+        return response
+
+    sdk.responses.parse.side_effect = changed
+    result = session.post(path(app_id))
+    assert result.status_code == 409
+    assert "Generate a fresh answer idea" in result.json()["detail"]
+    assert app.state.store.profile() == before
+
+
 def test_live_routine_question_remains_editable_with_manual_ai_ideas(question_workspace):
     from applicator.models import Job
 

@@ -7,7 +7,7 @@ import {
   History,
   ExternalLink as LinkIcon,
 } from "lucide-react";
-import { Badge, Events, ExternalLink, Panel } from "./components";
+import { ApplicationBadge, Events, ExternalLink, Panel } from "./components";
 import type { ApplicationRecord, SubmissionAttempt } from "./contracts";
 import type { Workspace } from "./workspace";
 
@@ -143,7 +143,7 @@ export function ApplicationRecordPage({
           {row.job.company} · {row.job.location}
         </p>
         <div className="detail-meta">
-          <Badge state={row.state} />
+          <ApplicationBadge row={row} />
           <ExternalLink href={row.job.url}>
             Open original opportunity
           </ExternalLink>

@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { X, FileText, ShieldCheck, Sparkles, LoaderCircle } from "lucide-react";
-import { Badge, Events, ExternalLink, Tabs } from "./components";
+import {
+  ApplicationBadge,
+  Badge,
+  Events,
+  ExternalLink,
+  Tabs,
+} from "./components";
 import type {
   Application,
   ApplicationDetail,
@@ -17,12 +23,14 @@ export function Answer({
   workspace,
   id,
   automatic,
+  approvedAnswer,
 }: {
   question: Question;
   profile: Profile | null;
   workspace: Workspace;
   id: number;
   automatic?: RoutineAnswerRecord;
+  approvedAnswer?: string;
 }) {
   const { revision, pending } = useSyncExternalStore(
     workspace.subscribe,
@@ -34,7 +42,8 @@ export function Answer({
   const key =
     question.answer_key ||
     "question:" + question.label.toLowerCase().trim().replace(/\s+/g, " ");
-  const approved = profile?.answers[key] ?? automatic?.answer ?? "";
+  const approved =
+    approvedAnswer ?? profile?.answers[key] ?? automatic?.answer ?? "";
   const [value, setValue] = useState(
     question.choices.length && !question.choices.includes(approved)
       ? ""
@@ -56,7 +65,7 @@ export function Answer({
     return () => {
       generation.current += 1;
     };
-  }, [question, profile, id, revision]);
+  }, [question, profile, id, revision, approvedAnswer]);
   const suggest = () => {
     void workspace.action(async () => {
       const session = workspace.api.session();
@@ -98,10 +107,10 @@ export function Answer({
           if (!profile)
             throw new Error("Configure the candidate profile first.");
           await workspace.mutate(
-            "/profile",
+            `/applications/${id}/questions/${encodeURIComponent(question.id)}/answer`,
             "PUT",
-            { ...profile, answers: { ...profile.answers, [key]: value } },
-            "Answer approved. Regenerate documents before submission.",
+            { answer: value },
+            "Answer saved for this application. Readiness rechecked.",
             id,
             revision,
           );
@@ -137,7 +146,7 @@ export function Answer({
         {question.required ? "Required" : "Optional"} · Exact approved answer
         only
       </small>
-      {automatic && (
+      {automatic && approvedAnswer === undefined && (
         <p className="document-origin">
           Answered automatically from{" "}
           {automatic.source === "gpt-6.1-sol"
@@ -342,7 +351,7 @@ export function ApplicationDetails({
         </button>
       </div>
       <div className="detail-meta">
-        <Badge state={row.state} />
+        <ApplicationBadge row={row} />
         <ExternalLink href={row.job.url}>
           Open original opportunity
         </ExternalLink>
@@ -620,6 +629,7 @@ export function ApplicationDetails({
                     automatic={routine.find(
                       (answer) => answer.answer_key === keyFor(question),
                     )}
+                    approvedAnswer={row.approved_answers?.[keyFor(question)]}
                   />
                 ))
               ) : (

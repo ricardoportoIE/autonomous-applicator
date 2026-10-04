@@ -55,6 +55,41 @@ const requests = () =>
 const suggest = () =>
   screen.getByRole("button", { name: "Suggest with GPT-6.1 Sol" });
 const answer = () => screen.getByRole("textbox", { name: question.label });
+it("shows manual application approval ahead of an automatic candidate-fact answer", () => {
+  const automatic = {
+    answer_key: "question:describe your python experience",
+    question,
+    answer: "Automatic fact answer",
+    source: "candidate",
+    evidence_ids: [],
+    revision: 1,
+  };
+  const view = render(
+    <Answer
+      question={question}
+      profile={profile}
+      workspace={workspace}
+      id={1}
+      automatic={automatic}
+    />,
+  );
+  expect(answer()).toHaveValue("Automatic fact answer");
+  expect(screen.getByText(/Answered automatically from/)).toHaveTextContent(
+    "approved candidate facts",
+  );
+  view.rerender(
+    <Answer
+      question={question}
+      profile={profile}
+      workspace={workspace}
+      id={1}
+      automatic={automatic}
+      approvedAnswer="My application answer"
+    />,
+  );
+  expect(answer()).toHaveValue("My application answer");
+  expect(screen.queryByText(/Answered automatically from/)).toBeNull();
+});
 const resolve = async (result = idea) => {
   await act(async () => {
     finish(Response.json(result));
@@ -98,13 +133,10 @@ it("keeps a generated idea separate from the user's text until explicitly used a
   expect(mutate).not.toHaveBeenCalled();
   await user.click(screen.getByRole("button", { name: "Approve answer" }));
   expect(mutate).toHaveBeenCalledWith(
-    "/profile",
+    "/applications/1/questions/python_example/answer",
     "PUT",
-    {
-      ...profile,
-      answers: { "question:describe your python experience": idea.draft },
-    },
-    "Answer approved. Regenerate documents before submission.",
+    { answer: idea.draft },
+    "Answer saved for this application. Readiness rechecked.",
     1,
     1,
   );

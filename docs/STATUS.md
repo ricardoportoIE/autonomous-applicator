@@ -1,6 +1,12 @@
 # Delivery and validation record
 
-Version 0.3.0 reviewed through the job discovery diagnostics follow-up on 4 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+Version 0.3.0 reviewed through the application answer-persistence follow-up on 4 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+
+## Application answer persistence and FIFO resumption, 4 October 2026
+
+Fixed individual question approvals incorrectly saving the global profile and invalidating every pending application's recorded documents. Approved answers now persist per vacancy with revision/fingerprint checks and immediate readiness refresh. Valid documents and GPT provenance are reused; missing or invalid materials queue preparation explicitly. Unknown live questions retain their exact options. The worker resumes eligible existing FIFO work before another search, permits further discovery when sending capacity alone is exhausted, and performs networking discovery after application processing.
+
+The current suite contains **733 Python cases**, including **34 additional persistence, document-integrity, queue and draft-concurrency cases**. The **38 focused approval/policy and real-browser cases passed in 23.34 seconds** before the final additional storage regression. The frontend contains **150 unit cases** with a per-file 100% statement, branch, line and function coverage requirement. Source typing, lint and formatting checks passed. Full-suite and CI coverage reports validate each source revision independently; earlier numerical reports below refer to their own revisions. No live answer was approved, candidate facts changed, model request paid for or external application sent by these checks.
 
 ## Job discovery diagnostics, 4 October 2026
 

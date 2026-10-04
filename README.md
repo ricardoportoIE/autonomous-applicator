@@ -26,6 +26,8 @@ The product prioritises factual integrity and recoverability over throughput. Pr
 
 Discovery diagnostics identify each read stage, the current vacancy's position and its canonical URL. Bounded waits accommodate slower provider pages, and controlled failure advice keeps private browser diagnostics out of the journal. See [application queue operations](docs/APPLICATION_QUEUE.md) for ordering, time budgets and recovery.
 
+Question approval is scoped to one application. It rechecks readiness, preserves current verified CVs and leaves other applications intact. The worker resumes eligible saved opportunities before searching again, completes each vacancy in FIFO order and continues preparation when daily sending capacity is exhausted. Unknown provider questions retain their exact choices for deliberate review.
+
 ## What the workspace does
 
 | Capability | User outcome |

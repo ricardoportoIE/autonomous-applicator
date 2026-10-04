@@ -79,12 +79,14 @@ export interface Application {
   outcome: string | null;
   receipt: string | null;
   routine_answers?: RoutineAnswerRecord[];
+  approved_answers?: Record<string, string>;
   evaluation: {
     score?: number;
     matched?: string[];
     gaps?: string[];
     reasons?: string[];
     blockers?: string[];
+    preparation_pending?: boolean;
   };
   manifest: {
     revision?: number;

@@ -4,7 +4,7 @@ The queue completes one vacancy at a time. Quality checks and a confirmed provid
 
 ## Ordering and completion
 
-Each cycle first performs enabled discovery, then takes an application snapshot ordered by import identifier from oldest to newest. Dashboard search, filters and sorting do not alter processing order. For each eligible vacancy:
+The worker resumes eligible records already in its durable queue before running another job search. When there is no pending preparation or ready record with sending capacity, enabled discovery imports a bounded batch with canonical URLs and duplicate checks. The worker then takes an application snapshot ordered by import identifier from oldest to newest. Ready records waiting only for the daily sending cap do not prevent further discovery and preparation. Networking discovery and invitations run after the application queue. Dashboard search, filters and sorting do not alter processing order. For each eligible vacancy:
 
 1. Reload the opportunity and candidate revision; check pause state. Preparation does not require daily sending capacity.
 2. Evaluate approved facts and prepare current materials where required. When AI preparation is enabled, await GPT-6.1 Sol and validate its actual response provenance.
@@ -14,6 +14,10 @@ Each cycle first performs enabled discovery, then takes an application snapshot 
 6. Persist the confirmed receipt, review hold or uncertain outcome before beginning another vacancy.
 
 Already prepared opportunities keep their original position. Imports arriving after the snapshot wait for the next cycle. Submitted, uncertain and skipped records are excluded. Reviews already evaluated against the current candidate revision wait for deliberate resolution. A safe failure does not prevent later eligible records from being processed, and it is not retried in another cycle.
+
+**Approve answer** saves an application-scoped record against the current candidate revision and opportunity fingerprint; it does not update the global candidate profile. Approved application answers override a shared answer only for that vacancy, remain effective when automatic routine answers are disabled and expire when candidate facts or the opportunity change. Approval rechecks readiness immediately. Current verified documents are reused and a fully eligible vacancy becomes ready without another model call. Missing, modified, untrusted or stale documents produce an explicit **Queued for preparation** state in the dashboard. The next cycle prepares those materials before attempting submission. A genuine preparation failure becomes a review hold and is not automatically retried. Profile and evidence edits still invalidate documents whose factual basis changed.
+
+An unanswered live question retains its exact label, choices and required flag for review. Known approved facts can answer ordinary questions; an unknown choice is never inferred. A pre-click stop releases its sending reservation and records the question before moving to the next vacancy. Approval resumes that vacancy when its policy and document checks permit it.
 
 A source without a submission adapter becomes a review hold for manual hand-off; its valid prepared documents remain available. Unknown required answers stop for review, even when the provider has prefilled a value. No fit score or model response approves an immigration or other factual questionnaire answer.
 

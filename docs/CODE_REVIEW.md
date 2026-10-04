@@ -1,5 +1,15 @@
 # Source review, 2 October 2026
 
+## Application answer persistence and FIFO resumption, 4 October 2026
+
+The question form used the global profile endpoint for individual approvals. Each click incremented candidate revision and cleared every pending manifest, so a CV prepared for one application disappeared from its recorded preparation after answering another vacancy. The approved answer itself persisted, but the invalidation behaviour made the workflow appear not to save.
+
+Approvals now use a dedicated, authenticated application endpoint and an application-scoped SQLite table. Candidate revision and opportunity fingerprint checks reject stale input; choices, sensitive questions and protected submission states are validated. Scoped approvals override shared answers only for their own vacancy. Readiness refresh preserves valid documents and existing model provenance; missing or invalid materials produce an explicit preparation-pending flag. The worker consumes that flag in FIFO order and converts genuine failures into non-retrying review holds while retaining the approved answer. Global profile/evidence edits still invalidate affected factual materials.
+
+Existing eligible queue work takes precedence over further job discovery. A ready queue waiting only for daily sending capacity does not prevent further discovery/preparation. Networking discovery follows application processing. Unknown live questions retain full choices and required flags instead of being reduced to a label. The React form sends the candidate revision precondition, displays scoped values ahead of automatic/shared defaults and no longer labels a manually overridden answer as automatic. A scoped answer change during model advice invalidates the draft.
+
+Thirty-three new scoped-approval regressions and one model-draft concurrency regression cover persistence, document hashes, model-call reuse, isolation, invalid input, stale snapshots, immutable states, queued preparation, genuine failures without replay, daily-cap discovery, networking independence and observed-question metadata. Production Chromium scenarios verify explicit approval on mobile and desktop. The normal suite uses fictitious records and controlled provider responses and sends no real applications or paid model requests.
+
 ## Job discovery timeout diagnostics, 4 October 2026
 
 Three recorded worker failures stopped at the coarse `discovering_jobs` stage with only `TimeoutError`. A read-only check of the dedicated session subsequently read all seven returned vacancies, so the historical failing page cannot be established from those records. No application, invitation, imported record or model call was made during that check.

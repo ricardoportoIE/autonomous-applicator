@@ -95,17 +95,20 @@ def test_generate_review_edit_and_explicitly_approve_answer(dashboard, monkeypat
     field.fill("I built an independent Python and FastAPI service with PostgreSQL.")
     page.get_by_role("button", name="Approve answer", exact=True).click()
     expect(page.locator("#notice")).to_have_text(
-        "Answer approved. Regenerate documents before submission."
+        "Answer saved for this application. Readiness rechecked."
     )
     profile, revision = app.state.store.profile()
-    assert revision == before[1] + 1
+    assert revision == before[1]
     assert (
-        profile.answers["question:describe your python experience"]
+        app.state.store.application(app_id)["approved_answers"][
+            "question:describe your python experience"
+        ]
         == "I built an independent Python and FastAPI service with PostgreSQL."
     )
     assert app.state.store.application(app_id)["state"] == "review"
     assert app.state.store.daily_usage().used == 0
     assert sdk.responses.parse.call_count == 1
+    assert profile == before[0]
     expect(region).to_have_count(0)
 
 

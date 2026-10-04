@@ -63,6 +63,10 @@ class LocationReview(Contract):
     location: str = Field(min_length=1, max_length=200)
 
 
+class ApprovedAnswer(Contract):
+    answer: str = Field(min_length=1, max_length=3000)
+
+
 class NotSent(Contract):
     checked: Literal[True]
 
@@ -139,26 +143,12 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
         with service.operations.run("cycle") as operation, browser_lock:
             configure_adapter()
             settings = store.settings()
-            if (
-                settings.automation_enabled
-                and settings.connections_enabled
-                and settings.discovery_enabled
-                and settings.linkedin_authorised
-                and network.remaining()
-            ):
-                profile, _ = store.profile()
-                operation.progress(
-                    "discovering_contacts", "Searching for authorised networking contacts."
-                )
-                contacts = LinkedInBrowser(data, profile).contacts(
-                    settings.search_location,
-                    network.remaining(),
-                    exclude_urls={row["url"] for row in network.list()},
-                )
-                for contact in contacts:
-                    network.add(**contact)
             if settings.automation_enabled:
-                if settings.discovery_enabled and settings.linkedin_authorised:
+                if (
+                    settings.discovery_enabled
+                    and settings.linkedin_authorised
+                    and not service.queue_pending()
+                ):
                     profile, _ = store.profile()
                     operation.progress(
                         "discovering_jobs",
@@ -172,6 +162,28 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
                     for job in jobs:
                         store.add_job(job)
             result = service.tick(operation, stopping=stop.is_set)
+            settings = store.settings()
+            if (
+                settings.automation_enabled
+                and settings.connections_enabled
+                and settings.discovery_enabled
+                and settings.linkedin_authorised
+                and network.remaining()
+                and not stop.is_set()
+            ):
+                profile, _ = store.profile()
+                operation.progress(
+                    "discovering_contacts",
+                    "Searching for authorised networking contacts after the application queue.",
+                    clear_application=True,
+                )
+                contacts = LinkedInBrowser(data, profile).contacts(
+                    settings.search_location,
+                    network.remaining(),
+                    exclude_urls={row["url"] for row in network.list()},
+                )
+                for contact in contacts:
+                    network.add(**contact)
             settings = store.settings()
             if settings.automation_enabled and settings.connections_enabled:
                 for row in network.list():
@@ -351,6 +363,27 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
     def application_events(app_id: int) -> list[dict[str, Any]]:
         return store.events(app_id)
 
+    @app.put("/api/applications/{app_id}/questions/{question_id}/answer", dependencies=auth)
+    def approve_question(
+        app_id: int,
+        question_id: str,
+        answer: ApprovedAnswer,
+        if_match: Annotated[int, Header(ge=1)],
+    ) -> dict[str, str]:
+        with service.operations.run("answer_approval", app_id) as operation, browser_lock:
+            job = Job.model_validate(store.application(app_id)["job"])
+            operation.progress(
+                "saving_answer", "Saving the approved answer for this application only."
+            )
+            store.approve_answer(app_id, question_id, answer.answer, if_match, job)
+            operation.progress(
+                "checking_readiness",
+                "Rechecking policy and existing documents after answer approval.",
+            )
+            service.refresh_readiness(app_id)
+            operation.result(store.application(app_id)["state"])
+        return {"status": "approved"}
+
     @app.post("/api/applications/{app_id}/questions/{question_id}/suggest", dependencies=auth)
     def answer_idea(
         app_id: int, question_id: str, if_match: Annotated[int, Header(ge=1)]
@@ -373,14 +406,19 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
             raise HTTPException(503, "Set OPENAI_API_KEY locally to generate an answer idea")
         if os.getenv("OPENAI_MODEL", QUESTION_MODEL) != QUESTION_MODEL:
             raise HTTPException(503, "Set OPENAI_MODEL=gpt-6.1-sol to generate an answer idea")
+        effective = store.effective_profile(app_id, profile, job)
         try:
             with OpenAI(timeout=180, max_retries=0) as ai_client:
-                idea = suggest_answer(ai_client, profile, job, question)
+                idea = suggest_answer(ai_client, effective, job, question)
         except Exception as exc:
             raise HTTPException(
                 502, "The AI answer idea could not be generated. No answer was changed or approved."
             ) from exc
-        if store.profile()[1] != revision or store.application(app_id)["job"] != job.model_dump():
+        if (
+            store.profile()[1] != revision
+            or store.application(app_id)["job"] != job.model_dump()
+            or store.effective_profile(app_id, profile, job) != effective
+        ):
             raise ValueError(
                 "Candidate facts or the question changed. Generate a fresh answer idea"
             )

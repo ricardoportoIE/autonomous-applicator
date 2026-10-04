@@ -383,7 +383,9 @@ export class Workspace {
         path,
         method,
         body,
-        path === "/profile" ? profileRevision : undefined,
+        path === "/profile" || path.endsWith("/answer")
+          ? profileRevision
+          : undefined,
       );
     } catch (error) {
       // Preparation/submission may have recorded a review or receipt before failing.

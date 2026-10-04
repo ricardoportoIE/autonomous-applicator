@@ -1,13 +1,40 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { Modal, Tabs, WorkerMonitor } from "../../frontend/src/components";
+import {
+  ApplicationBadge,
+  Modal,
+  Tabs,
+  WorkerMonitor,
+} from "../../frontend/src/components";
 import { App } from "../../frontend/src/App";
 import { Workspace } from "../../frontend/src/workspace";
-import { payload } from "./fixtures";
+import { application, payload } from "./fixtures";
 import type { WorkerRecord } from "../../frontend/src/contracts";
 
 let workspace: Workspace;
+it("distinguishes preparation work from policy review and readiness", () => {
+  const view = render(
+    <ApplicationBadge
+      row={{ ...application, state: "review", evaluation: {} }}
+    />,
+  );
+  expect(screen.getByText("Queued for preparation")).toBeVisible();
+  view.rerender(
+    <ApplicationBadge
+      row={{
+        ...application,
+        state: "review",
+        evaluation: { score: 100, preparation_pending: true },
+      }}
+    />,
+  );
+  expect(screen.getByText("Queued for preparation")).toBeVisible();
+  view.rerender(<ApplicationBadge row={{ ...application, state: "review" }} />);
+  expect(screen.getByText("For review")).toBeVisible();
+  view.rerender(<ApplicationBadge row={application} />);
+  expect(screen.getByText("Ready")).toBeVisible();
+});
 beforeEach(() => {
   sessionStorage.clear();
   workspace = new Workspace();

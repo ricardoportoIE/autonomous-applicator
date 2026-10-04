@@ -211,6 +211,25 @@ describe("workspace ownership and operations", () => {
     await workspace.tick();
     expect(workspace.getSnapshot().notice).toBe("Agent cycle completed: {}");
   });
+  it("sends the current candidate revision for application-scoped answer approval", async () => {
+    await workspace.unlock("fixture");
+    await workspace.mutate(
+      "/applications/1/questions/example/answer",
+      "PUT",
+      { answer: "Approved" },
+      "Answer saved",
+      1,
+    );
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/applications/1/questions/example/answer",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ answer: "Approved" }),
+        headers: expect.objectContaining({ "If-Match": "1" }),
+      }),
+    );
+    expect(workspace.getSnapshot().revision).toBe(1);
+  });
   it.each(["jobs", "contacts"] as const)(
     "reports discovery progress, successful imports, empty results and failures for %s",
     async (kind) => {

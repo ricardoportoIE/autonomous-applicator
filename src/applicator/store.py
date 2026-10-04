@@ -50,6 +50,11 @@ class Store:
                     evidence_ids TEXT NOT NULL, revision INTEGER NOT NULL,
                     job_fingerprint TEXT NOT NULL, created TEXT NOT NULL,
                     PRIMARY KEY(application_id,answer_key));
+                CREATE TABLE IF NOT EXISTS approved_answers (
+                    application_id INTEGER NOT NULL, answer_key TEXT NOT NULL,
+                    answer TEXT NOT NULL, revision INTEGER NOT NULL,
+                    job_fingerprint TEXT NOT NULL, created TEXT NOT NULL,
+                    PRIMARY KEY(application_id,answer_key));
                 CREATE TABLE IF NOT EXISTS location_reviews (
                     application_id INTEGER PRIMARY KEY, revision INTEGER NOT NULL,
                     job_fingerprint TEXT NOT NULL, created TEXT NOT NULL);
@@ -255,7 +260,79 @@ class Store:
             result["routine_answers"] = self._routine_answers(
                 db, app_id, Job.model_validate(result["job"])
             )
+            result["approved_answers"] = self._approved_answers(
+                db, app_id, Job.model_validate(result["job"])
+            )
             return result
+
+    def _approved_answers(self, db: sqlite3.Connection, app_id: int, job: Job) -> dict[str, str]:
+        from .documents import fingerprint
+
+        revision = int(db.execute("SELECT value FROM config WHERE key='revision'").fetchone()[0])
+        return dict(
+            db.execute(
+                "SELECT answer_key,answer FROM approved_answers WHERE application_id=? "
+                "AND revision=? AND job_fingerprint=?",
+                (app_id, revision, fingerprint(job)),
+            ).fetchall()
+        )
+
+    def approve_answer(
+        self, app_id: int, question_id: str, answer: str, revision: int, expected_job: Job
+    ) -> None:
+        """Approve one application answer without changing candidate facts or other CVs."""
+        from .documents import fingerprint
+        from .question_adviser import question_key
+
+        with self.connect(True) as db:
+            row = db.execute("SELECT job,state FROM applications WHERE id=?", (app_id,)).fetchone()
+            current = int(db.execute("SELECT value FROM config WHERE key='revision'").fetchone()[0])
+            if not row:
+                raise KeyError(app_id)
+            if current != revision or Job.model_validate_json(row[0]) != expected_job:
+                raise ValueError(
+                    "Candidate or opportunity changed. Reload before approving an answer."
+                )
+            if row[1] not in {State.REVIEW, State.READY}:
+                raise ValueError("Only pending applications can receive an approved answer")
+            questions = [
+                *expected_job.questions,
+                *[
+                    Question.model_validate(item["question"])
+                    for item in self._routine_answers(db, app_id, expected_job)
+                ],
+            ]
+            question = next((item for item in questions if item.id == question_id), None)
+            if question is None:
+                raise KeyError(question_id)
+            if (
+                question.sensitive
+                or not answer.strip()
+                or len(answer) > 3000
+                or (question.choices and answer not in question.choices)
+            ):
+                raise ValueError(
+                    "Approve a non-sensitive answer that exactly matches the question choices"
+                )
+            db.execute(
+                "INSERT OR REPLACE INTO approved_answers VALUES(?,?,?,?,?,?)",
+                (
+                    app_id,
+                    question_key(question),
+                    answer,
+                    revision,
+                    fingerprint(expected_job),
+                    datetime.now(UTC).isoformat(),
+                ),
+            )
+            # If the subsequent readiness refresh is interrupted, the worker must
+            # re-evaluate this application instead of skipping its old review hold.
+            db.execute(
+                "UPDATE applications SET state=?,evaluation='{}' WHERE id=?", (State.REVIEW, app_id)
+            )
+            self.event(
+                db, "question_answer_approved", json.dumps({"question_id": question_id}), app_id
+            )
 
     def _routine_answers(
         self, db: sqlite3.Connection, app_id: int, job: Job
@@ -297,7 +374,11 @@ class Store:
             (app_id, revision, fingerprint(job)),
         ).fetchone():
             answers["condition:location:" + normalise_location(job.location)] = "Confirmed"
-        return profile.model_copy(update={"answers": {**answers, **profile.answers}})
+        return profile.model_copy(
+            update={
+                "answers": {**answers, **profile.answers, **self._approved_answers(db, app_id, job)}
+            }
+        )
 
     def save_routine_answer(
         self,
@@ -709,7 +790,14 @@ class Store:
                 self.event(db, "recovery", f"{count} interrupted attempts require reconciliation.")
             return count
 
-    def hold(self, app_id: int, detail: str, *, attempt: int | None = None) -> None:
+    def hold(
+        self,
+        app_id: int,
+        detail: str,
+        *,
+        attempt: int | None = None,
+        question: Question | None = None,
+    ) -> None:
         with self.connect(True) as db:
             row = db.execute("SELECT job,state FROM applications WHERE id=?", (app_id,)).fetchone()
             if not row:
@@ -732,7 +820,18 @@ class Store:
                 label = detail[len(prefix) :].strip()[:500]
                 key = "question:" + " ".join(label.casefold().split())
                 question_id = "q_" + hashlib.sha256(key.encode()).hexdigest()[:16]
-                if not any(q.id == question_id for q in job.questions):
+                if question is not None and question.label == label:
+                    from .question_adviser import question_key
+
+                    existing = next(
+                        (item for item in job.questions if question_key(item) == key), None
+                    )
+                    observed = (
+                        question.model_copy(update={"id": existing.id}) if existing else question
+                    )
+                    job.questions = [item for item in job.questions if item.id != observed.id]
+                    job.questions.append(observed)
+                elif not any(q.id == question_id for q in job.questions):
                     job.questions.append(Question(id=question_id, label=label, answer_key=key))
             db.execute(
                 "UPDATE applications SET state=?,job=? WHERE id=?",

@@ -322,6 +322,53 @@ class Service:
             expected_job=job,
         )
 
+    def refresh_readiness(self, app_id: int) -> None:
+        """Resume an explicit review decision while retaining valid prepared materials."""
+        row = self.store.application(app_id)
+        profile, revision = self.store.profile()
+        job = Job.model_validate(row["job"])
+        settings = self.store.settings()
+        evaluation = evaluate(job, self.store.effective_profile(app_id, profile, job), settings)
+        try:
+            validate_manifest(row["manifest"], self.data / "documents" / str(app_id), revision)
+            validate_generation(
+                row["manifest"], profile, job, require_ai=settings.ai_document_preparation
+            )
+            if job.cover_letter_required and "cover_pdf" not in row["manifest"]["files"]:
+                raise ValueError("Required cover letter needs preparation")
+        except (ValueError, OSError):
+            if evaluation.state != State.SKIPPED:
+                evaluation.state = State.REVIEW
+                evaluation.preparation_pending = True
+                evaluation.blockers.append(
+                    "Documents need preparation for the current candidate and opportunity."
+                )
+        self.store.prepare(
+            app_id,
+            revision,
+            evaluation.model_dump_json(),
+            evaluation.state,
+            row["manifest"],
+            expected_job=job,
+        )
+
+    def queue_pending(self) -> bool:
+        """Whether existing FIFO records can progress without another discovery pass."""
+        _, revision = self.store.profile()
+        capacity = self.store.daily_usage().remaining
+        return any(
+            (row["state"] == State.READY and capacity > 0)
+            or (
+                row["state"] == State.REVIEW
+                and (
+                    row["revision"] != revision
+                    or not row["evaluation"]
+                    or row["evaluation"].get("preparation_pending", False)
+                )
+            )
+            for row in self.store.applications()
+        )
+
     def submit(self, app_id: int, *, progress: Callable[[str, str], None] | None = None) -> str:
         if progress is None:
             with self.operations.run("submit", app_id) as operation:
@@ -400,6 +447,7 @@ class Service:
         previous_before_submit = (
             adapter.before_submit if isinstance(adapter, LinkedInBrowser) else None
         )
+        pending_question: Question | None = None
         if isinstance(adapter, LinkedInBrowser):
             adapter.profile = effective
             adapter.progress = progress
@@ -411,11 +459,15 @@ class Service:
             adapter.before_submit = final_gate
 
             def resolve_live(question: Question) -> str | None:
+                nonlocal pending_question
                 report(
                     "answering_routine_questions",
                     "Resolving a live routine question from approved facts.",
                 )
-                return self.resolve_question(app_id, profile, revision, job, question)
+                answer = self.resolve_question(app_id, profile, revision, job, question)
+                if answer is None:
+                    pending_question = question
+                return answer
 
             adapter.question_resolver = (
                 resolve_live if self.store.settings().routine_answers_enabled else None
@@ -432,7 +484,7 @@ class Service:
             )
             self.store.finish(app_id, attempt, receipt)
         except ReviewRequired as exc:
-            self.store.hold(app_id, str(exc), attempt=attempt)
+            self.store.hold(app_id, str(exc), attempt=attempt, question=pending_question)
             raise
         except Exception:
             self.store.finish(app_id, attempt, None)
@@ -504,7 +556,11 @@ class Service:
                 break
             row = self.store.application(candidate["id"])
             _, revision = self.store.profile()
-            stale = row["revision"] != revision or not row["evaluation"]
+            stale = (
+                row["revision"] != revision
+                or not row["evaluation"]
+                or row["evaluation"].get("preparation_pending", False)
+            )
             if row["state"] not in {State.REVIEW, State.READY} or (
                 row["state"] == State.REVIEW and not stale
             ):
@@ -558,12 +614,19 @@ class Service:
                 row = self.store.application(app_id)
                 if row["state"] == State.READY or (
                     row["state"] == State.REVIEW
-                    and (row["revision"] != self.store.profile()[1] or not row["evaluation"])
+                    and (
+                        row["revision"] != self.store.profile()[1]
+                        or not row["evaluation"]
+                        or row["evaluation"].get("preparation_pending", False)
+                    )
                 ):
                     # Persist a current-revision hold: a later cycle must not retry this failure.
                     profile, revision = self.store.profile()
+                    held_job = Job.model_validate(row["job"])
                     evaluation = evaluate(
-                        Job.model_validate(row["job"]), profile, self.store.settings()
+                        held_job,
+                        self.store.effective_profile(app_id, profile, held_job),
+                        self.store.settings(),
                     )
                     evaluation.state = State.REVIEW
                     evaluation.blockers.append(
