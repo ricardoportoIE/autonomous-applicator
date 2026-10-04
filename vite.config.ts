@@ -13,7 +13,7 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
-    maxWorkers: 4,
+    maxWorkers: 2,
     include: ["../tests/frontend/**/*.test.{ts,tsx}"],
     setupFiles: ["../tests/frontend/setup.ts"],
     coverage: {

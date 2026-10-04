@@ -66,7 +66,7 @@ it("restores a saved session and tab on mount, follows history, and removes rout
   expect(h.workspace.getSnapshot().unlocked).toBe(false);
 });
 
-it("filters, sorts, clears and opens the requested opportunity", async () => {
+it("filters, sorts and clears opportunities without changing their records", async () => {
   h.responses.set("/api/applications", [
     application,
     {
@@ -86,6 +86,12 @@ it("filters, sorts, clears and opens the requested opportunity", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
   expect(screen.getByLabelText("Search opportunities")).toHaveValue("");
   expect(screen.getByText("2 of 2 opportunities shown")).toBeVisible();
+  expect(h.workspace.getSnapshot().applications).toHaveLength(2);
+});
+
+it("opens and updates only the requested opportunity through its detail form", async () => {
+  await start();
+  nav("Applications");
   fireEvent.click(
     screen.getByRole("button", {
       name: "Open Backend Engineer at Example Employer",

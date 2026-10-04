@@ -137,7 +137,7 @@ it("keeps idle, terminal failures and total/stage elapsed time visible without p
     "Live status unavailable",
   );
 });
-it("renders React workspace authentication, creates only requested modals and clears data on lock", async () => {
+it("authenticates the workspace and clears private data and open forms on lock", async () => {
   const user = userEvent.setup();
   render(<App workspace={workspace} />);
   await user.type(screen.getByLabelText("Access token"), "fixture");
@@ -155,11 +155,27 @@ it("renders React workspace authentication, creates only requested modals and cl
   expect(screen.getByLabelText("E-mail", { exact: true })).toHaveValue(
     "alex@example.test",
   );
-  await user.click(screen.getByRole("button", { name: "Close dialogue" }));
+  // Lock while a private form is open and require both data and form cleanup.
+  fireEvent.click(screen.getByRole("button", { name: "Lock workspace" }));
+  expect(screen.queryByText("Alex Example")).toBeNull();
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(
+    screen.getByRole("button", { name: "Unlock workspace" }),
+  ).toBeVisible();
+});
+
+it("opens and closes only the requested opportunity form", async () => {
+  const user = userEvent.setup();
+  render(<App workspace={workspace} />);
+  await user.type(screen.getByLabelText("Access token"), "fixture");
+  await user.click(screen.getByRole("button", { name: "Unlock workspace" }));
+  await screen.findByText("Local workspace unlocked.");
   await user.click(screen.getByRole("button", { name: "Applications" }));
+  expect(screen.queryByRole("dialog")).toBeNull();
   await user.click(screen.getByRole("button", { name: "Add opportunity" }));
   expect(screen.getByRole("dialog")).toHaveAccessibleName("Add an opportunity");
   await user.click(screen.getByRole("button", { name: "Close dialogue" }));
+  expect(screen.queryByRole("dialog")).toBeNull();
   await user.click(screen.getByRole("button", { name: "Lock workspace" }));
   expect(screen.queryByText("Alex Example")).toBeNull();
   expect(screen.queryByRole("dialog")).toBeNull();
