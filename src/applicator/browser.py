@@ -405,7 +405,7 @@ def form_questions(page: Page) -> list[dict[str, Any]]:
         group:el.type === 'radio' ? (required(el) ? unmark(groupLabel(el)) : groupLabel(el).trim()) : '',
         group_choices:el.type === 'radio' && el.name ? [...(groupFor(el) || dialog).querySelectorAll('input[type=radio]')].filter(other=>other.name===el.name && !other.disabled).map(labelText) : [],
         required:!!required(el),
-        choices:el.tagName === 'SELECT' ? [...el.options].filter(o=>!o.disabled && !o.closest('optgroup[disabled]') && o.value!=='').map(o=>o.text.trim()) : []}));}""")
+        choices:el.tagName === 'SELECT' ? [...el.options].filter(o=>!o.disabled && !o.closest('optgroup[disabled]') && o.value!=='').map(o=>o.label.trim()) : []}));}""")
     )
 
 
@@ -660,10 +660,23 @@ def fill_questions(
                 raise ValueError(f"Approve an exact answer for: {label}")
             continue
         if field["type"] == "select-one":
-            if value not in field["choices"] or field["choices"].count(value) != 1:
+            indices = locator.evaluate(
+                """(el, label) => [...el.options].flatMap((option, index) =>
+                !option.disabled && !option.closest('optgroup[disabled]') && option.value!=='' &&
+                option.label.trim()===label ? [index] : [])""",
+                value,
+            )
+            if len(indices) != 1:
                 raise ValueError(f"Approved answer does not match available choices: {label}")
-            locator.select_option(label=value)
-            if locator.evaluate("el => el.selectedOptions[0].text.trim()") != value:
+            locator.select_option(index=indices[0])
+            if not locator.evaluate(
+                """(el, label) => {
+                const option=el.selectedOptions[0];
+                return option && !option.disabled && !option.closest('optgroup[disabled]') &&
+                  option.value!=='' && option.label.trim()===label;
+            }""",
+                value,
+            ):
                 raise ValueError(f"The approved dropdown answer was not selected: {label}")
         else:
             if field["type"] not in {

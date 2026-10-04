@@ -159,6 +159,11 @@ def test_custom_combobox_reads_scoped_enabled_options_and_verifies_selection(pro
         "select",
         "whitespace",
         "select_disabled",
+        "disabled_duplicate",
+        "changed_options",
+        "changed_duplicate",
+        "selected_disabled",
+        "option_label",
         "duplicate",
         "select_broken",
         "number",
@@ -175,13 +180,36 @@ def test_custom_combobox_reads_scoped_enabled_options_and_verifies_selection(pro
 )
 def test_native_fields_respect_options_types_constraints_and_identity(profile, case):
     answer = "Yes"
-    if case in {"select", "whitespace", "select_disabled", "duplicate", "select_broken"}:
+    if case in {
+        "select",
+        "whitespace",
+        "select_disabled",
+        "disabled_duplicate",
+        "changed_options",
+        "changed_duplicate",
+        "selected_disabled",
+        "option_label",
+        "duplicate",
+        "select_broken",
+    }:
         other = "<option>Yes</option>" if case == "duplicate" else ""
         disabled = "disabled" if case == "select_disabled" else ""
         onchange = 'onchange="this.selectedIndex=1"' if case == "select_broken" else ""
+        if case == "selected_disabled":
+            onchange = 'onchange="this.selectedOptions[0].disabled=true"'
         control = f'<select id="q" required {onchange}><option value="" disabled>Choose</option><option>No</option><option {disabled}>Yes</option><option disabled>Maybe</option><optgroup disabled><option>Unavailable</option></optgroup>{other}</select>'
         if case == "whitespace":
             control = control.replace(">Yes</option>", "> Yes </option>")
+        if case == "disabled_duplicate":
+            control = control.replace(
+                "<option >Yes</option>",
+                '<option disabled value="disabled">Yes</option><option value="enabled">Yes</option>',
+            )
+        elif case == "option_label":
+            control = control.replace(
+                "<option >Yes</option>",
+                '<option label="Yes" value="visible">Different underlying text</option>',
+            )
     elif case == "multiple":
         control = '<select id="q" multiple><option>Yes</option><option>No</option></select>'
     else:
@@ -228,12 +256,38 @@ def test_native_fields_respect_options_types_constraints_and_identity(profile, c
         )
         fields = form_questions(page)
         assert len(fields) == (2 if case == "duplicate_id" else 1)
-        if case in {"select", "whitespace", "number", "date"}:
+        if case in {"select", "whitespace", "number", "date", "disabled_duplicate", "option_label"}:
             fill_questions(page, profile)
-            assert page.locator("#q").input_value().strip() == answer
+            assert page.locator("#q").input_value().strip() == (
+                "enabled"
+                if case == "disabled_duplicate"
+                else "visible"
+                if case == "option_label"
+                else answer
+            )
+            if case == "disabled_duplicate":
+                assert not page.locator("#q").evaluate("el => el.selectedOptions[0].disabled")
         else:
             with pytest.raises(ValueError):
-                fill_questions(page, profile)
+                fill_questions(
+                    page,
+                    profile,
+                    progress=(
+                        (
+                            lambda *_: page.locator("#q").evaluate(
+                                "el => el.options[2].disabled=true"
+                            )
+                        )
+                        if case == "changed_options"
+                        else (
+                            lambda *_: page.locator("#q").evaluate(
+                                "el => el.add(new Option('Yes'))"
+                            )
+                        )
+                        if case == "changed_duplicate"
+                        else None
+                    ),
+                )
         if case == "select":
             assert fields[0]["choices"] == ["No", "Yes"]
 

@@ -8,7 +8,7 @@ The main **Start agent / Pause agent** control reflects the saved automation set
 
 ## Questionnaire controls
 
-The adapter reads the current dialogue, accessible labels, required markers and enabled options. Text, email, phone, numeric and date/time inputs are filled only with an approved or grounded answer that satisfies native format, range, pattern and length constraints. Native selects and radio groups require an exact available choice. Placeholder and disabled select options are excluded; duplicate selectable labels require review.
+The adapter reads the current dialogue, accessible labels, required markers and enabled options. Text, email, phone, numeric and date/time inputs are filled only with an approved or grounded answer that satisfies native format, range, pattern and length constraints. Native selects and radio groups require an exact available choice. Placeholder and disabled select options are excluded; duplicate selectable labels require review. Native select options are read again immediately before selection, using the unique enabled index and visible option label, then checked again after the action. Disabled duplicates and options changed during filling cannot silently become a selected answer.
 
 Native checkboxes and ARIA checkbox widgets use exact **Yes / No** answers: Yes selects, No clears. Unknown unchecked optional preferences remain untouched. Checked/required unknown preferences and consent statements are held for review with their exact question and binary choices; no general consent is inferred. Wrapper and native checked states are verified together. The company-follow checkbox is cleared as before.
 
