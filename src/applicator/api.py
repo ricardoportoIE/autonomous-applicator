@@ -1,6 +1,8 @@
 """Loopback API and dashboard. Every candidate operation requires a local token."""
 
+import asyncio
 import os
+import re
 import secrets
 import threading
 from collections.abc import AsyncIterator
@@ -86,8 +88,19 @@ def local_token(data: Path) -> str:
             raise ValueError("APPLICATOR_TOKEN must contain at least 32 characters")
         return configured
     path = data / "access-token"
+    if path.is_symlink():
+        raise ValueError("The local access token must be a regular file")
     if not path.exists():
-        path.write_text(secrets.token_urlsafe(32), encoding="utf-8")
+        try:
+            descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        except FileExistsError:
+            # Another starter won creation. Never overwrite or rotate its token.
+            pass
+        else:
+            with os.fdopen(descriptor, "w", encoding="utf-8") as file:
+                file.write(secrets.token_urlsafe(32))
+    if path.is_symlink() or not path.is_file() or path.stat().st_size > 4096:
+        raise ValueError("The local access token must be a regular file of at most 4 KiB")
     saved = path.read_text(encoding="utf-8").strip()
     if len(saved) < 32:
         raise ValueError("The saved local access token must contain at least 32 characters")
@@ -246,25 +259,43 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
 
     @app.middleware("http")
     async def security(request: Request, call_next: Any) -> Response:
-        host = request.headers.get("host", "").split(":")[0]
-        origin = request.headers.get("origin")
-        expected = f"{request.url.scheme}://{request.headers.get('host', '')}"
-        if host not in {"127.0.0.1", "localhost", "testserver"} or (origin and origin != expected):
-            return JSONResponse({"detail": "Untrusted Host or Origin"}, status_code=403)
-        # Enforce the actual body size, including chunked requests and dishonest headers.
-        chunks = []
-        size = 0
-        async for chunk in request.stream():
-            size += len(chunk)
-            if size > 500_000:
-                return JSONResponse({"detail": "Request too large"}, status_code=413)
-            chunks.append(chunk)
-        request._body = b"".join(chunks)
-        response = await call_next(request)
+        hosts = request.headers.getlist("host")
+        origins = request.headers.getlist("origin")
+        authority = hosts[0] if len(hosts) == 1 else ""
+        match = re.fullmatch(r"(?:127\.0\.0\.1|localhost|testserver)(?::([0-9]{1,5}))?", authority)
+        expected = f"{request.url.scheme}://{authority}"
+        if (
+            match is None
+            or (match[1] is not None and not 1 <= int(match[1]) <= 65535)
+            or len(origins) > 1
+            or (origins and origins[0] != expected)
+        ):
+            response = JSONResponse({"detail": "Untrusted Host or Origin"}, status_code=403)
+        else:
+            # Bound actual bytes and body-read time independently of Content-Length.
+            # This deadline covers intake only: model and browser work retain their budgets.
+            chunks = []
+            size = 0
+            try:
+                async with asyncio.timeout(10):
+                    async for chunk in request.stream():
+                        size += len(chunk)
+                        if size > 500_000:
+                            break
+                        chunks.append(chunk)
+            except TimeoutError:
+                response = JSONResponse({"detail": "Request body timed out"}, status_code=408)
+            else:
+                if size > 500_000:
+                    response = JSONResponse({"detail": "Request too large"}, status_code=413)
+                else:
+                    request._body = b"".join(chunks)
+                    response = await call_next(request)
         response.headers.update(
             {
-                "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; frame-ancestors 'none'; object-src 'none'",
+                "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'",
                 "X-Content-Type-Options": "nosniff",
+                "Cross-Origin-Resource-Policy": "same-origin",
                 "Referrer-Policy": "no-referrer",
                 "Cache-Control": "no-store",
             }

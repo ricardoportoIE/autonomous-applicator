@@ -41,6 +41,9 @@ describe("session-bound API client", () => {
     expect(fetcher).toHaveBeenCalledWith(
       "/api/profile",
       expect.objectContaining({
+        cache: "no-store",
+        credentials: "omit",
+        redirect: "error",
         headers: expect.objectContaining({
           Authorization: "Bearer fixture-token",
           "If-Match": "3",

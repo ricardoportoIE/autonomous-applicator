@@ -33,6 +33,9 @@ export class ApiClient {
     const session = this.generation;
     const options: RequestInit = {
       method,
+      cache: "no-store",
+      credentials: "omit",
+      redirect: "error",
       headers: {
         Authorization: "Bearer " + this.token,
         "Content-Type": "application/json",

@@ -25,6 +25,10 @@ No runtime module is omitted and no coverage-ignore directives are permitted. Co
 | Application-scoped approval | Approval persists across reload without changing candidate revision or another CV; valid model-prepared materials are reused without a further paid call. Missing, modified, stale and required-cover-letter checks queue preparation. Tests reject invalid choices, sensitive questions, stale facts and protected states, retain observed live choices with automatic answering enabled or disabled, preserve other approvals when later questions appear without reviving stale facts, handle explicit answer keys and verify FIFO resumption, daily-cap discovery and privacy on genuine failures. Real mobile/desktop browser tests cover the revision header and updated readiness flow. |
 | Typed questionnaire controls | Native/ARIA checkbox fixtures verify exact binary answers, required consent, prefilled states and agreement between visual and native selection. Dropdown fixtures exercise mapped portal options, disabled/empty/duplicate choices, unknown answers and failed selection. Native selects additionally verify disabled duplicate labels, options changed before/after selection and explicit visible-label overrides. Native input fixtures verify numeric/date formats, range, pattern, length and post-fill validation. Ambiguous identifiers and multiple-select controls stop before submission. |
 | Start/Pause | An hourly polling interval does not delay Start; repeated wake requests coalesce on one worker thread. The real production UI drives a fictional application through the background queue, then pauses with its networking preference retained. React checks duplicate suppression, starting/pausing feedback, pause during pending work, error recovery and late responses after locking. |
+| HTTP security | Complete authority/port checks, duplicate Host/Origin rejection, property-generated rebinding suffixes, private headers on controlled errors, exact body-size boundaries and cancellation of stalled intake before any operation begins. Operation timeouts remain distinct from intake timeouts. |
+| Credentials and public intake | Exclusive token creation preserves another starter's token, POSIX creation requests owner-only permissions and unsafe token paths are refused before reading. Endless/oversized boards stop consumption and close; redirects and unsolicited compression never reach parsing. |
+| Packaged private fetch | Chromium verifies that a redirected profile mutation is not followed or retried, sends no cookies and changes neither facts nor application attempts. Unit tests assert explicit redirect/cache/credential policies. |
+| Performance contracts | Offline temporary workloads preserve list counts/order, expected fit and zero sends; percentile conversion, workload bounds and report privacy have assertions. Timings and traced allocations are recorded separately without machine-specific latency gates. |
 | Platform ownership | Native workspace-exclusion tests run on each operating system; isolated OS-interface fault tests also verify both lock protocols, contention and cleanup on every runner. |
 
 The wider suite includes API authentication and validation, concurrent SQLite operations, migrations, property tests, grounded OpenAI response contracts, application-specific CVs, reconciliation and production React browser scenarios. The new fault tests simulate failures at policy, rendering, filesystem, OS and provider boundaries, then assert retained state and the absence of an unauthorised send. Controlled adapters isolate provider outcomes; transaction tests and real DOM fixtures verify the corresponding state and action boundaries.
@@ -56,6 +60,17 @@ uv run pytest tests/test_backend_coverage_gate.py --no-cov
 ```
 
 Before delivery, rerun the complete suite and the inventory gate. Additional required checks are strict TypeScript/mypy, ESLint/Ruff, formatting, tracked-file privacy, dependency audits and reproducible committed frontend assets. [Delivery status](STATUS.md) records measured results; [review findings](CODE_REVIEW.md) records their interpretation.
+
+## Security and performance reproduction
+
+```powershell
+uv run python -m pytest tests/test_security_hardening.py tests/test_security_frontend.py tests/test_local_performance.py --no-cov -o 'addopts=--strict-markers'
+uv run python scripts/benchmark_local.py
+```
+
+The hardening contributes 52 cases to the 864-case Python inventory: 42 security unit/integration/property cases, one production Chromium case and nine benchmark checks. The DNS-rebinding property runs 40 generated suffixes within one counted pytest case. The complete suite also contains transactional concurrency, recovery, document/PDF, controlled AI, provider-contract, accessibility and production-browser checks. These are appropriate complementary layers; the project does not claim every possible type of security audit, live-provider load test or independent penetration test.
+
+CI runs the default offline benchmark and uploads `test-results/local-benchmark.json` per platform/interpreter alongside coverage. [Performance](PERFORMANCE.md) defines its methodology, baseline and limits. Byte/intake-time limits are tested behaviour gates; benchmark milliseconds are observations rather than CI pass/fail thresholds. The [security model](SECURITY.md) defines the account and provider boundaries exercised by the tests.
 
 ## Interpretation
 

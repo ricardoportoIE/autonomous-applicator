@@ -138,19 +138,23 @@ Recorded outcomes can inform reviewed improvements. The system does not retrain 
 
 ## Quality and verification
 
-The frontend review expanded measurement from three helpers to **all ten authored runtime TypeScript/TSX files**, including the bootstrap. **147 Vitest tests achieve 100% lines, statements, functions and branches**, enforced **per file** in CI. Only type-only contracts and declaration files are excluded. Libraries, generated bundles and test code are outside this measurement.
+The frontend review expanded measurement from three helpers to **all ten authored runtime TypeScript/TSX files**, including the bootstrap. **155 Vitest tests achieve 100% lines, statements, functions and branches**, enforced **per file** in CI. Only type-only contracts and declaration files are excluded. Libraries, generated bundles and test code are outside this measurement.
 
 | Verification layer | What it checks |
 | --- | --- |
 | Vitest and React Testing Library | Saved form payloads, failure feedback, application states, accessible interactions, routing, session races and private image/download cleanup. |
 | Production Playwright and axe | Packaged React against FastAPI with CSP enabled, downloads, keyboard focus, responsive layouts and accessibility rules. V8 coverage is reported separately from jsdom coverage. |
 | Python unit, integration and property tests | Policy boundaries, transactional attempts, concurrent edits, stale materials, provider contracts, grounded AI references, document integrity and recovery. |
+| Security regressions | Ambiguous Host/Origin rejection, authenticated private resources, bounded and timed request intake, exclusive token creation, streamed board limits, compression refusal and browser redirect/cookie isolation. |
+| Offline performance measurements | Median/p95 dashboard reads at 1, 100 and 1,000 fictional opportunities, response sizes and a separate Python allocation probe; timings are recorded rather than gated against inconsistent runner hardware. |
 | Static and dependency checks | Strict TypeScript and mypy, ESLint, Ruff, Prettier, npm audit, pip-audit and tracked-file privacy checks. |
 | Packaging and CI | Reproducible committed assets and a Windows/Linux matrix on Python 3.12 and 3.14 with Node.js 24. |
 
 The backend requires **100% statement and branch coverage in every one of its 19 Python modules**. CI checks the complete source inventory and rejects missing paths or runtime exclusions on every Windows/Linux and Python 3.12/3.14 job; each run records its exact interpreter-specific statement and branch counts. React unit tests retain their separate 100% per-file runtime coverage gate. [Testing and coverage](docs/TESTING.md) defines the scope, fixtures and reproduction commands.
 
 Verification results, measured coverage and any outstanding checks are recorded in [delivery status](docs/STATUS.md). [Review findings](docs/CODE_REVIEW.md) explain corrected faults and their regressions. Coverage establishes execution, not compatibility with every live provider layout; behaviour assertions and isolated provider fixtures provide additional evidence.
+
+The security review adds **52 cases**, bringing the Python inventory to **864**, and preserves both 100% runtime coverage gates. The [threat model](docs/SECURITY.md) defines protection against hostile web pages, malformed requests and untrusted provider content, together with the limits of a local single-user application. The [offline benchmark](docs/PERFORMANCE.md) records a 1,000-opportunity API list median of **11.95 ms** and p95 of **15.61 ms** on Windows/Python 3.14.2; these are in-process read measurements, excluding browser rendering, document generation and model/provider latency.
 
 ## Run locally
 
@@ -211,6 +215,7 @@ Requirements, business rules, architectural boundaries, failure recovery and val
 | [Frontend](docs/FRONTEND.md) | Preserved capabilities, async ownership and coverage scope. |
 | [Testing and coverage](docs/TESTING.md) | Backend and frontend coverage gates, failure assertions, isolated fixtures and reproduction. |
 | [Security and privacy](docs/SECURITY.md) | Loopback access, secrets and private artefacts. |
+| [Performance](docs/PERFORMANCE.md) | Reproducible offline read workloads, measured resource use and interpretation. |
 | [Operating guide](docs/OPERATIONS.md) | Configuration, sign-in, review and reconciliation. |
 | [CV preparation](docs/CV_PREPARATION.md) | Vacancy targeting, factual preservation and provenance. |
 | [AI benchmark](docs/AI_BENCHMARK.md) | Measured, separately authorised model experiments. |

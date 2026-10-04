@@ -14,6 +14,9 @@ The October 2026 improvement pass prioritises decisions that the candidate can i
 | Search, status and sorting | Finds opportunities by role, employer and location; prioritises fit or recency | Case-insensitive multi-term search, combined status filters, stable sorting, zero-fit/unevaluated ordering and source records unchanged |
 | Application activity | Keeps relevant journal entries visible even when global activity is busy | Entries scoped by application, newest-first limit and older entries outside the global window |
 | Faster queue reads | Removes repeated database connections as the queue grows | Single-connection listing and indexes for journal/attempt queries |
+| Bounded untrusted intake | Prevents a full oversized download or indefinitely stalled request body | Exact byte boundaries, timed cancellation, stream closure, compression/redirect refusal and no-operation assertions |
+| Private browser request policy | Prevents cookies or redirected mutation replay leaving the intended API request | Unit policy checks and packaged Chromium interception with unchanged candidate facts |
+| Reproducible offline performance | Makes read latency, payload growth and Python allocations reviewable before optimisation | Three fictional workload sizes, measurement-contract tests and per-platform CI JSON artifacts |
 | Earlier target and cover checks | Prevents avoidable attempt consumption and incomplete materials | Identity and required cover PDF validated before reservation; submission still repeats provider checks |
 
 The preflight is deliberately a snapshot, not an external validation or reservation. It does not discover unknown provider questions or certify account sign-in. No application, invitation or paid AI request was sent during this improvement pass.
@@ -27,5 +30,6 @@ These are proposed follow-on capabilities, not implemented features.
 3. **Saved search sets:** store separately named Ireland and UK searches, deduplicate shared results and keep one application budget across them.
 4. **Follow-up planning:** candidate notes, interview dates and local reminders tied to confirmed submissions. Messaging would remain an explicit candidate action.
 5. **Feedback analysis:** compare outcome patterns only when enough confirmed results exist. Present proposals for review; never infer new qualifications, immigration facts or automatically change permissions.
+6. **Large-archive summaries:** the [offline baseline](PERFORMANCE.md) shows list payload and allocations growing with queue size. Benchmark representative long descriptions and assess server-side pagination before substantially expanding the archive; preserve FIFO ownership and complete detail records.
 
 Live account validation is the next operational dependency. The other items can be developed with fictional local fixtures while automation remains paused.

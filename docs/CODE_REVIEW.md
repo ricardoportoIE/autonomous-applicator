@@ -1,5 +1,17 @@
 # Source review, 2 October 2026
 
+## Security and resource-boundary follow-up, 5 October 2026
+
+Reviewed API authentication/intake, CLI binding, frontend request/session ownership, public discovery, AI evidence contracts, SQLite transactions, immutable artefacts, portraits, browser final gates, dependency locks and CI permissions. Two concrete faults were corrected: board response size was checked after a full download, and early middleware refusals bypassed the configured response headers.
+
+Discovery now streams a fixed HTTPS origin and stops at the byte limit, closes on rejection, requests identity encoding and refuses unsolicited compression before consuming data. Redirects remain prohibited. API authority validation rejects complete malformed/duplicate fields rather than trusting the text before a colon. A cancellable ten-second body-read deadline bounds stalled intake without shortening model or provider execution. All controlled middleware refusals use the same privacy/CSP headers as successful responses. Proxy-header trust is disabled at the production CLI boundary.
+
+Token creation uses exclusive creation with POSIX owner-only mode, never overwrites a concurrent creator's token, and refuses links, non-files and oversized token files before reading. Frontend requests explicitly omit cookies, bypass cache and refuse redirects; the packaged Chromium check verifies no replay, changed facts or application attempts. Existing same-account filesystem permissions remain the at-rest boundary. CI action tags were resolved through the respective repositories and pinned to their exact commit revisions, preserving read-only permissions and frozen installs.
+
+Added 52 cases: 42 security unit/integration/property cases, one production browser case and nine measurement-contract checks. All 108 focused hardening/API/discovery/CLI/performance cases passed in 19.79 seconds. All 155 React cases passed with 100% per-file runtime coverage. Python's 864-case inventory and both 100% runtime gates remain enforced independently by the complete suite. Audits reported no known Python or npm dependency vulnerabilities; the local unpublished application itself is outside PyPI auditing.
+
+The offline baseline measures list reads at 1, 100 and 1,000 fictional opportunities, not employer/model throughput. The 1,000-row median/p95 is 11.95/15.61 ms with 3,186,478 peak traced Python bytes. The observed response/allocation growth supports assessing paginated summaries for a substantially larger archive; there is no evidence-based need to parallelise external actions. [Security](SECURITY.md), [performance](PERFORMANCE.md) and [testing](TESTING.md) distinguish protections, measurements and limitations.
+
 ## Application answer persistence and FIFO resumption, 4 October 2026
 
 The question form used the global profile endpoint for individual approvals. Each click incremented candidate revision and cleared every pending manifest, so a CV prepared for one application disappeared from its recorded preparation after answering another vacancy. The approved answer itself persisted, but the invalidation behaviour made the workflow appear not to save.

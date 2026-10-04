@@ -65,6 +65,7 @@ def main() -> None:
             create_app(data, token, worker=True),
             host=host,
             port=int(os.getenv("APPLICATOR_PORT", "8765")),
+            proxy_headers=False,
         )
 
 

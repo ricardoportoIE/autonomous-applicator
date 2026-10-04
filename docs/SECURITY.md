@@ -1,11 +1,43 @@
 # Security and privacy
 
-Run on loopback only. The API requires a random local bearer token and checks the request origin and Host header. The dashboard does not interpolate external text as HTML. Apply strict content security headers. Keep tokens in memory or session storage rather than URLs.
+## Trust boundary
 
-Do not commit `.env`, private source files, candidate profiles, generated CVs, databases, logs, browser cookies or screenshots. A sample profile must be fictional. A dedicated browser profile is preferable to the candidate's everyday browser. Never collect a LinkedIn password in the dashboard.
+This is a single-user local workbench. The Windows account, operating system, installed browser and processes running as that user are trusted. Protected assets include candidate facts, credentials, dedicated browser cookies, generated documents, application answers and submission records. Hostile web pages, malformed HTTP requests, job descriptions and provider/model responses are untrusted.
 
-The optional AI adviser sends selected profile evidence and the job description to OpenAI. `store=False` does not claim zero vendor retention; consult current vendor data policies. Avoid sending civil identification or protected institutional information. Candidate facts are not changed by model output.
+The application provides neither multi-user tenancy nor protection against malware or a hostile process with access to the same account. SQLite, browser state and backups are not encrypted by the application. Windows ACLs and account/device security protect them at rest. Do not expose the server through a reverse proxy, public tunnel or non-loopback interface; there is no public authentication or TLS deployment contract.
 
-Local files and SQLite are protected by the Windows account and file permissions, not application-level encryption at rest. Backups contain personal information and must be handled accordingly. Dependency auditing and CI are safeguards, not a guarantee of defect-free operation.
+## Local HTTP and dashboard
 
-External adapters must use an exact approved origin and reject redirects, unexpected fields and missing receipts. Do not evade CAPTCHA, MFA, access controls or anti-bot restrictions. Unknown or sensitive questions require manual handling.
+The CLI binds only to `127.0.0.1` or `localhost` and disables Uvicorn's proxy-header trust. A supplied `X-Forwarded-Proto` cannot change the production request scheme. Private API reads, mutations, portraits, documents and confirmation screenshots require the bearer token. The unauthenticated dashboard contains compiled assets only; health reports readiness without candidate data. API documentation endpoints are disabled.
+
+Host validation matches a complete approved authority with an optional numeric port from 1 to 65,535. Duplicate Host or Origin fields, suffix domains, embedded credentials, malformed ports and origins differing from the exact request origin are rejected before application intake. `testserver` exists for the in-process test transport and resolves no external destination. There is no permissive CORS configuration.
+
+Request intake counts actual bytes, including chunked requests and dishonest Content-Length headers, with a **500,000-byte limit** and a **ten-second body-read deadline**. A refusal returns 413 or 408 without starting the requested operation. This deadline ends before the route executes; GPT and browser processing retain their longer budgets. It is a per-request bound, not a global rate limit or a claim of resistance to unlimited connections from hostile local processes.
+
+Controlled responses, including Host/Origin refusals, oversized bodies and intake timeouts, receive CSP, `nosniff`, `no-referrer`, `no-store` and same-origin resource policy. CSP restricts scripts to compiled same-origin assets, forbids framing, objects and base-URL changes, and restricts form destinations to the same origin. React renders external text rather than interpolating HTML. External links use `noopener noreferrer`.
+
+Private frontend fetches explicitly refuse redirects, bypass the HTTP cache and omit cookies. A redirected mutation therefore cannot replay at another destination. The bearer token stays out of URLs and is held in memory/session storage. Locking clears private UI state and revokes image object URLs; generation checks discard responses from an older session. GET transport retries remain bounded to one; mutations are never automatically retried. Locking a dashboard tab does not pause the background agent.
+
+## Credential and file handling
+
+Never collect a LinkedIn password in the dashboard. Sign in manually through the dedicated browser session. Keep `.env`, tokens, candidate records, CVs, SQLite files, cookies, screenshots and backups local and ignored by Git. Public samples and portfolio screenshots contain fictional records.
+
+New local token files use exclusive creation, preventing another starter's token from being overwritten. Creation requests mode `0600` on POSIX; Windows uses the directory's account ACLs. Existing tokens are retained. Symbolic links, non-regular files and token files over 4 KiB are refused before reading. These checks do not establish race-free filesystem isolation against a hostile same-account process. An incomplete or short token fails explicitly rather than being silently rotated.
+
+Document manifests and immutable submission archives verify hashes. Download paths must stay within the expected workspace and attempt; traversal, incorrect ownership, replaced files and unsupported artefacts are rejected. Optional confirmation capture cannot turn a screenshot failure into another send. Portraits are authenticated, size/dimension bounded PNGs. Preserve account permissions when copying workspaces or backups.
+
+## Provider and AI boundaries
+
+Greenhouse discovery accepts a bounded board identifier and requests a fixed HTTPS API origin. It refuses redirects, requests identity encoding and rejects unsolicited compression before consuming bytes. Streaming stops before buffering more than **5,000,000 bytes** of board content, including when Content-Length is false or absent; the response is closed on rejection. Compressed responses are deliberately unsupported to avoid decompression amplification.
+
+Browser actions verify the reviewed opportunity/member identity and declared authorisation scope. Unsupported controls, missing answers, consent and uncertain outcomes remain in review. Durable operation ownership and a shared browser lock keep external actions sequential. Final gates repeat scope, revision, pause and document checks before sending. Daily capacity is reserved transactionally; uncertain sends retain capacity and cannot be replayed automatically. Invitations use Send without a note and never edit the public profile.
+
+Job descriptions and evidence are data, never instructions to grant permission or invent facts. GPT selects verified evidence identifiers and drafts grounded suggestions; deterministic validation, candidate approval and local rendering control the result. Model failure holds preparation for review. Optional AI requests send relevant evidence/job content to OpenAI with `store=False`; this does not claim zero vendor retention. Contact and sensitive answers are excluded from questionnaire drafting. Candidate facts are not changed by model output.
+
+Do not evade CAPTCHA, MFA, access controls or anti-bot restrictions. Authorisation declarations are configuration supplied by the operator, not independent certification by this project.
+
+## Verification and maintenance
+
+The October 2026 hardening adds 42 security unit/integration/property cases, one packaged Chromium redirect/cookie regression and nine offline benchmark checks. Existing suites cover SQL transactions, concurrent reservations, prompt-injection/invalid-reference contracts, document integrity, uncertain sends, authentication redirects and UI session races. Ordinary tests use disposable fictional workspaces, controlled provider responses and no paid AI or actual external sends.
+
+CI keeps read-only repository permissions, pins action revisions to verified commit SHAs, installs frozen Python/npm dependencies, audits both dependency trees and checks tracked files for secrets and local contact details. These checks cannot prove that an installed dependency or future provider layout is safe. Keep the lockfiles and pinned action revisions under review. [Testing](TESTING.md), [review findings](CODE_REVIEW.md) and [delivery status](STATUS.md) record the measured scope and results.

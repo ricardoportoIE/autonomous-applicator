@@ -1,0 +1,113 @@
+{
+  "measured_at": "2026-10-04T23:31:22.507895+00:00",
+  "python": "3.14.2",
+  "platform": "Windows",
+  "method": "Sequential in-process ASGI/SQLite reads; fictional data; no network, AI or sends",
+  "workloads": [
+    {
+      "opportunities": 1,
+      "list_peak_traced_bytes": 51060,
+      "metrics": {
+        "/health": {
+          "samples": 20,
+          "median_ms": 0.8366,
+          "p95_ms": 1.1275,
+          "response_bytes": 15
+        },
+        "/settings": {
+          "samples": 20,
+          "median_ms": 2.5553,
+          "p95_ms": 2.9858,
+          "response_bytes": 438
+        },
+        "/applications": {
+          "samples": 20,
+          "median_ms": 2.4885,
+          "p95_ms": 2.8655,
+          "response_bytes": 498
+        },
+        "/worker/status": {
+          "samples": 20,
+          "median_ms": 2.5268,
+          "p95_ms": 3.155,
+          "response_bytes": 25
+        },
+        "policy": {
+          "samples": 20,
+          "median_ms": 0.7038,
+          "p95_ms": 0.776
+        }
+      }
+    },
+    {
+      "opportunities": 100,
+      "list_peak_traced_bytes": 353935,
+      "metrics": {
+        "/health": {
+          "samples": 20,
+          "median_ms": 0.7849,
+          "p95_ms": 0.9727,
+          "response_bytes": 15
+        },
+        "/settings": {
+          "samples": 20,
+          "median_ms": 2.5677,
+          "p95_ms": 2.8752,
+          "response_bytes": 438
+        },
+        "/applications": {
+          "samples": 20,
+          "median_ms": 3.6167,
+          "p95_ms": 4.5964,
+          "response_bytes": 50069
+        },
+        "/worker/status": {
+          "samples": 20,
+          "median_ms": 3.0107,
+          "p95_ms": 3.4838,
+          "response_bytes": 25
+        },
+        "policy": {
+          "samples": 20,
+          "median_ms": 0.7266,
+          "p95_ms": 0.9651
+        }
+      }
+    },
+    {
+      "opportunities": 1000,
+      "list_peak_traced_bytes": 3186478,
+      "metrics": {
+        "/health": {
+          "samples": 20,
+          "median_ms": 0.8995,
+          "p95_ms": 1.0775,
+          "response_bytes": 15
+        },
+        "/settings": {
+          "samples": 20,
+          "median_ms": 3.2477,
+          "p95_ms": 4.7859,
+          "response_bytes": 438
+        },
+        "/applications": {
+          "samples": 20,
+          "median_ms": 11.9488,
+          "p95_ms": 15.6125,
+          "response_bytes": 504573
+        },
+        "/worker/status": {
+          "samples": 20,
+          "median_ms": 2.6844,
+          "p95_ms": 2.8825,
+          "response_bytes": 25
+        },
+        "policy": {
+          "samples": 20,
+          "median_ms": 0.7022,
+          "p95_ms": 0.8011
+        }
+      }
+    }
+  ]
+}

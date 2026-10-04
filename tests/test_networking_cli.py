@@ -107,6 +107,7 @@ def test_cli_import_serve_loopback_and_login(data, profile, monkeypatch):
     monkeypatch.setattr(module.uvicorn, "run", runner)
     module.main()
     assert runner.call_args.kwargs["host"] == "127.0.0.1"
+    assert runner.call_args.kwargs["proxy_headers"] is False
     monkeypatch.setenv("APPLICATOR_HOST", "0.0.0.0")
     with pytest.raises(ValueError):
         module.main()

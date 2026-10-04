@@ -1,6 +1,14 @@
 # Delivery and validation record
 
-Version 0.3.0 reviewed through the typed-questionnaire and Start/Pause follow-up on 4 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+Version 0.3.0 reviewed through the security and offline performance follow-up on 5 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+
+## Security and offline performance, 5 October 2026
+
+Corrected post-download board size validation and missing security headers on early API refusals. Added exact/duplicate Host/Origin checks, timed intake, proxy-header isolation, streamed identity-encoded public responses, safe token-file creation and explicit private frontend fetch policies. CI actions are pinned to verified commit revisions; the matrix now checks Ruff formatting and publishes an offline benchmark alongside coverage. [Security](SECURITY.md) records the trust boundaries and limits.
+
+The complete Python inventory is **864 cases**, including **42 new security unit/integration/property cases, one production Chromium redirect/cookie case and nine performance-contract cases**. All **108 focused cases passed in 19.79 seconds** with a fresh focused coverage report; this does not replace full-suite coverage. All **155 React cases passed**, maintaining **100% statements, branches, functions and lines in each of ten runtime modules**. Strict typing, lint/formatting and dependency audits passed; the audits found no known Python or npm dependency vulnerabilities. The [current CI matrix](https://github.com/ricardoportoIE/autonomous-applicator/actions/workflows/ci.yml) independently measures the complete backend inventory at 100% for Windows/Linux and Python 3.12/3.14, without omitted runtime code or relaxed gates.
+
+The [offline report](../benchmarks/local_performance_2026-10-05.json) uses fictional temporary workspaces and 20 read samples per workload. The 1,000-opportunity API list measured **11.95 ms median / 15.61 ms p95**, a **504,573-byte response** and **3,186,478 peak traced Python bytes** on Windows/Python 3.14.2. These exclude browser rendering, TCP, document generation, imports and model/provider latency. [Performance](PERFORMANCE.md) records methods, reproduction and larger-archive considerations. No real application, invitation or paid AI request was made for these checks.
 
 ## Typed questionnaires and Start/Pause, 4 October 2026
 
