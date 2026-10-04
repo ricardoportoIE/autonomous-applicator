@@ -1,6 +1,20 @@
 # Delivery and validation record
 
-Version 0.3.0 reviewed and locally validated through the React migration on 4 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+Version 0.3.0 reviewed through the questionnaire assistance follow-up on 4 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+
+## Questionnaire answer ideas, 4 October 2026
+
+Each non-sensitive question now has **Suggest with GPT-6.1 Sol**, visible generation feedback, a separate grounded draft, human-readable factual references and explicit copy/edit/approval controls. Suggestions cannot change approved answers, reserve an attempt or start a provider browser. Exact choices without the same prior approval require the candidate's decision. Model failures preserve the current field, with no retry or fallback; profile/question/session changes reject late results. Candidate confirmation and reviewed revision preconditions are enforced on the authenticated endpoint.
+
+Twenty-seven offline backend cases and six Chromium scenarios cover model/source validation, omitted contacts and sensitive answers, stale snapshots, choice handling, provider failures, mobile accessibility, unchanged records and explicit approval. Eight new React Testing Library cases cover typed-draft preservation, loading/duplicate prevention, explicit copy/approval, conditional choice explanations, escaped model text and late-response ownership. All **53 frontend unit tests** passed. The work-permission scenario additionally verifies that the actual Stamp 2 explanation, sponsorship requirement and location remain visible while the answer selector stays blank.
+
+Two isolated real `gpt-6.1-sol` calls used a fictional candidate and employer: a technical project idea took **4.948 seconds**, and a conditional work-permission explanation took **3.499 seconds**. The first preserved independent project status; the second retained part-time permission/sponsorship facts and asked for clarification rather than approving Yes/No. These are functional examples, not a quality or hiring-outcome benchmark. The calls wrote no real workspace records and sent no application or invitation; raw results remain ignored.
+
+The local server was updated after a private SQLite backup and a brief pause while the current operation finished. The original application/networking switches were restored. Read-only desktop/mobile inspection verified the new controls, rejected a stale suggestion request before any model call and found no JavaScript errors. Wheel/source archive checks verified all four current React assets without private runtime paths. TypeScript, ESLint, formatting, strict mypy across 16 modules, dependency audits and repository hygiene across 96 tracked files passed.
+
+The complete Windows/Python 3.14 suite passed **461 Python tests in 1,007 seconds**, alongside **53 frontend unit tests**. The strengthened conditional-permission browser regression also passed separately against the final production bundle. Combined Python coverage is **97.73%**, with **98.49%** statements (1,963/1,993) and **95.40%** branches (622/652); the new question adviser has 100% measured statement/branch coverage. Production React coverage is **99.02%** of lines, **92.40%** of branches and **97.79%** of functions. Both coverage gates passed.
+
+Implementation: `a929233`; conditional-permission review regression: `941ba96`. The [remote Linux/Windows and Python 3.12/3.14 matrix](https://github.com/ricardoportoIE/autonomous-applicator/actions/runs/37187314052) is still running at the time of this local validation record; no remote pass is claimed. All four jobs have passed build consistency, typing, frontend unit, lint and repository hygiene checks and reached the complete Python suite. The validation-record commit changes documentation only.
 
 ## React migration validation, 4 October 2026
 
