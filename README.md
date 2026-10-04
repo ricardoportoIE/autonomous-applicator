@@ -63,11 +63,12 @@ uv run python -m pip_audit
 
 ## Frontend development and testing
 
-The dashboard uses locally compiled [Tailwind CSS](https://tailwindcss.com/docs/installation/tailwind-cli). Node.js is required for frontend development and the full test suite. Running the installed application uses the committed CSS and needs no Node.js process or CDN.
+The dashboard uses [React with TypeScript](https://react.dev/learn/typescript), [Vite](https://vite.dev/guide/build) and locally compiled [Tailwind CSS](https://tailwindcss.com/docs). Node.js 24 is required for frontend development and the full test suite. The installed application serves the committed production bundle through FastAPI and needs no Node.js process or CDN. Candidate records and tokens are never included in that bundle.
 
 ```powershell
 npm ci
-npm run build:css
+npm run build
+npm run typecheck
 npm run lint
 npm run format:check
 npm test
@@ -75,7 +76,9 @@ uv run python -m pytest
 npm run coverage:browser
 ```
 
-Frontend unit tests cover presentation and parsing helpers. Real-browser tests cover the dashboard and collect V8 coverage for `app.js` and `ui.js`. Reports are saved under the ignored `test-results/frontend-report` directory. The suite also runs local axe scans and verifies mobile/tablet/desktop layouts, keyboard use, enlarged text, stale edits, token expiry and request concurrency. The Content Security Policy stays enabled during these checks.
+Vitest and React Testing Library cover API session ownership, workspace operations, helpers and component interactions. Playwright exercises the production React bundle against the Python API and collects V8 coverage mapped back to the authored TypeScript. Reports are saved under the ignored `test-results/unit-coverage` and `test-results/frontend-report` directories; third-party library code is excluded. The suite also runs local axe scans and verifies mobile/tablet/desktop layouts, native dialogue focus, keyboard tabs, enlarged text, stale edits, token expiry and request concurrency. The Content Security Policy stays enabled during these checks.
+
+Use **Add opportunity**, **Add evidence**, **Add contact** or **Edit candidate profile** to open a focused dialogue. An opportunity’s detail tabs organise readiness, documents, approved questionnaire answers and recorded outcomes. Networking retains its Active and Archived queues. See the [frontend migration and feature map](docs/FRONTEND.md) for all preserved capabilities and the development workflow.
 
 ## AI integration
 

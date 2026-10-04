@@ -4,6 +4,8 @@
 
 FastAPI serves a same-origin dashboard and a token-protected API. SQLite persists versioned profiles, jobs, applications, document manifests, provider attempts and an append-only event log. Documents and dedicated browser profiles live in the ignored data directory.
 
+The dashboard is a React/TypeScript application built with Vite and locally compiled Tailwind CSS. Components render immutable workspace snapshots; a separate typed API client and workspace controller own session generations, mutation ownership, polling and private portrait caches. Creation/editing forms use native dialogues and application details use keyboard-accessible tabs. The packaged production bundle is served directly by FastAPI under the existing CSP. See [frontend architecture and feature parity](FRONTEND.md).
+
 The deterministic policy engine owns score thresholds and submission gates. An optional OpenAI adviser selects evidence for a job. Model output never grants browser or submission permissions. Web pages and attached documents are untrusted content rather than executable instructions.
 
 The renderer copies approved evidence into tailored PDF/DOCX documents. Questions are matched to explicit candidate-approved answer keys. The LinkedIn adapter uses a dedicated local browser session and the candidate's declared authorisation scope. It verifies job identity and description, bounds the number of steps, rejects unsupported fields and requires a visible confirmation. Its selectors are tested on intercepted fixtures and still require live account validation. No adapter modifies the public profile.

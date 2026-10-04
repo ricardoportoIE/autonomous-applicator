@@ -1,0 +1,175 @@
+"""React migration parity, native dialogue behaviour and document tab regressions."""
+
+import re
+from pathlib import Path
+
+import pytest
+from playwright.sync_api import expect
+from test_frontend import dashboard as dashboard
+
+
+def check_accessibility(page):
+    axe = Path("node_modules/axe-core/axe.min.js").read_text(encoding="utf-8")
+    page.route(
+        "**/__test/axe.js", lambda route: route.fulfill(content_type="text/javascript", body=axe)
+    )
+    page.add_script_tag(url=page.url + "__test/axe.js")
+    result = page.evaluate(
+        "async () => await axe.run(document, {runOnly: {type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})"
+    )
+    assert not result["violations"], [
+        (item["id"], [node["target"] for node in item["nodes"]]) for item in result["violations"]
+    ]
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("width", [390, 1440])
+@pytest.mark.parametrize(
+    "view,button,title",
+    [
+        ("Applications", "Add opportunity", "Add an opportunity"),
+        ("Applications", "Import from Greenhouse", "Import Greenhouse opportunities"),
+        ("Candidate profile", "Edit candidate profile", "Edit candidate profile"),
+        ("Candidate profile", "Add evidence", "Add evidence"),
+        ("Networking", "Add contact", "Queue a professional connection"),
+    ],
+)
+def test_native_modals_are_accessible_contain_focus_and_restore_it(
+    dashboard, width, view, button, title
+):
+    page, app, _ = dashboard
+    before = app.state.store.profile()[1]
+    page.set_viewport_size({"width": width, "height": 900})
+    page.get_by_role("button", name=view, exact=True).click()
+    trigger = page.get_by_role("button", name=button, exact=True)
+    assert page.get_by_role("dialog").count() == 0
+    trigger.click()
+    dialogue = page.get_by_role("dialog", name=title, exact=True)
+    expect(dialogue).to_be_visible()
+    check_accessibility(page)
+    assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+    for _ in range(16):
+        page.keyboard.press("Tab")
+        assert page.evaluate("Boolean(document.activeElement.closest('dialog'))")
+    page.keyboard.press("Escape")
+    expect(dialogue).to_have_count(0)
+    expect(trigger).to_be_focused()
+    assert app.state.store.profile()[1] == before
+
+
+@pytest.mark.browser
+def test_add_opportunity_and_evidence_from_modals_preserve_all_contract_fields(dashboard):
+    page, app, _ = dashboard
+    page.get_by_role("button", name="Applications", exact=True).click()
+    page.get_by_role("button", name="Add opportunity", exact=True).click()
+    for label, value in [
+        ("Job title", "Data Engineer"),
+        ("Company", "Example Data"),
+        ("Location", "London, United Kingdom"),
+        ("Job URL", "https://example.test/jobs/data"),
+        ("Job description", "Build Python data pipelines."),
+        ("Required technologies, comma-separated", "Python, SQL, Python"),
+    ]:
+        page.get_by_label(label, exact=True).fill(value)
+    page.get_by_label("Sponsorship", exact=True).select_option("available")
+    page.get_by_label("Cover letter required", exact=True).check()
+    page.get_by_role("button", name="Save opportunity", exact=True).click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    job = app.state.store.applications()[0]["job"]
+    assert job["requirements"] == ["Python", "SQL"]
+    assert job["sponsorship"] == "available" and job["cover_letter_required"]
+    assert job["source"] == "manual" and len(job["source_id"]) == 64
+    page.get_by_role("button", name="Candidate profile", exact=True).click()
+    page.get_by_role("button", name="Add evidence", exact=True).click()
+    for label, value in [
+        ("Evidence identifier", "degree"),
+        ("Title", "Approved qualification"),
+        ("Factual description", "Candidate-confirmed qualification."),
+        ("Evidence source", "Approved certificate"),
+        ("Dates as confirmed", "2025"),
+        ("Technology tags, comma-separated", "SQL, Python"),
+    ]:
+        page.get_by_label(label, exact=True).fill(value)
+    page.get_by_label("Category", exact=True).select_option("education")
+    page.get_by_label("Reviewed and approved for applications", exact=True).check()
+    page.get_by_role("button", name="Save evidence", exact=True).click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    evidence = next(e for e in app.state.store.profile()[0].evidence if e.id == "degree")
+    assert evidence.category == "education" and evidence.verified and evidence.dates == "2025"
+    assert evidence.source == "Approved certificate" and evidence.tags == ["SQL", "Python"]
+    assert not app.state.store.application(1)["manifest"]
+
+
+@pytest.mark.browser
+def test_profile_modal_saves_all_approved_facts_and_retains_draft_on_error(dashboard):
+    page, app, _ = dashboard
+    page.get_by_role("button", name="Candidate profile", exact=True).click()
+    page.get_by_role("button", name="Edit candidate profile", exact=True).click()
+    page.get_by_label("Professional summary (approved wording)", exact=True).fill(
+        "Approved revised summary."
+    )
+    page.get_by_label("Professional links, one per line", exact=True).fill(
+        "https://example.test/portfolio\nhttps://example.test/portfolio"
+    )
+    page.get_by_label("Approved form answers (JSON object)", exact=True).fill("[]")
+    page.get_by_role("button", name="Save candidate profile", exact=True).click()
+    expect(page.get_by_role("dialog").get_by_role("alert")).to_contain_text(
+        "Approved answers must be"
+    )
+    expect(page.get_by_label("Professional summary (approved wording)", exact=True)).to_have_value(
+        "Approved revised summary."
+    )
+    page.get_by_label("Approved form answers (JSON object)", exact=True).fill(
+        '{"question:sponsorship?":"Yes"}'
+    )
+    page.get_by_role("button", name="Save candidate profile", exact=True).click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    profile, revision = app.state.store.profile()
+    assert revision == 2 and profile.summary == "Approved revised summary."
+    assert (
+        profile.links == ["https://example.test/portfolio"]
+        and profile.answers["question:sponsorship?"] == "Yes"
+    )
+    assert profile.evidence and profile.confirmed and profile.sponsorship_required
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("width", [390, 1440])
+def test_application_tabs_keep_full_opportunity_documents_questions_and_activity(dashboard, width):
+    page, app, _ = dashboard
+    page.set_viewport_size({"width": width, "height": 900})
+    page.get_by_role("button", name="Applications", exact=True).click()
+    page.get_by_role("button", name=re.compile("^Open Backend Engineer")).click()
+    page.get_by_text("Full opportunity details", exact=True).click()
+    expect(page.get_by_text("Cover letter: Not required", exact=True)).to_be_visible()
+    for label in [re.compile("^Documents"), re.compile("^Questions"), "Activity & outcome"]:
+        page.get_by_role("tab", name=label).click()
+        check_accessibility(page)
+        assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+    page.get_by_role("tab", name=re.compile("^Documents")).click()
+    page.get_by_text("Choose approved evidence manually", exact=True).click()
+    page.get_by_role("button", name="Prepare with selected evidence", exact=True).click()
+    expect(page.locator("#notice")).to_have_text("Documents prepared from approved evidence.")
+    assert app.state.store.application(1)["manifest"]["generation"]["method"] == "manual"
+    page.get_by_role("tab", name="Overview", exact=True).click()
+    expect(page.get_by_role("region", name="Document preparation")).to_contain_text(
+        "Evidence selected manually"
+    )
+    assert app.state.store.daily_usage().used == 0
+
+
+@pytest.mark.browser
+def test_lock_closes_open_modal_and_discards_candidate_draft(dashboard):
+    page, app, _ = dashboard
+    revision = app.state.store.profile()[1]
+    page.get_by_role("button", name="Candidate profile", exact=True).click()
+    page.get_by_role("button", name="Edit candidate profile", exact=True).click()
+    page.get_by_label("Professional summary (approved wording)", exact=True).fill(
+        "Private unsaved draft"
+    )
+    # A real modal deliberately makes the background inert; close before using the global lock.
+    page.keyboard.press("Escape")
+    page.get_by_role("button", name="Lock workspace", exact=True).click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    assert "Private unsaved draft" not in page.locator("body").inner_text()
+    assert app.state.store.profile()[1] == revision

@@ -340,6 +340,7 @@ def test_malformed_answers_are_explained_without_saving(dashboard):
     page, app, _ = dashboard
     original_revision = app.state.store.profile()[1]
     page.get_by_role("button", name="Candidate profile", exact=True).click()
+    page.get_by_role("button", name="Edit candidate profile", exact=True).click()
     answers = page.get_by_label("Approved form answers (JSON object)", exact=True)
     for value in ['{"salary":', "[]", '{"salary":123}']:
         answers.fill(value)
@@ -352,6 +353,7 @@ def test_malformed_answers_are_explained_without_saving(dashboard):
 def test_stale_profile_save_preserves_newer_record_and_the_draft(dashboard):
     page, app, _ = dashboard
     page.get_by_role("button", name="Candidate profile", exact=True).click()
+    page.get_by_role("button", name="Edit candidate profile", exact=True).click()
     field = page.get_by_label("Professional summary (approved wording)", exact=True)
     field.fill("Draft in this tab")
     newer, _ = app.state.store.profile()
@@ -372,7 +374,7 @@ def test_lock_clears_token_and_candidate_content_then_allows_unlock(dashboard):
     assert page.evaluate("sessionStorage.getItem('applicator-token')") is None
     assert app.state.store.profile()[0].email not in page.locator("body").inner_text()
     assert page.locator("#evidence-list").inner_html() == ""
-    expect(page.locator('#profile-form input[name="email"]')).to_have_value("")
+    assert page.locator("#profile-form").count() == 0
     page.get_by_label("Access token", exact=True).fill(TOKEN)
     page.get_by_role("button", name="Unlock workspace").click()
     expect(page.locator("#workspace")).to_be_visible()
@@ -408,6 +410,8 @@ def test_job_edit_can_be_cancelled_and_paused_submission_is_disabled(dashboard):
     page.get_by_role("button", name="Edit job details", exact=True).click()
     page.locator('#job-form input[name="title"]').fill("Unsaved job title")
     page.get_by_role("button", name="Cancel editing", exact=True).click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    page.get_by_role("button", name="Add opportunity", exact=True).click()
     expect(page.locator('#job-form input[name="title"]')).to_have_value("")
     expect(page.get_by_role("button", name="Save opportunity", exact=True)).to_be_visible()
     assert app.state.store.applications()[0]["job"]["title"] == "Backend Engineer"
@@ -508,6 +512,7 @@ def test_approved_dropdown_answer_and_sensitive_question_handling(dashboard):
     expect(page.locator("#workspace")).to_be_visible()
     page.get_by_role("button", name="Applications", exact=True).click()
     page.get_by_role("button", name=re.compile("^Open Backend Engineer")).click()
+    page.get_by_role("tab", name="Questions (2)", exact=True).click()
     expect(
         page.get_by_text("Medical history: requires manual handling.", exact=True)
     ).to_be_visible()
@@ -544,6 +549,7 @@ def test_networking_form_queues_a_contact_and_missing_scope_send_is_held(
     page, app, _ = dashboard
     page.set_viewport_size({"width": width, "height": 1000})
     page.get_by_role("button", name="Networking", exact=True).click()
+    page.get_by_role("button", name="Add contact", exact=True).click()
     for label, value in [
         ("LinkedIn profile URL", "https://www.linkedin.com/in/example-recruiter/"),
         ("Member's displayed name", "Example Recruiter"),
@@ -642,7 +648,9 @@ def test_manual_invitation_runs_only_selected_contact_with_live_progress(
         assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
         page.screenshot(path=str(tmp_path / f"invitation-running-{width}.png"), full_page=True)
         page.get_by_role("button", name="Candidate profile", exact=True).click()
-        expect(page.locator("#profile-form")).to_be_visible()
+        expect(
+            page.get_by_role("button", name="Edit candidate profile", exact=True)
+        ).to_be_visible()
         page.get_by_role("button", name="Networking", exact=True).click()
     finally:
         complete.set()
@@ -835,6 +843,7 @@ def test_manual_receipt_and_outcome_are_persisted(dashboard):
     page, app, _ = dashboard
     page.get_by_role("button", name="Applications", exact=True).click()
     page.get_by_role("button", name=re.compile("^Open Backend Engineer")).click()
+    page.get_by_role("tab", name="Activity & outcome", exact=True).click()
     page.get_by_label("Manual submission receipt or confirmation reference", exact=True).fill(
         "candidate-confirmed-fixture-receipt"
     )
@@ -855,6 +864,7 @@ def test_board_import_and_non_json_provider_errors_are_readable(dashboard):
         "**/api/discover/greenhouse",
         lambda route: route.fulfill(content_type="application/json", body='{"imported":2}'),
     )
+    page.get_by_role("button", name="Import from Greenhouse", exact=True).click()
     page.get_by_label("Greenhouse board", exact=True).fill("fixture-employer")
     page.get_by_role("button", name="Import board jobs", exact=True).click()
     expect(page.locator("#notice")).to_have_text("Imported 2 new opportunities.")
@@ -865,6 +875,8 @@ def test_board_import_and_non_json_provider_errors_are_readable(dashboard):
             status=502, content_type="text/html", body="Provider unavailable"
         ),
     )
+    page.get_by_role("button", name="Import from Greenhouse", exact=True).click()
+    page.get_by_label("Greenhouse board", exact=True).fill("fixture-employer")
     page.get_by_role("button", name="Import board jobs", exact=True).click()
     expect(page.locator("#notice")).to_have_text("The request failed (502). Please try again.")
 
@@ -1017,6 +1029,7 @@ def test_preflight_recheck_and_mocked_submission_update_budget_and_timeline(dash
     assert app.state.store.application(app_id)["receipt"] == "fixture:confirmed-readiness"
     adapter.assert_called_once()
     expect(page.locator("#daily-usage")).to_contain_text("1 / 10 attempts used")
+    page.get_by_role("tab", name="Activity & outcome", exact=True).click()
     page.get_by_text("Activity for this application", exact=True).click()
     expect(page.locator(".timeline")).to_contain_text("submission finished")
     expect(page.locator(".timeline")).to_contain_text("submission reserved")
@@ -1024,7 +1037,9 @@ def test_preflight_recheck_and_mocked_submission_update_budget_and_timeline(dash
     page.get_by_label("Record outcome", exact=True).select_option("offer")
     page.get_by_role("button", name="Save outcome", exact=True).click()
     expect(page.locator("#notice")).to_have_text("Outcome saved.")
+    page.get_by_role("tab", name="Overview", exact=True).click()
     page.get_by_role("button", name="Recheck readiness", exact=True).click()
+    page.get_by_role("tab", name="Activity & outcome", exact=True).click()
     expect(page.get_by_label("Record outcome", exact=True)).to_have_value("offer")
 
 
@@ -1048,6 +1063,7 @@ def test_preflight_blocks_changed_profile_and_passes_accessibility_checks(dashbo
     expect(page.locator("#workspace")).not_to_have_attribute("aria-busy", "true")
     assert page.get_by_role("button", name="Run authorised submission", exact=True).count() == 0
     assert app.state.store.daily_usage().used == 0
+    page.get_by_role("tab", name="Activity & outcome", exact=True).click()
     page.get_by_text("Activity for this application", exact=True).focus()
     page.keyboard.press("Enter")
     expect(page.locator(".timeline")).to_have_attribute("open", "")

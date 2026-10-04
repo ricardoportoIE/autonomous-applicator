@@ -81,6 +81,7 @@ def test_dashboard_full_journey(data, profile, tmp_path):
         page.get_by_label("Access token", exact=True).fill(TOKEN)
         page.get_by_role("button", name="Unlock workspace").click()
         page.get_by_role("button", name="Candidate profile", exact=True).click()
+        page.get_by_role("button", name="Add candidate profile", exact=True).click()
         page.get_by_label("Professional name", exact=True).fill(profile.name)
         page.get_by_label("E-mail", exact=True).fill(profile.email)
         page.get_by_label("Phone", exact=True).fill(profile.phone)
@@ -89,6 +90,7 @@ def test_dashboard_full_journey(data, profile, tmp_path):
         page.get_by_role("button", name="Save candidate profile").click()
         page.get_by_text("Profile saved. Earlier documents need regeneration.").wait_for()
         evidence = profile.evidence[0]
+        page.get_by_role("button", name="Add evidence", exact=True).click()
         for label, value in (
             ("Evidence identifier", evidence.id),
             ("Title", evidence.title),
@@ -102,6 +104,7 @@ def test_dashboard_full_journey(data, profile, tmp_path):
         page.get_by_role("button", name="Save evidence", exact=True).click()
         page.get_by_text("Evidence saved.").wait_for()
         page.get_by_role("button", name="Applications", exact=True).click()
+        page.get_by_role("button", name="Add opportunity", exact=True).click()
         for label, value in (
             ("Job title", "Backend Engineer"),
             ("Company", "Example Employer"),

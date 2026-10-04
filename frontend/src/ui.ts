@@ -12,13 +12,13 @@ export const stateLabels = Object.freeze({
   failed: "Failed",
 });
 
-export function stateLabel(value) {
-  return Object.hasOwn(stateLabels, value)
-    ? stateLabels[value]
+export function stateLabel(value: unknown) {
+  return typeof value === "string" && Object.hasOwn(stateLabels, value)
+    ? stateLabels[value as keyof typeof stateLabels]
     : "Unknown status";
 }
 
-export function splitList(value, separator = ",") {
+export function splitList(value: string, separator = ",") {
   return [
     ...new Set(
       value
@@ -29,8 +29,8 @@ export function splitList(value, separator = ",") {
   ];
 }
 
-export function parseAnswers(value) {
-  let answers;
+export function parseAnswers(value: string): Record<string, string> {
+  let answers: unknown;
   try {
     answers = JSON.parse(value || "{}");
   } catch {
@@ -48,10 +48,13 @@ export function parseAnswers(value) {
       "Approved answers must be a JSON object containing text values.",
     );
   }
-  return answers;
+  return answers as Record<string, string>;
 }
 
-export function errorDetail(body, status) {
+export function errorDetail(value: unknown, status: number) {
+  const body = value as {
+    detail?: string | { loc?: string[]; msg?: string }[];
+  } | null;
   if (typeof body?.detail === "string") return body.detail;
   if (Array.isArray(body?.detail)) {
     return body.detail
@@ -64,7 +67,7 @@ export function errorDetail(body, status) {
   return `The request failed (${status}). Please try again.`;
 }
 
-export function linkedinIdentity(value) {
+export function linkedinIdentity(value: string) {
   const url = new URL(value);
   const match = url.pathname.match(/^\/jobs\/view\/(\d+)\/?$/);
   return url.origin === "https://www.linkedin.com" &&
@@ -75,10 +78,14 @@ export function linkedinIdentity(value) {
     : null;
 }
 
-export function filterApplications(
-  rows,
-  { query = "", state = "all", sort = "recent" } = {},
-) {
+export function filterApplications<
+  T extends {
+    id: number;
+    state: string;
+    evaluation: { score?: number };
+    job: { title: string; company: string; location: string };
+  },
+>(rows: T[], { query = "", state = "all", sort = "recent" } = {}) {
   const terms = query
     .trim()
     .toLocaleLowerCase("en-GB")

@@ -12,6 +12,8 @@ Use `http://127.0.0.1:8765` and the access token printed in the terminal. The ap
 
 The readiness strip shows the saved LinkedIn authorisation, profile confirmation and remaining daily attempts. A scope declaration is separate from enabling application automation or networking. Use **Lock workspace** to clear credentials and visible candidate information from this tab; locking the tab does not pause the background agent. Use **Pause all automation** to stop new attempts.
 
+The React dashboard keeps the six existing navigation areas. **Add opportunity**, **Add evidence**, **Add contact**, **Import from Greenhouse** and **Edit candidate profile** open focused dialogues. Save commits the record and closes the dialogue; an error retains the draft. Escape or **Close dialogue** discards unsaved input and restores focus to its opening button. Close an open dialogue before using background navigation or the global pause; closing a dialogue does not cancel a request already running. Reload the dashboard after a frontend update. Installed builds do not need a Node.js server.
+
 The dashboard detects stale profile edits using a revision precondition. If another tab changes the record, reload before saving rather than overwriting the newer facts. Pending operations disable workspace controls, while pause remains available. The dashboard uses committed, locally compiled Tailwind CSS. To change its styling, use Node.js 24, `npm ci` and `npm run build:css`.
 
 The module commands avoid unsigned console launchers sometimes blocked by Windows Application Control. If a compiled mypy installation is blocked, install the same locked mypy version from source with `uv pip install --reinstall --no-binary mypy mypy==<locked-version>`. Do not disable Windows security policy.
@@ -72,7 +74,7 @@ Open an application to see **Submission readiness**. This read-only inspection c
 
 The inspection is an advisory snapshot. Passing it does not prove that the browser is signed in or that the provider still shows the same vacancy and questions. The actual submission repeats all authoritative gates and checks the live provider. A setting or profile change after inspection can still prevent submission.
 
-Expand **Activity for this application** for its latest 200 journal entries, newest first. This includes imports, preparation, reservations, confirmed receipts and outcome changes; unrelated applications and global settings do not appear.
+An application’s **Overview** tab contains submission readiness, fit, preparation provenance and the existing preparation/submission controls. **Documents** contains the current downloads and explicit manual evidence selection. **Questions** contains exact candidate-approved answers and manual-handling notices. In **Activity & outcome**, expand **Activity for this application** for its latest 200 journal entries, newest first. This includes imports, preparation, reservations, confirmed receipts and outcome changes; unrelated applications and global settings do not appear. The same tab retains manual submission receipt recording and outcome updates.
 
 The overview budget counts durable application reservations, including interrupted or uncertain attempts. Safe pre-submission provider stops also consume an attempt once reserved. Manual receipts do not create automatic attempts. The count resets at midnight in Europe/London, including British Summer Time. Lowering a limit below today's usage leaves zero remaining capacity and preserves the actual count. Networking retains its separate limit.
 

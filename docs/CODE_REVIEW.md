@@ -1,5 +1,15 @@
 # Source review, 2 October 2026
 
+## React migration review, 4 October 2026
+
+The new authored TypeScript/TSX modules, build/test configuration and migrated interaction tests were reviewed against every control and data field in the previous JavaScript dashboard. The [feature parity map](FRONTEND.md) records the replacement locations. Generated bundles and source maps are checked by reproducible production builds rather than hand-edited. Backend contracts, FIFO ownership, provider scope, CV generation and submission gates remain in place.
+
+Corrections found during the migration include explicit textarea/select accessible names, sidebar contrast, keyboard containment and focus restoration for native dialogues, collecting complete form data before disabling controls or awaiting URL hashing, retaining the existing processing-result label, and handling simultaneous authentication failures without restoring locked data. Session generations strengthen the previous token comparison: locking and unlocking with the same token still invalidates old requests. A newer workspace refresh wins over older responses. Open candidate drafts retain their opening profile snapshot and revision, so another refresh cannot silently rebase a stale edit. Failed saves retain drafts, optional portrait failures retain initials, and poll failures never retry an invitation. The production browser tests run with CSP enabled.
+
+Vitest/React Testing Library test the typed API client, workspace ownership and components. Existing real-browser regressions were adapted to explicit modal buttons and application tabs; assertions for receipts, quotas, approved answers, provenance, private photos, uncertainty and pause/reload observation were retained. Additional Playwright checks exercise complete creation payloads, native modal accessibility/keyboard behaviour, tab content and manual evidence selection. Validation results are recorded in [STATUS.md](STATUS.md).
+
+## Original source review
+
 Every line of the authored runtime modules, dashboard HTML, JavaScript and styling, test suite, CLI, repository hygiene script, CI configuration and operational documentation was inspected. Generated CSS and dependency lockfiles were checked through reproducible builds and dependency audits. Dependency source code, the live LinkedIn website and private source documents are outside this review's line-by-line scope.
 
 ## Findings and corrections

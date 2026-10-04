@@ -22,8 +22,9 @@ jobs:
           node-version: "24"
           cache: npm
       - run: npm ci
-      - run: npm run build:css
-      - run: git diff --exit-code -- src/applicator/static/style.css
+      - run: npm run build
+      - run: git diff --exit-code -- src/applicator/static
+      - run: npm run typecheck
       - run: npm run lint
       - run: npm run format:check
       - run: npm test
@@ -47,3 +48,4 @@ jobs:
           path: |
             coverage.xml
             test-results/frontend-report
+            test-results/unit-coverage

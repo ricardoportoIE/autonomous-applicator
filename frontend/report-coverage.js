@@ -15,11 +15,21 @@ for (const filename of await fs.readdir(folder)) {
   );
   for (const script of record.result) {
     const sourcePath = fileURLToPath(script.url);
-    if (script.source !== (await fs.readFile(sourcePath, "utf8"))) continue;
+    const currentSource = await fs
+      .readFile(sourcePath, "utf8")
+      .catch(() => null);
+    if (script.source !== currentSource) continue;
     const converter = v8ToIstanbul(sourcePath, 0, { source: script.source });
     await converter.load();
     converter.applyCoverage(script.functions);
-    map.merge(converter.toIstanbul());
+    const mapped = converter.toIstanbul();
+    for (const [file, record] of Object.entries(mapped)) {
+      if (
+        file.replaceAll("\\", "/").includes("/frontend/src/") &&
+        !file.endsWith("main.tsx")
+      )
+        map.merge({ [file]: record });
+    }
   }
 }
 const context = reporting.createContext({
@@ -28,7 +38,16 @@ const context = reporting.createContext({
 });
 for (const format of ["text", "json-summary", "html"])
   reports.create(format).execute(context);
-for (const filename of ["app.js", "ui.js"]) {
+for (const filename of [
+  "App.tsx",
+  "api.ts",
+  "workspace.ts",
+  "forms.tsx",
+  "components.tsx",
+  "application-detail.tsx",
+  "networking.tsx",
+  "ui.ts",
+]) {
   if (!map.files().some((file) => path.basename(file) === filename))
     throw new Error(`Missing browser coverage for ${filename}`);
 }

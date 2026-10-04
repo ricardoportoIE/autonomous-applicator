@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import {
   errorDetail,
   filterApplications,
@@ -8,7 +8,7 @@ import {
   splitList,
   stateLabel,
   stateLabels,
-} from "../../src/applicator/static/ui.js";
+} from "../../frontend/src/ui";
 
 test("every application and networking status has a readable label", () => {
   for (const [value, expected] of Object.entries(stateLabels))
@@ -147,7 +147,7 @@ const opportunities = [
     },
   },
 ];
-const ids = (rows) => rows.map((row) => row.id);
+const ids = (rows: { id: number }[]) => rows.map((row) => row.id);
 
 test("queue search combines case-insensitive terms across role, company and location", () => {
   assert.deepEqual(

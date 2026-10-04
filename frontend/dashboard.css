@@ -1,14 +1,12 @@
 @import "tailwindcss" source(none);
-@source "../src/applicator/static/index.html";
-@source "../src/applicator/static/app.js";
-@source "../src/applicator/static/ui.js";
+@source "./src";
 
 @theme {
   --font-sans: "Segoe UI", Inter, Arial, sans-serif;
   --color-ink: #172033;
-  --color-accent: #5b40cf;
-  --color-accent-dark: #4630a6;
-  --color-canvas: #f4f6fb;
+  --color-accent: #24695f;
+  --color-accent-dark: #174c45;
+  --color-canvas: #f5f6f2;
 }
 
 @layer base {
@@ -458,5 +456,327 @@
   .score::before {
     content: "Fit ";
     @apply text-sm font-medium text-slate-600;
+  }
+}
+@layer components {
+  .sidebar {
+    @apply bg-[#132c2b];
+  }
+  .sidebar nav button.active {
+    @apply bg-[#dcecaa] text-[#153d35];
+  }
+  .sidebar nav button.active .nav-icon {
+    @apply text-[#153d35];
+  }
+  .sidebar-bottom p {
+    @apply my-4 text-sm text-slate-300;
+  }
+  .local {
+    @apply flex items-center gap-2;
+  }
+  .local-dot,
+  .status-dot {
+    @apply inline-block size-2 shrink-0 rounded-full bg-slate-400;
+  }
+  .local-dot,
+  .status-dot.enabled {
+    @apply bg-[#a9d9b9];
+  }
+  .brand-mark {
+    @apply bg-[#dcecaa] font-normal;
+  }
+  .brand-mark > span {
+    @apply -mt-3 text-base;
+  }
+  .workspace,
+  fieldset {
+    @apply m-0 min-w-0 border-0 p-0;
+  }
+  .panel-heading {
+    @apply mb-5 flex flex-wrap items-start justify-between gap-4;
+  }
+  .panel-heading h2,
+  .modal-heading h2 {
+    @apply mb-0;
+  }
+  .panel-heading .eyebrow {
+    @apply mb-2;
+  }
+  .panel {
+    @apply border-[#dfe5de] shadow-none;
+  }
+  .readiness {
+    @apply mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-[#dfe5de] bg-white px-5 py-4;
+  }
+  .readiness strong {
+    @apply mr-auto flex items-center gap-2;
+  }
+  .processing-panel {
+    @apply mb-7 rounded-2xl border border-[#cddfd6] bg-[#edf4ee] p-5 sm:p-6;
+  }
+  .processing-panel > p {
+    @apply mb-4 text-sm;
+  }
+  .processing-panel h2 {
+    @apply text-lg;
+  }
+  #worker-status {
+    @apply border-l-2 border-[#24695f] pl-4;
+  }
+  #worker-status p {
+    @apply my-2;
+  }
+  .worker-clock {
+    @apply mt-4 text-xs break-all text-slate-600;
+  }
+  .live-indicator {
+    @apply flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-[#285848];
+  }
+  .live-indicator > span {
+    @apply size-1.5 rounded-full bg-[#24695f];
+  }
+  .live-indicator.is-running > span {
+    @apply motion-safe:animate-pulse;
+  }
+  .worker-history {
+    @apply mt-4 border-t border-[#cddfd6] pt-4 text-sm;
+  }
+  summary {
+    @apply min-h-8 cursor-pointer font-medium text-ink;
+  }
+  .overview-hero {
+    @apply relative mb-7 flex justify-between gap-6 overflow-hidden rounded-2xl bg-[#183e36] p-6 text-white sm:p-9;
+  }
+  .overview-hero > div:first-child {
+    @apply z-10 max-w-xl;
+  }
+  .overview-hero h2 {
+    @apply mb-4 text-3xl font-normal tracking-tight sm:text-4xl;
+  }
+  .overview-hero p {
+    @apply text-[#d9e6dd];
+  }
+  .overview-hero .eyebrow {
+    @apply text-[#dcecaa];
+  }
+  .overview-hero button {
+    @apply mt-4 bg-[#dcecaa] text-[#153d35] hover:bg-[#cddd95];
+  }
+  .hero-orbit {
+    @apply relative hidden w-60 shrink-0 items-center justify-center xl:flex;
+  }
+  .orbit-ring {
+    @apply absolute size-60 rounded-full border border-white/20;
+  }
+  .orbit-ring::after {
+    content: "";
+    @apply absolute inset-5 rounded-full border border-white/10;
+  }
+  .orbit-core {
+    @apply flex size-28 rotate-[-15deg] items-center justify-center rounded-3xl bg-[#dcecaa] text-[#183e36];
+  }
+  .orbit-label {
+    @apply absolute -bottom-2 text-xs tracking-widest text-[#dcecaa];
+  }
+  .stats .stat:nth-child(2) {
+    @apply bg-[#e6efe5];
+  }
+  .stats .stat:nth-child(3) {
+    @apply bg-[#f4eddf];
+  }
+  .usage-number {
+    @apply text-2xl font-semibold tabular-nums;
+  }
+  .insight-metrics {
+    @apply my-5 grid grid-cols-3 gap-3;
+  }
+  .insight-metrics > div {
+    @apply rounded-xl bg-[#f3f5f0] p-4;
+  }
+  .insight-metrics strong {
+    @apply block text-3xl font-normal tabular-nums;
+  }
+  .discovery-actions,
+  .detail-meta {
+    @apply flex flex-wrap items-center gap-3;
+  }
+  .discovery-actions {
+    @apply mt-5;
+  }
+  .subtle-chip {
+    @apply text-sm text-slate-600;
+  }
+  .help-details,
+  .job-description {
+    @apply mt-5 rounded-xl bg-[#f5f7f2] px-4 py-3 text-sm;
+  }
+  .help-details p {
+    @apply my-3;
+  }
+  .external-link {
+    @apply inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 py-2 text-sm font-semibold;
+  }
+  .application-detail {
+    @apply scroll-mt-6 border-[#cddfd6];
+  }
+  .detail-meta {
+    @apply mb-6;
+  }
+  .connection-tabs {
+    @apply mb-6 flex flex-wrap gap-1 rounded-xl bg-[#eef1eb] p-1;
+  }
+  .connection-tabs button {
+    @apply flex-auto rounded-lg bg-transparent text-slate-700 hover:bg-white/60;
+  }
+  .connection-tabs button[aria-selected="true"] {
+    @apply bg-white text-[#174c45] shadow-sm;
+  }
+  .preflight h3,
+  .document-origin h3 {
+    @apply flex items-center gap-2;
+  }
+  .fit-report,
+  .document-origin {
+    @apply my-5 rounded-xl border border-slate-200 p-5;
+  }
+  .document-origin {
+    @apply bg-[#f7f8f4];
+  }
+  .question-card {
+    @apply my-4 rounded-xl border border-slate-200 p-5;
+  }
+  .question-card button {
+    @apply mt-4;
+  }
+  .question-card small {
+    @apply block;
+  }
+  .review-note {
+    @apply rounded-xl border border-amber-200 bg-amber-50 p-4;
+  }
+  .document-list {
+    @apply my-5 list-none space-y-3 p-0;
+  }
+  .document-list li {
+    @apply flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 p-4;
+  }
+  .document-list li span {
+    @apply flex-1 break-all;
+  }
+  .profile-record {
+    @apply mt-6 grid grid-cols-[auto_1fr] items-start gap-4;
+  }
+  .profile-monogram {
+    @apply flex size-16 items-center justify-center rounded-2xl bg-[#e6efe5] text-2xl text-[#174c45];
+  }
+  .profile-summary {
+    @apply col-span-2;
+  }
+  .profile-summary dl {
+    @apply grid gap-x-5 gap-y-2 sm:grid-cols-[9rem_1fr];
+  }
+  dt {
+    @apply text-sm font-semibold break-words text-slate-700;
+  }
+  dd {
+    @apply m-0 mb-3 break-words text-sm leading-relaxed text-slate-600;
+  }
+  .profile-summary details dl {
+    @apply block;
+  }
+  .evidence-card {
+    @apply flex flex-wrap items-start justify-between gap-4;
+  }
+  .evidence-card > div:first-child {
+    @apply min-w-0 flex-1 basis-80;
+  }
+  .evidence-source {
+    @apply text-xs;
+  }
+  .tags {
+    @apply flex flex-wrap gap-2;
+  }
+  .tags span {
+    @apply rounded-md bg-[#eef1eb] px-2 py-1 text-xs text-slate-700;
+  }
+  .contact-card {
+    @apply my-4 rounded-xl border border-slate-200 px-4 py-5;
+  }
+  .contact-location {
+    @apply inline-flex items-center gap-1.5;
+  }
+  .form-actions {
+    @apply mt-6 flex flex-wrap gap-3 border-t border-slate-200 pt-5;
+  }
+  .settings-grid {
+    @apply mt-6 items-start;
+  }
+  .modal {
+    @apply m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-[#dfe5de] bg-white p-0 text-ink shadow-2xl;
+  }
+  .modal::backdrop {
+    background: rgb(12 34 29 / 55%);
+    backdrop-filter: blur(4px);
+  }
+  .modal-heading {
+    @apply sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-5 py-5 sm:px-7;
+  }
+  .modal-heading .eyebrow {
+    @apply mb-1;
+  }
+  .modal-body {
+    @apply p-5 sm:p-7;
+  }
+  .modal-body form > p:first-child {
+    @apply mb-6;
+  }
+  .modal-open {
+    overflow: hidden;
+  }
+  .icon-button {
+    @apply size-11 shrink-0 px-0;
+  }
+  .modal-notice {
+    @apply mb-4 rounded-lg bg-[#edf4ee] p-3;
+  }
+  .notice:empty {
+    display: none;
+  }
+  .notice:not(:empty) {
+    @apply mb-6 rounded-xl border border-[#cddfd6] bg-[#edf4ee] px-5 py-4 text-sm text-[#174c45];
+  }
+  .notice.error {
+    @apply border-red-200 bg-red-50 text-red-800;
+  }
+  .lock-panel {
+    @apply mx-auto max-w-xl text-center;
+  }
+  .lock-panel form {
+    @apply mt-6 text-left;
+  }
+  .lock-illustration {
+    @apply mx-auto mb-5 flex size-20 items-center justify-center rounded-3xl bg-[#e6efe5] text-[#24695f];
+  }
+  .footer {
+    @apply flex flex-wrap justify-between gap-3;
+  }
+}
+@layer components {
+  .bands p {
+    @apply bg-[#f3f5f0];
+  }
+  .bands b {
+    @apply text-[#174c45];
+  }
+  .contact-location::before {
+    content: none;
+  }
+  .secondary {
+    @apply hover:border-[#a3bfb0] hover:bg-[#edf4ee];
+  }
+}
+@layer components {
+  .sidebar-bottom > small {
+    @apply text-slate-300;
   }
 }

@@ -17,9 +17,12 @@ def save_coverage(session, name):
     results = []
     for script in scripts:
         filename = script["url"].rsplit("/", 1)[-1]
-        if filename not in {"app.js", "ui.js"}:
+        if not filename.startswith("index-") or not filename.endswith(".js"):
             continue
-        source = Path("src/applicator/static") / filename
+        source = Path("src/applicator/static/assets") / filename
+        if not source.is_file():
+            # A developer rebuilt during a browser run. Only current bundles count.
+            continue
         results.append(
             {
                 **script,

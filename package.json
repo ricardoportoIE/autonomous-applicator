@@ -4,29 +4,44 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:css": "tailwindcss -i ./frontend/dashboard.css -o ./src/applicator/static/style.css --minify",
-    "watch:css": "tailwindcss -i ./frontend/dashboard.css -o ./src/applicator/static/style.css --watch",
+    "build": "vite build",
+    "build:css": "npm run build",
+    "dev": "vite",
+    "typecheck": "tsc -p tsconfig.json",
     "coverage:browser": "node frontend/report-coverage.js",
-    "lint": "eslint src/applicator/static/*.js frontend/*.js tests/frontend/*.js eslint.config.js",
-    "test": "node --test --experimental-test-coverage --test-coverage-include=src/applicator/static/ui.js --test-coverage-lines=100 --test-coverage-branches=100 tests/frontend/*.test.js",
-    "format:check": "prettier --check src/applicator/static/*.html src/applicator/static/*.js frontend tests/frontend package.json eslint.config.js"
-  },
-  "overrides": {
-    "@tailwindcss/cli": {
-      "@parcel/watcher": "2.6.0"
-    }
+    "lint": "eslint frontend/src tests/frontend frontend/*.js vite.config.ts eslint.config.js",
+    "test": "vitest run --coverage",
+    "format:check": "prettier --check frontend/src frontend/index.html frontend/dashboard.css frontend/*.js tests/frontend package.json tsconfig.json vite.config.ts eslint.config.js"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
-    "@tailwindcss/cli": "4.3.3",
+    "@tailwindcss/vite": "4.3.3",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.7",
+    "@types/node": "26.6.4",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "@vitest/coverage-v8": "5.0.3",
     "axe-core": "4.13.0",
     "eslint": "10.11.0",
     "globals": "17.13.0",
     "istanbul-lib-coverage": "3.2.2",
     "istanbul-lib-report": "3.0.1",
     "istanbul-reports": "3.2.0",
+    "jsdom": "30.1.1",
     "prettier": "3.9.9",
     "tailwindcss": "4.3.3",
-    "v8-to-istanbul": "9.3.0"
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.0",
+    "v8-to-istanbul": "9.3.0",
+    "vite": "8.3.2",
+    "vitest": "5.0.3"
+  },
+  "dependencies": {
+    "lucide-react": "1.51.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   }
 }
