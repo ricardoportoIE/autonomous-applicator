@@ -1,6 +1,16 @@
 # Delivery and validation record
 
-Version 0.3.0 reviewed through the complete frontend and portfolio documentation follow-up on 4 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+Version 0.3.0 reviewed through the complete backend coverage follow-up on 4 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+
+## Backend runtime coverage, 4 October 2026
+
+The baseline was **97.52% combined coverage**, with **2,448/2,489 statements** and **812/854 branch outcomes**. Added **76 cases** across backend integrity, real-browser boundaries and coverage-gate enforcement. All 76 passed together in **75.63 seconds** after making incomplete-image delivery deterministic and checking that recovery cleanup preserves the interrupted run. The incremental application measurement reached **100% statements and branches in every one of 19 modules**, with **2,489/2,489 statements and 854/854 branch outcomes** and zero missing paths. The independent fresh Windows/Python 3.14 suite passed **675 tests in 1,419.15 seconds**, without appending earlier coverage, and reached the same **100% statement and branch coverage**. The complete source-inventory gate also passed.
+
+Pytest now requires 100% combined coverage with branch measurement enabled. The new inventory gate independently checks every Python application file, zero missing paths per module, consistent counters and permitted exclusion scope; CI runs it after pytest in each Windows/Linux and Python 3.12/3.14 job and uploads the JSON report alongside XML. Only the signature-only adapter protocol and blank lines are excluded by Coverage.py's defaults. No executable runtime path is omitted and no coverage-ignore directive is accepted. Seventeen enforcement cases verify both valid reports and rejection of missing modules, branches, inconsistent counters, concrete-method exclusions and ignored runtime paths.
+
+The **147 frontend unit tests** also passed, retaining **100% lines, statements, functions and branches in each of ten runtime modules**. The independent production-browser report passed with **98.64% lines, 92.24% branches and 98.10% functions**. TypeScript, ESLint, Prettier, Ruff, formatting, strict mypy, reproducible production assets, npm/pip dependency audits, README references and distribution checks passed. Repository hygiene passed for **134 tracked files**, with no credentials or candidate contact details. The wheel and source archive contain the five current React assets and no private runtime paths. Runtime business code, candidate data and browser sessions were preserved; the tests use fictitious records and controlled providers without paid API calls or external sends. [Testing and coverage](TESTING.md) defines the complete scope and reproduction commands.
+
+The preceding [icon and CI repair matrix](https://github.com/ricardoportoIE/autonomous-applicator/actions/runs/37202870456) completed successfully in all four combinations with 599 Python and 147 frontend unit cases. The backend follow-up applies the strengthened gates through the same [quality workflow](https://github.com/ricardoportoIE/autonomous-applicator/actions/workflows/ci.yml); each job must satisfy the complete source inventory and both coverage metrics independently.
 
 ## Application icon and Windows CI repair, 4 October 2026
 

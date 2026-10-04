@@ -23,7 +23,7 @@ Preserve these distinctions: Military Police Officer, Sep 2012–Apr 2026, with 
 7. Apply automatically only through permitted configured adapters, with verified profile, ready documents, resolved questions, daily limit, kill switch, deduplication and durable attempt journal.
 8. A crash after starting submission becomes uncertain and requires reconciliation. Never automatically retry an uncertain submission.
 9. Record application events and manually reported outcomes. Suggest changes from feedback without silently modifying facts, thresholds or authorisation.
-10. Provide unit, property, integration, security, AI contract, document and real-browser fixture tests, branch coverage, lint, type checks and dependency audit. Live LinkedIn DOM and actual employer receipt cannot be certified by fixture tests.
+10. Provide unit, property, integration, security, AI contract, document and real-browser fixture tests. Require 100% statement and branch coverage in every Python application module and 100% per-file React runtime unit coverage, plus lint, type checks and dependency audits. Check the complete backend source inventory and reject runtime coverage exclusions. See [testing and coverage](TESTING.md). Live LinkedIn DOM and actual employer receipt cannot be certified by fixture tests.
 11. Use Git commits for logical stages and push each stage to the candidate's requested GitHub repository when authenticated access is available.
 12. Use `gpt-6.1-sol` for the optional AI adviser. Never use a credential exposed in chat or silently substitute another model.
 

@@ -6,6 +6,7 @@
 
 [![Quality and application safeguards](https://github.com/ricardoportoIE/autonomous-applicator/actions/workflows/ci.yml/badge.svg)](https://github.com/ricardoportoIE/autonomous-applicator/actions/workflows/ci.yml)
 [![Frontend runtime coverage: 100%](https://img.shields.io/badge/frontend_runtime_coverage-100%25-176b62)](docs/FRONTEND.md#development-and-checks)
+[![Backend runtime coverage: 100%](https://img.shields.io/badge/backend_runtime_coverage-100%25-176b62)](docs/TESTING.md#backend-acceptance-gate)
 
 A personal engineering portfolio project by [Ricardo Porto](https://github.com/ricardoportoIE), built around a practical problem: preparing relevant job applications without losing control of candidate facts, external actions or submission history.
 
@@ -141,6 +142,8 @@ The frontend review expanded measurement from three helpers to **all ten authore
 | Static and dependency checks | Strict TypeScript and mypy, ESLint, Ruff, Prettier, npm audit, pip-audit and tracked-file privacy checks. |
 | Packaging and CI | Reproducible committed assets and a Windows/Linux matrix on Python 3.12 and 3.14 with Node.js 24. |
 
+The backend requires **100% statement and branch coverage in every one of its 19 Python modules**: **2,489 statements and 854 branch outcomes**. CI checks the complete source inventory and rejects missing paths or runtime exclusions on every Windows/Linux and Python 3.12/3.14 job. React unit tests retain their separate 100% per-file runtime coverage gate. [Testing and coverage](docs/TESTING.md) defines the scope, fixtures and reproduction commands.
+
 Verification results, measured coverage and any outstanding checks are recorded in [delivery status](docs/STATUS.md). [Review findings](docs/CODE_REVIEW.md) explain corrected faults and their regressions. Coverage establishes execution, not compatibility with every live provider layout; behaviour assertions and isolated provider fixtures provide additional evidence.
 
 ## Run locally
@@ -179,6 +182,7 @@ npm run build
 uv run python -m ruff check .
 uv run python -m mypy src
 uv run python -m pytest
+uv run python scripts/check_backend_coverage.py
 npm run coverage:browser
 npm audit --audit-level=low
 uv run python -m pip_audit
@@ -199,6 +203,7 @@ Requirements, business rules, architectural boundaries, failure recovery and val
 | [Architecture](docs/ARCHITECTURE.md) | Service boundaries and submission invariants. |
 | [Queue operation](docs/APPLICATION_QUEUE.md) | Ordering, stage visibility, leases and recovery. |
 | [Frontend](docs/FRONTEND.md) | Preserved capabilities, async ownership and coverage scope. |
+| [Testing and coverage](docs/TESTING.md) | Backend and frontend coverage gates, failure assertions, isolated fixtures and reproduction. |
 | [Security and privacy](docs/SECURITY.md) | Loopback access, secrets and private artefacts. |
 | [Operating guide](docs/OPERATIONS.md) | Configuration, sign-in, review and reconciliation. |
 | [CV preparation](docs/CV_PREPARATION.md) | Vacancy targeting, factual preservation and provenance. |

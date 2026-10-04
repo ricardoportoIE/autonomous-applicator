@@ -39,6 +39,7 @@ jobs:
       - run: uv run python scripts/check_repository_hygiene.py
       - run: uv run python -m mypy src
       - run: uv run python -m pytest
+      - run: uv run python scripts/check_backend_coverage.py
       - run: npm run coverage:browser
       - run: uv run python -m pip_audit
       - uses: actions/upload-artifact@v4
@@ -47,5 +48,6 @@ jobs:
           name: coverage-${{ matrix.os }}-${{ matrix.python }}
           path: |
             coverage.xml
+            test-results/backend-coverage.json
             test-results/frontend-report
             test-results/unit-coverage

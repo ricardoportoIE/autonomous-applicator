@@ -152,4 +152,6 @@ To use the model for ordinary and automatic document preparation, enable **Use G
 
 ## Validation limits
 
+The backend enforces 100% statement and branch coverage for every Python application module. Run `uv run pytest` followed by `uv run python scripts/check_backend_coverage.py` for a fresh measurement and complete-inventory check. CI applies both gates to every supported Windows/Linux and Python combination. Reports remain local under `test-results` and are uploaded as CI artifacts. See [testing and coverage](TESTING.md) for the scope, focused development checks and separate frontend measurements.
+
 The test suite exercises a real browser against local fixtures and intercepts all LinkedIn fixture traffic. It does not log into a real account, submit actual applications or send invitations. Unsupported company portals require manual hand-off. Unusual motivation questions, personal decisions and unsupported factual answers require review. Supported professional questions may use verified source text selected by GPT-6.1 Sol; the model cannot invent questionnaire facts.

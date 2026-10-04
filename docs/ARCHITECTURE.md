@@ -59,6 +59,10 @@ Stage updates and results are committed separately from slow model/browser calls
 
 Restart recovery retains the interrupted stage. Pending preparation records lose their submission manifest and become current-revision review holds; reserved submissions become uncertain. Neither state is automatically retried. The latest results remain readable across subsequent empty cycles. Dashboard polling observes these records without starting work, survives reloads, discards locked-session responses and keeps elapsed-time updates outside the live announcement region.
 
+## Verification boundaries
+
+Every Python application module participates in the 100% statement/branch gate. Coverage.py traces both Playwright greenlets and API worker threads. A separate inventory check requires every authored backend file and zero missing paths in each module; it rejects runtime exclusions while permitting the signature-only adapter typing protocol. CI verifies each supported OS/Python combination independently. Fault tests check mutable permissions, candidate/question revisions, document integrity, archive ownership, provider identity and receipt confirmation at their action boundaries. [Testing and coverage](TESTING.md) describes the scope and reproduction commands.
+
 ## Learning
 
 Outcome feedback supports aggregate observations and candidate-reviewed suggestions. It does not self-train model weights, add skills, alter immigration facts, lower thresholds or fabricate experience. Small samples are reported as insufficient evidence, not causal proof.

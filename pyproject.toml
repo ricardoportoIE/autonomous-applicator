@@ -34,7 +34,7 @@ packages = ["src/applicator"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--strict-markers --cov=applicator --cov-branch --cov-report=term-missing --cov-report=xml --cov-fail-under=90"
+addopts = "--strict-markers --cov=applicator --cov-branch --cov-report=term-missing --cov-report=xml --cov-report=json:test-results/backend-coverage.json --cov-fail-under=100"
 markers = ["browser: real Chromium tests against a local fixture"]
 
 [tool.ruff]
@@ -57,3 +57,7 @@ ignore_missing_imports = true
 # Playwright switches greenlets; explicitly trace both greenlets and API worker threads.
 core = "ctrace"
 concurrency = ["greenlet", "thread"]
+
+[tool.coverage.report]
+precision = 2
+fail_under = 100

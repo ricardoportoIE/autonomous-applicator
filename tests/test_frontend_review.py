@@ -131,9 +131,11 @@ def test_slow_operation_completion_is_observed_without_repeating_the_command(das
     commands = []
     page.on(
         "request",
-        lambda request: commands.append(request.url)
-        if request.method == "POST" and request.url.endswith(endpoint)
-        else None,
+        lambda request: (
+            commands.append(request.url)
+            if request.method == "POST" and request.url.endswith(endpoint)
+            else None
+        ),
     )
     if operation == "prepare":
         page.get_by_role("button", name="Prepare documents", exact=True).click()
