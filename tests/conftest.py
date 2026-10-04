@@ -1,9 +1,21 @@
+import os
 from pathlib import Path
 
 import pytest
 from playwright.sync_api import expect
 
 from applicator.models import Evidence, Job, Profile
+
+
+@pytest.fixture(autouse=True)
+def isolate_private_environment(monkeypatch):
+    # CLI tests must not import the operator's keys, data paths or browser settings.
+    # Individual tests can still set their own controlled configuration afterwards.
+    for name in list(os.environ):
+        if name.startswith(("OPENAI_", "APPLICATOR_")):
+            monkeypatch.delenv(name)
+    monkeypatch.setattr("dotenv.load_dotenv", lambda: None)
+    monkeypatch.setattr("applicator.cli.load_dotenv", lambda: None)
 
 
 @pytest.fixture(autouse=True)
