@@ -462,7 +462,7 @@ class Service:
                 nonlocal pending_question
                 report(
                     "answering_routine_questions",
-                    "Checking approved answers for a live question.",
+                    f"Checking approved answers for: {question.label}. Offered choices: {len(question.choices)}.",
                 )
                 answer = self.resolve_question(app_id, profile, revision, job, question)
                 if answer is None:

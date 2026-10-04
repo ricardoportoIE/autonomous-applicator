@@ -349,7 +349,9 @@ def application_dialog(page: Page) -> Locator:
     """Wait for one visible native or ARIA dialog and its rendered form controls."""
     dialog = page.get_by_role("dialog").filter(visible=True)
     dialog.wait_for(timeout=10000)
-    controls = dialog.locator('input:not([type="hidden"]), select, textarea')
+    controls = dialog.locator(
+        'input:not([type="hidden"]), select, textarea, [role="checkbox"], [role="combobox"]'
+    )
     actions = dialog.get_by_role("button", name=re.compile(r"^(Next|Review|Submit application)$"))
     controls.or_(actions).filter(visible=True).first.wait_for(timeout=10000)
     return dialog
@@ -359,7 +361,7 @@ def application_step(dialog: Locator) -> str:
     """Identify form controls and navigation without recording personal field values."""
     return str(
         dialog.evaluate(r"""dialog => JSON.stringify({
-      fields:[...dialog.querySelectorAll('input,select,textarea')].map(el=>[el.id,el.type]),
+      fields:[...dialog.querySelectorAll('input,select,textarea,[role="checkbox"],[role="combobox"]')].map(el=>[el.id,el.type || el.getAttribute('role')]),
       actions:[...dialog.querySelectorAll('button')].filter(el=>el.checkVisibility() && /^(Next|Review|Submit application)$/.test(el.textContent.trim())).map(el=>el.textContent.trim())
     })""")
     )
@@ -371,6 +373,7 @@ def form_questions(page: Page) -> list[dict[str, Any]]:
         application_dialog(page).evaluate(r"""dialog => {
       const text = el => el?.textContent.trim() || '';
       const unmark = value => value.replace(/\s*\*$/, '').trim();
+      const labelledBy = el => (el?.getAttribute('aria-labelledby') || '').split(/\s+/).map(id=>text(document.getElementById(id))).filter(Boolean).join(' ');
       const groupFor = el => el.closest('fieldset,[role="radiogroup"]');
       const semanticGroup = el => {
         const group = groupFor(el);
@@ -384,24 +387,25 @@ def form_questions(page: Page) -> list[dict[str, Any]]:
         if (!label || cards.length<2 || cards.length!==inputs.length || cards.some(card=>card.querySelectorAll('input[type="radio"]').length!==1 || unmark(card.getAttribute('aria-label') || '')!==label)) return null;
         return {label,required:text(labels[0]).endsWith('*')};
       };
-      const widget = el => el.type==='checkbox' ? el.closest('[role="checkbox"]') : null;
+      const widget = el => el.closest('[role="checkbox"]');
       const required = el => el.required || el.getAttribute('aria-required') === 'true' || widget(el)?.getAttribute('aria-required') === 'true' || (el.type==='radio' && (groupFor(el)?.getAttribute('aria-required')==='true' || semanticGroup(el)?.required));
       const labelText = el => {
         const label=el.labels?.[0]?.cloneNode(true);
         if(label) label.querySelectorAll('input,select,textarea,[aria-hidden="true"]').forEach(n=>n.remove());
         const choice = el.type==='radio' && semanticGroup(el) ? text(el.closest('[role="radio"]')) : '';
-        const value = (text(label) || el.getAttribute('aria-label') || widget(el)?.getAttribute('aria-label') || choice || '').trim();
+        const value = (text(label) || el.getAttribute('aria-label') || labelledBy(el) || widget(el)?.getAttribute('aria-label') || labelledBy(widget(el)) || choice || '').trim();
         return required(el) ? unmark(value) : value;
       };
-      const groupLabel = el => text(groupFor(el)?.querySelector('legend')) || groupFor(el)?.getAttribute('aria-label') || semanticGroup(el)?.label || '';
-      return [...dialog.querySelectorAll('input,select,textarea')]
-      .filter(el => el.type !== 'hidden' && el.type !== 'file' && !['submit','button'].includes(el.type))
-      .map(el => ({id:el.id, type:el.type, value:el.value, checked:el.checked || ['true','mixed'].includes(widget(el)?.getAttribute('aria-checked')),
+      const groupLabel = el => text(groupFor(el)?.querySelector('legend')) || groupFor(el)?.getAttribute('aria-label') || labelledBy(groupFor(el)) || semanticGroup(el)?.label || '';
+      return [...dialog.querySelectorAll('input,select,textarea,[role="combobox"],[role="checkbox"]')]
+      .filter(el => !el.disabled && el.getAttribute('aria-disabled')!=='true' && el.type !== 'hidden' && el.type !== 'file' && !(el.tagName==='INPUT' && ['submit','button','reset'].includes(el.type)) &&
+        (!el.matches('[role="checkbox"]') || !el.querySelector('input[type="checkbox"]')))
+      .map(el => ({id:el.id, type:el.getAttribute('role')==='combobox' ? 'combobox' : el.type || el.getAttribute('role'), value:el.value || el.getAttribute('aria-valuetext') || (el.getAttribute('role')==='combobox' ? text(el) : ''), checked:el.checked || ['true','mixed'].includes(widget(el)?.getAttribute('aria-checked')),
         label:labelText(el),
         group:el.type === 'radio' ? (required(el) ? unmark(groupLabel(el)) : groupLabel(el).trim()) : '',
-        group_choices:el.type === 'radio' && el.name ? [...(groupFor(el) || dialog).querySelectorAll('input[type=radio]')].filter(other=>other.name===el.name).map(labelText) : [],
+        group_choices:el.type === 'radio' && el.name ? [...(groupFor(el) || dialog).querySelectorAll('input[type=radio]')].filter(other=>other.name===el.name && !other.disabled).map(labelText) : [],
         required:!!required(el),
-        choices:el.tagName === 'SELECT' ? [...el.options].map(o=>o.text) : []}));}""")
+        choices:el.tagName === 'SELECT' ? [...el.options].filter(o=>!o.disabled && !o.closest('optgroup[disabled]') && o.value!=='').map(o=>o.text.trim()) : []}));}""")
     )
 
 
@@ -522,6 +526,7 @@ def fill_questions(
     *,
     resume_field_ids: set[str] | None = None,
     resolver: Callable[[Question], str | None] | None = None,
+    progress: Callable[[str, str], None] | None = None,
 ) -> None:
     fields = form_questions(page)
     phone_answers = contact_phone_answers(fields, profile)
@@ -544,11 +549,25 @@ def fill_questions(
         label, field_id = str(field["label"]).strip(), str(field["id"])
         if resume_field_ids and field_id in resume_field_ids:
             continue
-        if field["type"] == "checkbox" and not field["required"] and not field.get("checked"):
+        if (
+            field["type"] == "checkbox"
+            and not field["required"]
+            and not field.get("checked")
+            and not label
+        ):
             continue
         if not label or not field_id:
             raise ValueError("Unlabelled form control requires manual review")
         locator = dialog.locator('[id="' + field_id.replace('"', '\\"') + '"]')
+        if locator.count() != 1:
+            raise ValueError("Ambiguous form control identifiers require manual review")
+        if progress:
+            progress(
+                "answering_questions",
+                f"Checking {field['type']} field: {field.get('group') or label}.",
+            )
+        if field["type"] == "select-multiple":
+            raise ValueError(f"Multiple selections require an explicit approved mapping: {label}")
         if field["type"] == "radio":
             group = field["group"]
             if not group or not field["group_choices"]:
@@ -574,19 +593,107 @@ def fill_questions(
             if re.fullmatch(r"Follow .+ to stay up to date.*", label):
                 locator.uncheck()
                 continue
-            raise ValueError(f"Explicit selection or consent requires manual review: {label}")
+            value = answer(label, ["Yes", "No"], field["required"])
+            if not value:
+                if not field["required"] and not field.get("checked"):
+                    continue
+                if resolver is not None:
+                    raise ValueError(f"Approve an exact answer for: {label}")
+                raise ValueError(f"Explicit selection or consent requires manual review: {label}")
+            if value not in {"Yes", "No"}:
+                raise ValueError(f"Approved answer does not match available choices: {label}")
+            target = value == "Yes"
+            card = locator.locator("xpath=ancestor-or-self::*[@role='checkbox'][1]")
+            if card.count() == 1 and card.get_attribute("aria-checked") is not None:
+                if card.get_attribute("aria-checked") != str(target).lower():
+                    (card if card.is_visible() else locator).click()
+                if card.get_attribute("aria-checked") != str(target).lower():
+                    raise ValueError(f"The approved checkbox answer was not selected: {label}")
+            else:
+                locator.set_checked(target)
+            if not locator.evaluate(
+                "(el, answer) => el.tagName==='INPUT' ? el.checked===answer.target && el.checkValidity() : !answer.required || answer.target",
+                {"target": target, "required": field["required"]},
+            ):
+                raise ValueError(f"The approved checkbox answer was not selected: {label}")
+            continue
+        if field["type"] == "combobox":
+            locator.click()
+            controlled = locator.get_attribute("aria-controls") or ""
+            if not controlled or len(controlled.split()) != 1:
+                raise ValueError(f"Unmapped dropdown options require manual review: {label}")
+            listbox = page.locator('[id="' + controlled.replace('"', '\\"') + '"][role="listbox"]')
+            if listbox.count() != 1:
+                raise ValueError(f"Unmapped dropdown options require manual review: {label}")
+            listbox.wait_for(state="visible", timeout=10000)
+            options = (
+                listbox.get_by_role("option")
+                .filter(visible=True)
+                .locator("xpath=self::*[not(@disabled) and not(@aria-disabled='true')]")
+            )
+            choices = options.evaluate_all(
+                "els => els.map(el => (el.getAttribute('aria-label') || el.textContent).trim())"
+            )
+            value = answer(label, choices, field["required"])
+            if not value:
+                raise ValueError(f"Approve an exact answer for: {label}")
+            selection = (
+                listbox.get_by_role("option", name=value, exact=True)
+                .filter(visible=True)
+                .locator("xpath=self::*[not(@disabled) and not(@aria-disabled='true')]")
+            )
+            if not choices or value not in choices or selection.count() != 1:
+                raise ValueError(f"Approved answer does not match available choices: {label}")
+            selection.click()
+            if (
+                locator.evaluate(
+                    "el => (el.getAttribute('aria-valuetext') || el.value || el.textContent).trim()"
+                )
+                != value
+            ):
+                raise ValueError(f"The approved dropdown answer was not selected: {label}")
+            continue
         value = phone_answers.get(label) or answer(label, field["choices"], field["required"])
         if not value or not value.strip():
             # Existing values also need validation; never assume a prefilled legal answer is correct.
             if field["required"] or field["value"]:
                 raise ValueError(f"Approve an exact answer for: {label}")
             continue
-        if field["choices"]:
-            if value not in field["choices"]:
+        if field["type"] == "select-one":
+            if value not in field["choices"] or field["choices"].count(value) != 1:
                 raise ValueError(f"Approved answer does not match available choices: {label}")
             locator.select_option(label=value)
+            if locator.evaluate("el => el.selectedOptions[0].text.trim()") != value:
+                raise ValueError(f"The approved dropdown answer was not selected: {label}")
         else:
+            if field["type"] not in {
+                "text",
+                "textarea",
+                "email",
+                "tel",
+                "url",
+                "search",
+                "number",
+                "date",
+                "month",
+                "week",
+                "time",
+                "datetime-local",
+            }:
+                raise ValueError(f"Unsupported input type requires manual review: {label}")
+            if not locator.evaluate(
+                """(el, value) => {
+                const probe=el.cloneNode(true); probe.value=value;
+                return probe.value===value && probe.checkValidity() &&
+                  (el.maxLength==null || el.maxLength<0 || value.length<=el.maxLength) &&
+                  (el.minLength==null || el.minLength<0 || value.length>=el.minLength);
+            }""",
+                value,
+            ):
+                raise ValueError(f"Approved answer does not satisfy field constraints: {label}")
             locator.fill(value)
+        if not locator.evaluate("el => el.checkValidity()"):
+            raise ValueError(f"Approved answer does not satisfy field constraints: {label}")
 
 
 class LinkedInBrowser:
@@ -811,6 +918,7 @@ class LinkedInBrowser:
                     self.profile,
                     resume_field_ids=resume_fields,
                     resolver=self.question_resolver,
+                    progress=self.report,
                 )
                 self.report(
                     "uploading_documents",

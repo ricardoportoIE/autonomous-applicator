@@ -46,6 +46,43 @@ def dashboard(data, profile, job, request):
 
 
 @pytest.mark.browser
+def test_main_start_pause_control_drives_the_real_background_queue(data, profile, job, request):
+    app = create_app(data, TOKEN, worker=True)
+    app.state.store.save_profile(profile)
+    app.state.store.set_settings(Settings(poll_seconds=3600, connections_enabled=True))
+    job.source = "manual"
+    job.url = "https://example.test/jobs/backend"
+    app_id, _ = app.state.store.add_job(job)
+    provider = Mock()
+    provider.submit.return_value = "fixture:confirmed"
+    app.state.service.adapters["manual"] = provider
+    with server(app) as origin, sync_playwright() as playwright:
+        with playwright.chromium.launch(headless=True, **browser_options()) as browser:
+            page = browser.new_page()
+            coverage = start_coverage(page)
+            errors = []
+            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.goto(origin)
+            page.get_by_label("Access token", exact=True).fill(TOKEN)
+            page.get_by_role("button", name="Unlock workspace").click()
+            start = page.get_by_role("button", name="Start agent", exact=True)
+            expect(start).to_be_enabled(timeout=15000)
+            start.click()
+            pause = page.get_by_role("button", name="Pause agent", exact=True)
+            expect(pause).to_be_enabled()
+            expect(page.locator("#worker-status")).to_contain_text("Completed", timeout=20000)
+            assert app.state.store.application(app_id)["state"] == State.SUBMITTED
+            assert provider.submit.call_count == 1
+            pause.click()
+            expect(start).to_be_enabled()
+            assert not app.state.store.settings().automation_enabled
+            assert app.state.store.settings().connections_enabled
+            assert app.state.store.daily_usage().used == 1
+            assert not errors
+            save_coverage(coverage, request.node.nodeid)
+
+
+@pytest.mark.browser
 def test_ai_default_setting_and_normal_prepare_show_verified_origin(dashboard):
     page, app, _ = dashboard
     calls = []
@@ -220,7 +257,7 @@ def test_queue_monitor_resumes_observation_and_pause_during_slow_preparation(das
             expect(page.locator("#worker-status")).to_contain_text("selecting evidence")
             expect(page.locator("#worker-status")).to_contain_text("Backend Engineer")
         else:
-            page.get_by_role("button", name="Pause all automation", exact=True).click()
+            page.get_by_role("button", name="Pause agent", exact=True).click()
             expect(page.locator("#notice")).to_contain_text("Automation paused")
         release.set()
         expect(page.locator("#worker-status")).to_contain_text(
@@ -432,7 +469,7 @@ def test_duplicate_clicks_are_suppressed_and_pause_remains_available(dashboard):
     button.click()
     # Reproduce a second event while the operation is pending; native controls are disabled.
     button.dispatch_event("click")
-    page.get_by_role("button", name="Pause all automation", exact=True).click()
+    page.get_by_role("button", name="Pause agent", exact=True).click()
     expect(page.locator("#notice")).to_contain_text("Automation paused.")
     assert len(held) == 1
     assert not app.state.store.settings().automation_enabled

@@ -25,8 +25,11 @@ def test_worker_logs_an_error_and_stops_cleanly(data, monkeypatch):
         def set(self):
             pass
 
+        def clear(self):
+            pass
+
         def is_set(self):
-            return False
+            return self.calls > 1
 
     class Thread:
         def __init__(self, target, daemon):
@@ -38,8 +41,11 @@ def test_worker_logs_an_error_and_stops_cleanly(data, monkeypatch):
         def join(self):
             pass
 
+    signal = Stop()
     monkeypatch.setattr(
-        module, "threading", SimpleNamespace(Lock=threading.Lock, Event=Stop, Thread=Thread)
+        module,
+        "threading",
+        SimpleNamespace(Lock=threading.Lock, Event=lambda: signal, Thread=Thread),
     )
     app = create_app(data, "local-test-token", worker=True)
     with TestClient(app):

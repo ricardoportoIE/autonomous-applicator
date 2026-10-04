@@ -16,6 +16,7 @@ import type {
 export interface WorkspaceState {
   unlocked: boolean;
   pending: boolean;
+  automationChanging: boolean;
   view: View;
   notice: string;
   error: boolean;
@@ -41,6 +42,7 @@ export interface WorkspaceState {
 const empty = (): WorkspaceState => ({
   unlocked: false,
   pending: false,
+  automationChanging: false,
   view: "overview",
   notice: "",
   error: false,
@@ -419,11 +421,30 @@ export class Workspace {
           {
             ...this.state.settings,
             automation_enabled: false,
-            connections_enabled: false,
           },
           "Automation paused. An external action already in flight may finish.",
         );
     }, true);
+  }
+  async toggleAutomation() {
+    if (this.state.automationChanging || !this.state.settings) return;
+    const session = this.api.session();
+    this.update({ automationChanging: true });
+    try {
+      if (this.state.settings.automation_enabled) await this.pause();
+      else
+        await this.action(async () => {
+          await this.mutate(
+            "/worker/start",
+            "POST",
+            undefined,
+            "Agent started. The FIFO queue will resume in the background.",
+          );
+        }, true);
+    } finally {
+      if (this.api.isCurrent(session))
+        this.update({ automationChanging: false });
+    }
   }
   tick() {
     return this.action(async () => {

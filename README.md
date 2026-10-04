@@ -28,6 +28,8 @@ Discovery diagnostics identify each read stage, the current vacancy's position a
 
 Question approval is scoped to one application. It rechecks readiness, preserves current verified CVs and leaves other applications intact. The worker resumes eligible saved opportunities before searching again, completes each vacancy in FIFO order and continues preparation when daily sending capacity is exhausted. Unknown provider questions retain their exact choices for deliberate review.
 
+The browser distinguishes text and typed inputs, native selects, radio groups, native/ARIA checkboxes and mapped ARIA dropdowns. It reads enabled choices, uses approved facts or exact answers, validates field constraints and confirms the resulting selection. Unknown consent and ambiguous controls stay in review. **Start agent / Pause agent** wakes or pauses the same background worker immediately, retaining the separate networking preference.
+
 ## What the workspace does
 
 | Capability | User outcome |
@@ -36,7 +38,7 @@ Question approval is scoped to one application. It rechecks readiness, preserves
 | Explainable fit | Inspect matched technologies, evidence gaps, location considerations and explicit blockers before acting. |
 | Tailored documents | Generate A4 PDF/DOCX CVs and a required cover letter from approved evidence, with hashes and preparation provenance. |
 | Questionnaire assistance | Resolve routine questions from approved facts; request a separate GPT-6.1 Sol draft and explicitly review, edit and approve it. |
-| Sequential processing | Follow the current opportunity, stage, elapsed time, run identifier and failure point. Pause background application and networking work. |
+| Sequential processing | Follow the current opportunity, stage, elapsed time, run identifier and failure point. Start or pause background application and networking work. |
 | Complete records | Inspect dated attempts, candidate and opportunity snapshots, archived documents, observed form answers, receipts and private confirmation screenshots. |
 | Professional networking | Review European hiring contacts, open their profiles and send an invitation to the selected person without a note. Confirmed invitations move to Archived. |
 | Candidate and policy management | Maintain qualifications, source evidence, exact answers, eligibility facts, search preferences and independent daily limits. |

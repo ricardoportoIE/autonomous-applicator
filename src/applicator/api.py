@@ -134,6 +134,7 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
     service = Service(store, data, selector=select_ai, question_selector=select_question)
     browser_lock = threading.Lock()
     stop = threading.Event()
+    wake = threading.Event()
 
     def configure_adapter() -> None:
         profile, _ = store.profile()
@@ -202,7 +203,11 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
             return result
 
     def loop() -> None:
-        while not stop.wait(store.settings().poll_seconds):
+        while not stop.is_set():
+            wake.wait(store.settings().poll_seconds)
+            wake.clear()
+            if stop.is_set():
+                break
             try:
                 tick()
             except Exception as exc:
@@ -220,6 +225,7 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
                 yield
             finally:
                 stop.set()
+                wake.set()
                 if thread:
                     thread.join()
 
@@ -598,6 +604,18 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
     @app.post("/api/worker/tick", dependencies=auth)
     def run_tick() -> dict[str, str]:
         return tick()
+
+    @app.post("/api/worker/start", dependencies=auth)
+    def start_worker() -> Settings:
+        if not worker:
+            raise HTTPException(
+                503,
+                "The background worker is disabled. Restart the server with its worker enabled.",
+            )
+        settings = store.settings().model_copy(update={"automation_enabled": True})
+        store.set_settings(settings)
+        wake.set()
+        return settings
 
     @app.get("/api/worker/status", dependencies=auth)
     def worker_status() -> dict[str, Any]:

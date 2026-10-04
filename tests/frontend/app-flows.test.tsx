@@ -246,8 +246,8 @@ it("keeps the global pause available while work is pending and displays held sen
   const tick = vi.spyOn(h.workspace, "tick");
   fireEvent.click(screen.getByRole("button", { name: /Run agent cycle/i }));
   await waitFor(() => expect(tick).toHaveBeenCalledOnce());
-  const pause = vi.spyOn(h.workspace, "pause");
-  fireEvent.click(screen.getByRole("button", { name: "Pause all automation" }));
+  const pause = vi.spyOn(h.workspace, "toggleAutomation");
+  fireEvent.click(screen.getByRole("button", { name: "Pause agent" }));
   await waitFor(() => expect(pause).toHaveBeenCalledOnce());
 });
 

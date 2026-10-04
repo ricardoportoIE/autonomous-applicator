@@ -2,6 +2,18 @@
 
 The queue completes one vacancy at a time. Quality checks and a confirmed provider outcome take precedence over throughput.
 
+## Starting and pausing
+
+The main **Start agent / Pause agent** control reflects the saved automation setting. Start enables automation and wakes the existing background worker immediately, rather than waiting for the polling interval. Repeated wake requests coalesce, and cycles remain on one worker thread with the durable operation guard. Pause remains available during slow preparation or provider work; it prevents subsequent actions at the existing pause boundaries. An external action already in flight can finish. Pausing keeps the separate networking preference: both queues require the global enable switch. Starting a server configured without its background worker returns an actionable error instead of claiming that processing has begun.
+
+## Questionnaire controls
+
+The adapter reads the current dialogue, accessible labels, required markers and enabled options. Text, email, phone, numeric and date/time inputs are filled only with an approved or grounded answer that satisfies native format, range, pattern and length constraints. Native selects and radio groups require an exact available choice. Placeholder and disabled select options are excluded; duplicate selectable labels require review.
+
+Native checkboxes and ARIA checkbox widgets use exact **Yes / No** answers: Yes selects, No clears. Unknown unchecked optional preferences remain untouched. Checked/required unknown preferences and consent statements are held for review with their exact question and binary choices; no general consent is inferred. Wrapper and native checked states are verified together. The company-follow checkbox is cleared as before.
+
+Mapped ARIA comboboxes are opened to read visible enabled options from their own `aria-controls` listbox, including portal-rendered options. The chosen accessible option must be unique and the control must display the selected answer afterwards. Unmapped dropdowns, unsupported inputs and native multiple-select controls require explicit review. Form inspection does not change candidate facts, existing job fingerprints or document provenance.
+
 ## Ordering and completion
 
 The worker resumes eligible records already in its durable queue before running another job search. When there is no pending preparation or ready record with sending capacity, enabled discovery imports a bounded batch with canonical URLs and duplicate checks. The worker then takes an application snapshot ordered by import identifier from oldest to newest. Ready records waiting only for the daily sending cap do not prevent further discovery and preparation. Networking discovery and invitations run after the application queue. Dashboard search, filters and sorting do not alter processing order. For each eligible vacancy:

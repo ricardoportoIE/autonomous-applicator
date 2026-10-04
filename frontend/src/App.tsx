@@ -8,6 +8,7 @@ import {
   ScrollText,
   LockKeyhole,
   CirclePause,
+  CirclePlay,
   Sparkles,
   ArrowUpRight,
 } from "lucide-react";
@@ -181,15 +182,26 @@ export function App({ workspace }: { workspace: Workspace }) {
             </button>
             <button
               id="pause"
-              className="danger"
+              className={settings?.automation_enabled ? "danger" : ""}
               type="button"
-              disabled={!state.unlocked}
-              onClick={() => void workspace.pause()}
+              disabled={
+                !state.unlocked || !settings || state.automationChanging
+              }
+              aria-busy={state.automationChanging}
+              onClick={() => void workspace.toggleAutomation()}
             >
-              <CirclePause size={16} aria-hidden="true" />
-              {settings?.automation_enabled
-                ? "Pause all automation"
-                : "Automation paused"}
+              {settings?.automation_enabled ? (
+                <CirclePause size={16} aria-hidden="true" />
+              ) : (
+                <CirclePlay size={16} aria-hidden="true" />
+              )}
+              {state.automationChanging
+                ? settings?.automation_enabled
+                  ? "Pausing agent…"
+                  : "Starting agent…"
+                : settings?.automation_enabled
+                  ? "Pause agent"
+                  : "Start agent"}
             </button>
           </div>
         </header>

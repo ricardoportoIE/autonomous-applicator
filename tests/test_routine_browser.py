@@ -142,9 +142,10 @@ def test_live_radio_resolution_is_cached_and_consent_is_never_automatic(profile,
         page.set_content(
             '<dialog open><label>I agree<input type="checkbox" id="consent" required></label></dialog>'
         )
-        with pytest.raises(ValueError, match="consent requires manual review"):
+        with pytest.raises(ValueError, match="Approve an exact answer for: I agree"):
             fill_questions(page, profile, resolver=resolve)
-        assert not page.locator("#consent").is_checked() and len(calls) == 1
+        assert not page.locator("#consent").is_checked() and len(calls) == 2
+        assert calls[1].label == "I agree" and calls[1].choices == ["Yes", "No"]
 
 
 @pytest.mark.browser

@@ -2,6 +2,10 @@
 
 The local dashboard is implemented in React and strict TypeScript, built with Vite and Tailwind CSS. All six workspace areas and existing API operations are retained. Forms for adding or editing opportunities, candidate facts, qualifications, contacts and Greenhouse imports open native dialogues from explicit buttons. Dialogues have accessible names, keyboard containment, Escape/close handling and focus restoration. Failed saves keep the draft visible and explain the error inside the dialogue. Closing a dialogue discards unsaved input; successful saves update the underlying record and close it.
 
+The main automation control toggles **Start agent / Pause agent** and shows **Starting agent… / Pausing agent…** while saving. It suppresses duplicate control requests separately from ordinary workspace work, so pausing remains possible during a slow operation. Start wakes the background queue immediately. The global pause preserves the user's separate networking switch, and stale responses cannot repopulate a locked workspace.
+
+The current React unit suite has 154 cases and measures 100% in all ten runtime modules: 817 statements, 740 lines, 294 functions and 862 branch outcomes. The earlier migration measurements below refer to their own source revisions. Production Chromium tests additionally exercise the actual background Start/Pause flow with fictional records.
+
 ## Feature parity
 
 | Area | Retained information and operations | Organisation |
