@@ -112,16 +112,41 @@ def test_generate_review_edit_and_explicitly_approve_answer(dashboard, monkeypat
 @pytest.mark.browser
 def test_binary_idea_is_explanation_only_until_candidate_decides(dashboard, monkeypatch):
     page, app, _ = dashboard
-    _, sdk, response = configure(app, monkeypatch, choices=["Yes", "No"])
-    response.output_parsed.draft = "Yes"
+    app_id, sdk, response = configure(app, monkeypatch, choices=["Yes", "No"])
+    profile, revision = app.state.store.profile()
+    profile.answers["work_permission_details"] = (
+        "Stamp 2 permits part-time work only; full-time work requires sponsorship."
+    )
+    app.state.store.save_profile(profile)
+    job = Job.model_validate(app.state.store.application(app_id)["job"])
+    job.questions[0].label = "Are you legally authorised to work in Ireland?"
+    app.state.store.update_job(app_id, job)
+    response.output_parsed.draft = profile.answers["work_permission_details"]
+    response.output_parsed.evidence_ids = []
+    response.output_parsed.fact_keys = [
+        "answer:work_permission_details",
+        "sponsorship_required",
+        "location",
+    ]
+    page.reload()
+    expect(page.get_by_role("button", name="Applications", exact=True)).to_be_enabled()
     open_questions(page)
     page.get_by_role("button", name="Suggest with GPT-6.1 Sol").click()
     expect(page.get_by_role("button", name="Use as editable draft")).to_be_disabled()
-    expect(page.get_by_label("Describe your Python experience", exact=True)).to_have_value("")
+    expect(
+        page.get_by_label("Are you legally authorised to work in Ireland?", exact=True)
+    ).to_have_value("")
+    expect(page.get_by_text("Employer sponsorship: required", exact=True)).to_be_visible()
+    expect(page.get_by_text("Location: Dublin, Ireland", exact=True)).to_be_visible()
+    expect(
+        page.get_by_text(
+            "work permission details: " + profile.answers["work_permission_details"], exact=True
+        )
+    ).to_be_visible()
     expect(
         page.get_by_text("Review the explanation and choose the exact answer yourself.")
     ).to_be_visible()
-    assert app.state.store.profile()[0].answers == {"sponsorship": "Yes"}
+    assert app.state.store.profile() == (profile, revision + 1)
     assert sdk.responses.parse.call_count == 1
 
 

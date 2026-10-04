@@ -111,10 +111,12 @@ it("keeps a generated idea separate from the user's text until explicitly used a
 });
 
 it("does not apply an unapproved binary suggestion and lets the candidate decide", async () => {
+  const permission =
+    "Stamp 2 permits part-time work only; full-time work requires sponsorship.";
   render(
     <Answer
       question={{ ...question, choices: ["Yes", "No"] }}
-      profile={profile}
+      profile={{ ...profile, answers: { work_permission_details: permission } }}
       workspace={workspace}
       id={1}
     />,
@@ -124,8 +126,17 @@ it("does not apply an unapproved binary suggestion and lets the candidate decide
     ...idea,
     draft: "Yes",
     needs_clarification: true,
-    fact_keys: ["answer:work_permission_details"],
+    fact_keys: [
+      "answer:work_permission_details",
+      "sponsorship_required",
+      "location",
+    ],
   });
+  expect(
+    screen.getByText("work permission details: " + permission),
+  ).toBeVisible();
+  expect(screen.getByText("Employer sponsorship: required")).toBeVisible();
+  expect(screen.getByText("Location: Dublin, Ireland")).toBeVisible();
   expect(screen.getByRole("combobox")).toHaveValue("");
   expect(
     screen.getByRole("button", { name: "Use as editable draft" }),
