@@ -1,6 +1,16 @@
 # Delivery and validation record
 
-Version 0.3.0 reviewed through the application-record and confirmation-evidence follow-up on 4 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+Version 0.3.0 reviewed through the complete frontend and portfolio documentation follow-up on 4 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+
+## Complete frontend review and portfolio presentation, 4 October 2026
+
+All ten authored runtime frontend files, including the React entry point, now have **100% line, statement, function and branch coverage**, enforced separately per file. The **145 passing Vitest tests** cover 729 lines, 804 statements, 291 functions and 832 branch outcomes. Type-only contracts and declarations are the only authored exclusions; no component, helper or bootstrap is excluded and no coverage-ignore directives are used. The initial full-scope baseline was 72.87% lines; the earlier three-helper measurement was not a complete UI coverage claim.
+
+Corrected obsolete detail/record reads, stale mutation redirects, lock/session ownership at async boundaries, all-area reload restoration, duplicate history reads, focus-only hash navigation, blocked session storage, malformed validation arrays and private download cleanup. The full application page now offers authenticated **Refresh record**, which performs reads only. Ten added production-browser cases passed with enabled CSP and accessibility scans, bringing the Python suite to **595 collected cases**. The complete Windows/Python 3.14 rerun is in progress; its result is recorded separately when complete.
+
+Strict TypeScript, ESLint, Prettier, Ruff and strict mypy across 19 source modules passed. npm and Python dependency audits found no known vulnerabilities in audited dependencies; pip-audit excludes the unpublished local project itself. Python wheel/source checks verified the four current React assets and no private runtime paths. Read-only verification of the actual configured server confirmed the new bundle, all six views and reloads, record refresh, mobile containment and lock, with zero JavaScript errors or inspection mutations. Frontend assets are served directly from disk, so no server restart or change to the user's automation settings was needed.
+
+The README now presents business decisions, service boundaries, bounded AI, recovery, delivery ownership and verification as an engineering case study. Seven updated screenshots show the packaged UI with fictional data. `scripts/capture_screenshots.py` reproduces them using a disposable SQLite workspace and one genuine loopback provider-fixture submission; external browser requests are blocked and no OpenAI request is made. Candidate information, real provider screenshots and credentials remain local. Relative README links, image references and packaged assets were checked. Coverage measures executed code and tested assertions, not universal provider compatibility or defect-free live applications.
 
 ## Application records and confirmation evidence, 4 October 2026
 

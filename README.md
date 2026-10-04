@@ -1,95 +1,212 @@
 # Autonomous Applicator
 
-A local job application workbench that links every candidate claim to evidence, explains job fit, prepares tailored CVs and cover letters, and controls application queues.
+**An evidence-led career workspace: tailored applications, controlled automation and a record of every decision.**
 
-Inspect submission readiness without opening a browser or consuming a daily attempt. Search and sort the queue, follow an individual application's activity, and see confirmed applications sent and any pending sending reservations for the London day.
+[![Quality and application safeguards](https://github.com/ricardoportoIE/autonomous-applicator/actions/workflows/ci.yml/badge.svg)](https://github.com/ricardoportoIE/autonomous-applicator/actions/workflows/ci.yml)
+[![Frontend runtime coverage: 100%](https://img.shields.io/badge/frontend_runtime_coverage-100%25-176b62)](docs/FRONTEND.md#development-and-checks)
 
-Open **Full record** for a dated application page with the original opportunity link, per-attempt candidate and evidence snapshots, archived document downloads, observed form answers, provider receipts and the complete journal. New supported browser submissions save a private screenshot after visible confirmation; historical missing evidence is explicitly shown. See [Full application records](docs/OPERATIONS.md#full-application-records).
+A personal engineering portfolio project by [Ricardo Porto](https://github.com/ricardoportoIE), built around a practical problem: preparing relevant job applications without losing control of candidate facts, external actions or submission history.
 
-The agent processes opportunities in arrival order, completing each vacancy's evidence selection, documents, checks and submission before starting the next. A live monitor shows the current opportunity, stage, elapsed time and run identifier. Failed and interrupted work retains its recorded stage for review. See [Application queue operation](docs/APPLICATION_QUEUE.md).
+The system combines a React and TypeScript dashboard, a Python API, grounded AI assistance and permitted browser integrations. It evaluates opportunities, prepares vacancy-specific CVs and cover letters, processes one application at a time, and preserves what was actually sent. Candidate knowledge and automation policy remain under the user's control.
 
-Manage European hiring contacts in active and archived queues, with private circular portraits, highlighted locations, profile links and visible invitation progress.
+**Python · FastAPI · SQLite · React · TypeScript · Tailwind CSS · Playwright · OpenAI Responses API · GitHub Actions**
 
-![Local application dashboard with fictional example data](docs/assets/dashboard.png)
+![Current desktop workspace showing processing history, queue totals and sending capacity](docs/assets/dashboard.png)
 
-Built for an Ireland and UK technology job search. The interface, code, prompts and documentation use British English. Personal information, credentials, generated documents and browser sessions stay outside Git.
+*Screenshots updated on 4 October 2026. All candidate, vacancy, recruiter and outcome data shown are fictional. The confirmation comes from a disposable local provider fixture, not a real employer application. These are captures of the packaged interface, not design mock-ups.*
 
-## Delivery status
+## The product problem
 
-The implementation and validation record is maintained in [docs/STATUS.md](docs/STATUS.md). This repository must not describe simulated applications as real submissions. Live provider capabilities are explicitly registered; unsupported websites remain manual.
+A successful browser click is not enough to establish a trustworthy application. The system must know which candidate facts were approved, whether the vacancy still matches the reviewed details, which documents were uploaded, and whether the provider actually confirmed receipt.
 
-## Decision rules
+The product prioritises factual integrity and recoverability over throughput. Preparation and submission are separate decisions: the queue can keep preparing interesting opportunities after the daily sending limit is reached, while exceptional answers, incompatible requirements and unfamiliar provider behaviour remain visible for review.
 
-- **80–100:** eligible for automatic submission when all factual, document and provider checks pass.
-- **50–79:** manual review queue.
+## What the workspace does
+
+| Capability | User outcome |
+| --- | --- |
+| Discovery and import | Search configured LinkedIn opportunities, import a public Greenhouse board or add a vacancy manually. Search, filter and sort the queue. |
+| Explainable fit | Inspect matched technologies, evidence gaps, location considerations and explicit blockers before acting. |
+| Tailored documents | Generate A4 PDF/DOCX CVs and a required cover letter from approved evidence, with hashes and preparation provenance. |
+| Questionnaire assistance | Resolve routine questions from approved facts; request a separate GPT-6.1 Sol draft and explicitly review, edit and approve it. |
+| Sequential processing | Follow the current opportunity, stage, elapsed time, run identifier and failure point. Pause background application and networking work. |
+| Complete records | Inspect dated attempts, candidate and opportunity snapshots, archived documents, observed form answers, receipts and private confirmation screenshots. |
+| Professional networking | Review European hiring contacts, open their profiles and send an invitation to the selected person without a note. Confirmed invitations move to Archived. |
+| Candidate and policy management | Maintain qualifications, source evidence, exact answers, eligibility facts, search preferences and independent daily limits. |
+
+### Queue and review
+
+![Application queue with search, status filters, fit scores and dedicated record links](docs/assets/application-queue.png)
+
+**A high score does not override a factual or operational blocker.** In this fictional queue, the Cork vacancy has a 100/100 technical fit but remains in review because its location needs acceptance.
+
+<details>
+<summary>View questionnaire controls, networking and the mobile queue</summary>
+
+![Questionnaire review with an approved answer and separate AI suggestion and approval actions](docs/assets/question-review.png)
+
+AI suggestions do not save or approve themselves. The candidate keeps the final decision.
+
+![Networking queue with highlighted locations, profile links and a separate archive tab](docs/assets/networking.png)
+
+Initials appear when no private portrait is available. Each send acts on the selected person only.
+
+[View the complete mobile queue screenshot](docs/assets/mobile-queue.png). Browser tests also check mobile, tablet, desktop, enlarged text and keyboard navigation.
+
+</details>
+
+### What was submitted
+
+![Application record showing dates, opportunity context, an attempt and provider receipt](docs/assets/application-record.png)
+
+<details>
+<summary>View captured confirmation evidence from the local demonstration provider</summary>
+
+![Authenticated confirmation preview with a clearly labelled fictional local provider receipt](docs/assets/confirmation-evidence.png)
+
+Supported confirmed browser submissions can retain a private screenshot, its hash, capture time and observed provider URL. Missing historical evidence and capture failures are shown explicitly. A screenshot failure does not erase an otherwise confirmed receipt.
+
+</details>
+
+## Engineering decisions
+
+Business rules are invariants enforced by the API and persistence layer. The interface explains those rules; it is not their only gate.
+
+| Problem | Decision and trade-off | Implementation evidence |
+| --- | --- | --- |
+| AI can select irrelevant material or invent facts | Constrain structured output to approved evidence references and render factual wording locally. Trade creative flexibility for traceability. | [Evidence adviser](src/applicator/adviser.py), [CV audit](docs/CV_PREPARATION.md) |
+| A send can succeed even when its response is lost | Reserve capacity transactionally and hold uncertain outcomes for reconciliation. External mutations are never retried automatically. | [Submission service](src/applicator/service.py), [transactional store](src/applicator/store.py) |
+| Concurrent work can mix vacancies or reuse a browser | Use an operation lease and process applications sequentially, attributing progress to one opportunity. | [Queue design](docs/APPLICATION_QUEUE.md), [operation ownership](src/applicator/operations.py) |
+| Candidate facts can change while a CV or form is open | Version profiles, bind drafts to their opening revision, compare job/profile fingerprints and recheck document hashes before sending. | [Workspace controller](frontend/src/workspace.ts), [document validation](src/applicator/documents.py) |
+| Late reads can replace a newer page or reveal locked data | Use session generations and request ownership; invalidate obsolete responses and revoke private blob URLs. | [API client](frontend/src/api.ts), [race regressions](tests/frontend/session-races.test.ts) |
+| Today's profile does not prove yesterday's submission | Archive per-attempt snapshots and documents; keep observed provider fields separate from supplied candidate facts. | [Submission records](src/applicator/submission_records.py), [record browser tests](tests/test_submission_record_browser.py) |
+| Unbounded automation complicates recovery | Require configured scope, bounded adapters, confirmed-send limits and manual handling of unsupported portals. Prefer an explained stop to a guessed action. | [Operating guide](docs/OPERATIONS.md), [browser adapters](src/applicator/browser.py) |
+| A private tool still needs accessible, maintainable UX | Use strict TypeScript, native dialogues, labelled controls and keyboard tabs; serve local compiled assets under CSP. | [Feature map](docs/FRONTEND.md), [production UI tests](tests/test_react_frontend.py) |
+
+### Decision policy
+
+- **80–100:** eligible for automatic submission only when all required checks pass.
+- **50–79:** candidate review.
 - **0–49:** not prioritised.
-- Explicit incompatibilities, missing required answers, stale evidence, an uncertain previous submission or disabled automation prevent automatic submission regardless of score.
 
-The daily limit applies to confirmed applications sent. Planning, routine answers and CV preparation continue when the limit is reached; pending or uncertain sends reserve capacity separately. Interesting distant or overseas vacancies still receive documents and wait for location review. Agent settings provide city, country or configured-country preferences.
+Fit is a transparent heuristic, not an ATS score or hiring probability. Missing eligibility answers, stale documents, unconfirmed facts, disabled automation, an unsupported provider or an uncertain previous send can prevent submission regardless of score. Unmentioned sponsorship is unknown, not a refusal.
 
-The fit score is a transparent heuristic, not an ATS score or a hiring probability. Seniority and requested years alone are not rejection rules. Unmentioned sponsorship is unknown rather than refused.
+The application limit counts **confirmed sends** in the Europe/London day. Pending and uncertain sends hold capacity separately. Planning, routine answers and document preparation continue when sending capacity is full. Interesting distant or overseas vacancies can receive documents before location review. Networking has its own daily attempt limit and enable switch.
 
-## Local setup
+## Architecture
+
+```mermaid
+flowchart LR
+    UI[React and TypeScript workspace] --> API[Authenticated loopback FastAPI]
+    API --> Worker[Sequential worker and operation lease]
+    API --> Service[Application service]
+    Worker --> Service
+    Service --> Policy[Fit, eligibility and readiness policy]
+    Service --> AI[Bounded OpenAI evidence assistance]
+    Service --> Docs[Local CV and cover-letter renderer]
+    Service --> Store[(SQLite revisions, attempts and journal)]
+    Service --> Browser[Registered Playwright adapters]
+    Browser --> Provider[Authorised provider or local fixture]
+    Docs --> Files[Private documents and submission archives]
+    Browser --> Files
+```
+
+**React owns presentation and explicit commands.** The workspace controller manages immutable snapshots, session boundaries, routes, polling and invitation observation. Forms capture inputs before asynchronous work disables controls; failed saves retain editable drafts.
+
+**Python owns application decisions.** Pydantic validates contracts, SQLite transactions enforce revisions and capacity, and the service verifies materials before handing them to a registered provider. Durable journals and stage records support failure diagnosis and interrupted-work review.
+
+**SQLite and local files suit the current single-user deployment.** They keep setup small and records inspectable. Distributed workers, multi-tenant authentication and remote storage would require different consistency and privacy boundaries; this implementation does not claim them. See [architecture and submission invariants](docs/ARCHITECTURE.md).
+
+## AI with explicit boundaries
+
+The configured model is **`gpt-6.1-sol`**, called through the OpenAI Responses API with structured output, `store=False`, a bounded timeout and no automatic provider retries.
+
+For documents, AI ranks existing evidence identifiers for the vacancy. Validation rejects unknown or unapproved references, mismatched model identity and stale profile/job fingerprints. The local renderer preserves factual wording and records the model, evidence references and generation metadata. With AI preparation enabled, API or validation failures leave the opportunity in review without silently falling back to another preparation method.
+
+For questionnaires, **Suggest with GPT-6.1 Sol** returns a separate draft with supporting facts and review notes. Contact fields and sensitive answers are excluded from that request. Unknown legal, immigration or exceptional facts require candidate input; a provider's prefilled answer is not approval.
+
+Recorded outcomes can inform reviewed improvements. The system does not retrain itself, change qualifications or alter submission permissions automatically. [Live AI comparisons](docs/AI_BENCHMARK.md) and the [vacancy-specific CV audit](docs/CV_PREPARATION.md) document separately authorised experiments; ordinary tests use fixtures and incur no model charges.
+
+## Quality and verification
+
+The frontend review expanded measurement from three helpers to **all ten authored runtime TypeScript/TSX files**, including the bootstrap. **145 Vitest tests achieve 100% lines, statements, functions and branches**, enforced **per file** in CI. Only type-only contracts and declaration files are excluded. Libraries, generated bundles and test code are outside this measurement.
+
+| Verification layer | What it checks |
+| --- | --- |
+| Vitest and React Testing Library | Saved form payloads, failure feedback, application states, accessible interactions, routing, session races and private image/download cleanup. |
+| Production Playwright and axe | Packaged React against FastAPI with CSP enabled, downloads, keyboard focus, responsive layouts and accessibility rules. V8 coverage is reported separately from jsdom coverage. |
+| Python unit, integration and property tests | Policy boundaries, transactional attempts, concurrent edits, stale materials, provider contracts, grounded AI references, document integrity and recovery. |
+| Static and dependency checks | Strict TypeScript and mypy, ESLint, Ruff, Prettier, npm audit, pip-audit and tracked-file privacy checks. |
+| Packaging and CI | Reproducible committed assets and a Windows/Linux matrix on Python 3.12 and 3.14 with Node.js 24. |
+
+Complete-suite results and measured backend/browser coverage are in [delivery status](docs/STATUS.md). [Review findings](docs/CODE_REVIEW.md) explain corrected faults and their regressions. Coverage establishes execution, not compatibility with every live provider layout; behaviour assertions and isolated provider fixtures provide additional evidence.
+
+## Run locally
+
+Prerequisites: Python 3.12 or later, `uv`, and a supported Playwright browser. Node.js 24 is needed for frontend development and full verification. The Python application serves committed production assets without a Node server or CDN.
 
 ```powershell
+git clone https://github.com/ricardoportoIE/autonomous-applicator.git
+cd autonomous-applicator
 uv sync --extra dev --python 3.14
-# Uses installed Edge on Windows; otherwise install Chromium:
 uv run python -m playwright install chromium
-if (!(Test-Path .env)) { Copy-Item .env.example .env }
-# Set a fresh OPENAI_API_KEY locally only if enabling the optional AI adviser.
 uv run python -m applicator.cli serve
 ```
 
-Open `http://127.0.0.1:8765`. The first run generates a local access token. The command prints the token required by the dashboard. Keep the server bound to loopback.
+On Windows, browser integrations use installed Edge when available. Open **http://127.0.0.1:8765** and enter the local token printed by the server. Keep the token private and the server bound to loopback. Add and confirm candidate facts in the dashboard before enabling automation.
+
+For AI, copy `.env.example` to the ignored local `.env`, set a fresh `OPENAI_API_KEY`, retain `OPENAI_MODEL=gpt-6.1-sol`, and restart the server. Enable **Use GPT-6.1 Sol for document preparation by default** in Agent settings. The Python server loads the key; the frontend does not receive it.
+
+For permitted LinkedIn access, complete manual sign-in and verification in the dedicated browser:
 
 ```powershell
-uv run python -m ruff check .
-uv run python -m mypy src
-npm ci
-npm run build:css
-npm test
-uv run python -m pytest
-npm run coverage:browser
-uv run python -m pip_audit
+uv run python -m applicator.cli browser-login
 ```
 
-## Documentation
+Configure the declared scope separately in Agent settings. The public profile is not edited. Supported invitations use **Send without a note**; unsupported portals retain manual hand-off. See [setup, permissions and recovery](docs/OPERATIONS.md).
 
-- [Requirements and acceptance criteria](docs/REQUIREMENTS.md)
-- [Architecture and submission invariants](docs/ARCHITECTURE.md)
-- [Security and privacy](docs/SECURITY.md)
-- [Operating guide](docs/OPERATIONS.md)
-- [Delivery and validation record](docs/STATUS.md)
-- [Complete source review and regression findings](docs/CODE_REVIEW.md)
-- [Live OpenAI performance and evidence-selection comparison](docs/AI_BENCHMARK.md)
-- [Vacancy-specific CV preparation and model provenance](docs/CV_PREPARATION.md)
-- [Improvements and next priorities](docs/IMPROVEMENTS.md)
-
-## Frontend development and testing
-
-The dashboard uses [React with TypeScript](https://react.dev/learn/typescript), [Vite](https://vite.dev/guide/build) and locally compiled [Tailwind CSS](https://tailwindcss.com/docs). Node.js 24 is required for frontend development and the full test suite. The installed application serves the committed production bundle through FastAPI and needs no Node.js process or CDN. Candidate records and tokens are never included in that bundle.
+### Development checks
 
 ```powershell
 npm ci
-npm run build
 npm run typecheck
 npm run lint
 npm run format:check
 npm test
+npm run build
+uv run python -m ruff check .
+uv run python -m mypy src
 uv run python -m pytest
 npm run coverage:browser
+npm audit --audit-level=low
+uv run python -m pip_audit
+uv run python scripts/check_repository_hygiene.py
 ```
 
-Vitest and React Testing Library cover API session ownership, workspace operations, helpers and component interactions. Playwright exercises the production React bundle against the Python API and collects V8 coverage mapped back to the authored TypeScript. Reports are saved under the ignored `test-results/unit-coverage` and `test-results/frontend-report` directories; third-party library code is excluded. The suite also runs local axe scans and verifies mobile/tablet/desktop layouts, native dialogue focus, keyboard tabs, enlarged text, stale edits, token expiry and request concurrency. The Content Security Policy stays enabled during these checks.
+Run browser coverage after the Python suite, which captures production V8 coverage. Reports go to ignored `test-results/unit-coverage` and `test-results/frontend-report`. Commit frontend sources with rebuilt `src/applicator/static` output; CI rejects asset drift.
 
-Use **Add opportunity**, **Add evidence**, **Add contact** or **Edit candidate profile** to open a focused dialogue. An opportunity’s detail tabs organise readiness, documents, approved questionnaire answers and recorded outcomes. Networking retains its Active and Archived queues. See the [frontend migration and feature map](docs/FRONTEND.md) for all preserved capabilities and the development workflow.
+Reproduce the public screenshots with `uv run python scripts/capture_screenshots.py` after building. The script uses a disposable database, a fictional candidate and a loopback provider fixture. It blocks external browser requests and makes no OpenAI calls. Public assets never come from the live workspace.
 
-## AI integration
+## Delivery and ownership
 
-The optional adviser uses the OpenAI Responses API with `gpt-6.1-sol`, structured output and `store=False`. It selects and ranks existing evidence identifiers; the renderer preserves approved factual wording. Routine questions can use exact approved candidate facts and verified source wording. Missing or exceptional facts require candidate review. No hidden chain of thought is stored. Documents retain model provenance, evidence references and candidate/job fingerprints.
+Requirements, business rules, architectural boundaries, failure recovery and validation are documented alongside the code. Changes are delivered through Git commits and a repeatable cross-platform pipeline. Feature mapping makes UI migrations reviewable; provenance and journals make application decisions inspectable.
 
-In an application's **Questions** tab, **Suggest with GPT-6.1 Sol** drafts a grounded answer idea from the vacancy and approved facts. Review the separate suggestion, choose **Use as editable draft**, edit it and explicitly **Approve answer**. Ideas never save or approve themselves; sensitive questions and unapproved choices require manual handling.
+| Document | Purpose |
+| --- | --- |
+| [Requirements](docs/REQUIREMENTS.md) | Product scope and acceptance criteria. |
+| [Architecture](docs/ARCHITECTURE.md) | Service boundaries and submission invariants. |
+| [Queue operation](docs/APPLICATION_QUEUE.md) | Ordering, stage visibility, leases and recovery. |
+| [Frontend](docs/FRONTEND.md) | Preserved capabilities, async ownership and coverage scope. |
+| [Security and privacy](docs/SECURITY.md) | Loopback access, secrets and private artefacts. |
+| [Operating guide](docs/OPERATIONS.md) | Configuration, sign-in, review and reconciliation. |
+| [CV preparation](docs/CV_PREPARATION.md) | Vacancy targeting, factual preservation and provenance. |
+| [AI benchmark](docs/AI_BENCHMARK.md) | Measured, separately authorised model experiments. |
+| [Delivery status](docs/STATUS.md) | Capabilities, validation results and limitations. |
+| [Code review](docs/CODE_REVIEW.md) | Findings, corrections and regression evidence. |
+| [Improvements](docs/IMPROVEMENTS.md) | Prioritised follow-up work and rationale. |
 
-Set `OPENAI_API_KEY` in the ignored local `.env` file, keep `OPENAI_MODEL=gpt-6.1-sol`, and restart the server after saving. Enable **Use GPT-6.1 Sol for document preparation by default** in Agent settings for ordinary and automatic preparation. AI failures remain in review without a local fallback. The explicit **Select evidence with GPT-6.1 Sol** button remains available. Contact discovery and invitations use local rules and do not require an OpenAI request. See the [operating guide](docs/OPERATIONS.md) and [live CV audit](docs/CV_PREPARATION.md).
+## Scope and limitations
 
-LinkedIn prohibits unauthorised automated access under its [User Agreement](https://www.linkedin.com/legal/user-agreement). The candidate has declared specific authorisation for discovery, Easy Apply and networking. Enable that scope explicitly after local sign-in. The adapter performs bounded browser actions and holds unknown questions or changed job details for review. Fixture tests do not certify the current live LinkedIn interface. Other employer portals use manual hand-off unless a permitted adapter is configured.
+This is a tested single-user local prototype. Real provider access depends on valid authorisation, manual sign-in, current page contracts and a registered adapter. Unknown controls, changed vacancy details, ambiguous uploads and unconfirmed sends stop for review. Fixture results do not certify the current LinkedIn interface or every employer questionnaire.
+
+The project does not claim hiring outcomes, ATS acceptance, distributed scale or autonomous self-training. Candidate records, credentials, generated documents, browser sessions and real confirmation screenshots remain local and outside Git. Public screenshots and test records are fictional; paid AI experiments are documented separately.
