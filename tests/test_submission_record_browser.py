@@ -15,6 +15,7 @@ from test_store_service import setup
 
 from applicator.browser import FixtureBrowser, LinkedInBrowser, browser_options
 from applicator.models import Job, Question, Settings, State
+from applicator.policy import answer_questions
 
 
 @pytest.mark.browser
@@ -104,8 +105,16 @@ def add_confirmed_record(app, origin):
     row = store.applications()[0]
     profile, revision = store.profile()
     attempt = store.reserve(row["id"], revision)
+    answers, unresolved = answer_questions(Job.model_validate(row["job"]), profile)
+    assert not unresolved
     service.records.begin(
-        row["id"], attempt, profile, revision, Job.model_validate(row["job"]), row["manifest"], {}
+        row["id"],
+        attempt,
+        profile,
+        revision,
+        Job.model_validate(row["job"]),
+        row["manifest"],
+        answers,
     )
     service.records.observe(
         row["id"],
@@ -261,3 +270,87 @@ def test_record_deep_link_requires_login_and_reports_missing_record(dashboard):
     ).to_be_visible()
     page.get_by_role("button", name="Back to application queue", exact=True).click()
     expect(page.locator('[data-section="applications"]')).to_be_visible()
+
+
+@pytest.mark.browser
+def test_record_preserves_questionnaire_cover_documents_and_capture_issue(dashboard):
+    page, app, origin = dashboard
+    store, service = app.state.store, app.state.service
+    row = store.applications()[0]
+    vacancy = Job.model_validate(row["job"])
+    vacancy.cover_letter_required = True
+    vacancy.questions = [
+        Question(
+            id="sponsor",
+            label="Sponsorship required?",
+            answer_key="sponsorship",
+            choices=["Yes", "No"],
+        ),
+        Question(id="contact", label="Contact email", answer_key="email", required=False),
+    ]
+    store.update_job(row["id"], vacancy)
+    service.prepare(row["id"])
+    store.set_settings(Settings(automation_enabled=True))
+    app_id, attempt = add_confirmed_record(app, origin)
+    service.records.confirmation(
+        app_id, attempt, {"url": origin + "/confirmation", "capture_error": "TimeoutError"}
+    )
+    page.goto(origin + f"/#/applications/{app_id}")
+    expect(page.get_by_role("heading", name="Candidate snapshot", exact=True)).to_be_visible()
+    page.get_by_text("Recorded application questions", exact=True).click()
+    opportunity = page.get_by_role("article", name="Opportunity and decision", exact=True)
+    expect(opportunity).to_contain_text("Sponsorship required? · Required · Yes / No")
+    expect(opportunity).to_contain_text("Contact email · Optional")
+    documents = page.get_by_role("article", name="Archived documents for this attempt", exact=True)
+    page.get_by_text("Approved answers supplied to the adapter", exact=True).click()
+    expect(documents).to_contain_text("Sponsorship required?")
+    expect(documents).to_contain_text("alex@example.test")
+    expect(
+        documents.get_by_role("button", name=re.compile("^Download .+_Cover_Letter.pdf$"))
+    ).to_be_visible()
+    page.get_by_text("Opportunity snapshot for this attempt", exact=True).click()
+    expect(page.get_by_role("article", name="Candidate snapshot")).to_contain_text(
+        vacancy.description
+    )
+    confirmation = page.get_by_role("article", name="Provider confirmation", exact=True)
+    expect(confirmation).to_contain_text(
+        "Capture issue: TimeoutError. The confirmed receipt remains recorded."
+    )
+    expect(
+        confirmation.get_by_role("link", name="Open recorded confirmation page")
+    ).to_have_attribute("href", origin + "/confirmation")
+    expect(page.get_by_role("article", name="Submission history")).to_contain_text(
+        "Confirmed submission"
+    )
+    assert store.daily_usage().used == 1
+    check_accessibility(page)
+
+
+@pytest.mark.browser
+def test_missing_private_image_keeps_confirmed_receipt_and_archived_cv_available(dashboard):
+    page, app, origin = dashboard
+    store, service = app.state.store, app.state.service
+    store.set_settings(Settings(automation_enabled=True))
+    app_id, attempt = add_confirmed_record(app, origin)
+    service.records.confirmation(
+        app_id,
+        attempt,
+        {"url": origin + "/confirmation", "name": "confirmation.png", "sha256": "missing-file"},
+    )
+    page.goto(origin + f"/#/applications/{app_id}")
+    expect(
+        page.get_by_text(
+            "The confirmation screenshot is unavailable or failed its integrity check.", exact=True
+        )
+    ).to_be_visible()
+    expect(page.get_by_role("article", name="Submission history")).to_contain_text(
+        "fixture:private-confirmation"
+    )
+    expect(
+        page.get_by_role("button", name="Download confirmation screenshot", exact=True)
+    ).to_have_count(0)
+    with page.expect_download() as pdf:
+        page.get_by_role("button", name=re.compile("^Download .+_CV.pdf$")).click()
+    assert Path(pdf.value.path()).read_bytes().startswith(b"%PDF")
+    assert store.application(app_id)["state"] == State.SUBMITTED
+    assert store.daily_usage().used == 1 and len(service.records.read(app_id)["attempts"]) == 1

@@ -8,6 +8,8 @@ The provider must visibly confirm submission before capture. Screenshot errors l
 
 The dedicated page retains management access, dates, the original link, individual attempt selection, metadata, private preview/download and the complete cursor-paginated journal. Deep links require authentication. Session generations and route ownership reject late record reads; locking clears the record and releases preview URLs. Browser fixtures cover confirmed LinkedIn/employer pages, capture failure, desktop/mobile accessibility, downloads, historical/uncertain attempts and missing records. No live provider send was performed by these checks.
 
+The final review also exercised a complete required/optional questionnaire with archived cover documents, visible capture-error metadata and a missing private image. The confirmed receipt and CV download remain available after the image fails. All nine application-record production-browser regressions passed; the component has 100% measured line coverage. Earlier accessibility fixtures were adjusted to load resources from the base URL rather than an application fragment.
+
 ## Sending capacity and routine answers review, 4 October 2026
 
 Reviewed the changed accounting, migration, FIFO orchestration, scoped question storage, routine source selector, location policy, authenticated decision routes and dashboard controls. Confirmed sends now count separately from pending/uncertain reservations and raw diagnostic attempts. Safe provider stops record the review and release capacity atomically; uncertain outcomes keep a hold across midnight. Explicit negative reconciliation preserves the journal and requires manual preparation before a retry.
