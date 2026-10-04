@@ -36,7 +36,9 @@ def dashboard(data, profile, job, request):
         page.goto(origin)
         page.get_by_label("Access token", exact=True).fill(TOKEN)
         page.get_by_role("button", name="Unlock workspace").click()
-        expect(page.locator("#notice")).to_have_text("Local workspace unlocked.")
+        # Seven independent authenticated reads complete before unlock. Windows
+        # browser startup can exceed Playwright's default five-second locator deadline.
+        expect(page.locator("#notice")).to_have_text("Local workspace unlocked.", timeout=15000)
         yield page, app, origin
         save_coverage(coverage, request.node.nodeid)
         assert not errors

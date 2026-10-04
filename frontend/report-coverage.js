@@ -53,7 +53,7 @@ for (const filename of [
     throw new Error(`Missing browser coverage for ${filename}`);
 }
 const summary = map.getCoverageSummary();
-// Browser tests measure the actual dashboard. Helpers have separate 100% unit coverage.
+// Browser tests measure the packaged dashboard. Runtime modules have separate per-file 100% unit gates.
 if (summary.lines.pct < 90 || summary.branches.pct < 80) {
   throw new Error(
     "Browser coverage must reach 90% of lines and 80% of branches.",
