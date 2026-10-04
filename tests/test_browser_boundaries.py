@@ -1,6 +1,7 @@
 """Real DOM regressions for bounded traversal, provider identity and verified receipts."""
 
 import base64
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
@@ -33,6 +34,23 @@ DETAILS = {
     "role": "Technical Recruiter",
     "location": "Dublin, Ireland",
 }
+
+
+@pytest.mark.parametrize("installed", [False, True])
+def test_automatic_browser_selection_is_portable_without_an_explicit_channel(
+    monkeypatch, installed
+):
+    monkeypatch.delenv("APPLICATOR_BROWSER_CHANNEL", raising=False)
+    inspected = []
+    edge = Path("C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe")
+
+    def installed_browser(path):
+        inspected.append(path)
+        return path == edge and installed
+
+    monkeypatch.setattr(Path, "is_file", installed_browser)
+    assert browser_options() == ({"channel": "msedge"} if installed else {})
+    assert inspected == [edge]
 
 
 @pytest.mark.parametrize("headless", [True, False])

@@ -2,7 +2,7 @@
 
 ## Backend acceptance gate
 
-The complete Python suite must reach **100% statement and branch coverage in every module under `src/applicator`**, including API endpoints, policy, AI contracts, persistence, document rendering, browser adapters, networking, operation recovery and the command-line entry point. The current runtime inventory contains **19 modules, 2,489 statements and 854 branch outcomes**. The empty package initializer is included in the inventory.
+The complete Python suite must reach **100% statement and branch coverage in every module under `src/applicator`**, including API endpoints, policy, AI contracts, persistence, document rendering, browser adapters, networking, operation recovery and the command-line entry point. The current runtime inventory contains **19 modules and 854 branch outcomes**. Coverage.py reports **2,489 statements on Python 3.14** and **2,511 on Python 3.12**; each interpreter must cover its complete measured inventory. The empty package initializer is included in the inventory.
 
 Pytest measures branches as well as statements and fails below 100%. A second gate checks the JSON report against every authored Python application file, rejects missing or unexpected modules, requires zero missing statements and branches in each module and validates the counters. CI runs both checks independently on Windows and Linux with Python 3.12 and 3.14. A percentage rounded to 100% cannot satisfy these checks while a missing path remains.
 
