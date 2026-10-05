@@ -62,6 +62,14 @@ uv run pytest tests/test_backend_coverage_gate.py --no-cov
 
 Before delivery, rerun the complete suite and the inventory gate. Additional required checks are strict TypeScript/mypy, ESLint/Ruff, formatting, tracked-file privacy, dependency audits and reproducible committed frontend assets. [Delivery status](STATUS.md) records measured results; [review findings](CODE_REVIEW.md) records their interpretation.
 
+## Form recovery reproduction
+
+```powershell
+uv run python -m pytest tests/test_form_recovery.py tests/test_application_dialog.py tests/test_linkedin_authentication.py --no-cov -o 'addopts=--strict-markers'
+```
+
+The recovery file contains 66 new cases; two additional variants extend an existing stalled-dialogue case. The complete inventory is 933 cases. On Windows/Python 3.14.2, the fresh full suite passed in 1,651.82 seconds with 2,826 statements and 992 branch outcomes exercised across all 19 runtime modules. Focused checks do not replace the full suite or inventory gate. [Delivery status](STATUS.md) distinguishes local measurements from remote runner availability.
+
 ## Security and performance reproduction
 
 ```powershell

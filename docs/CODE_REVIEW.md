@@ -1,5 +1,15 @@
 # Source review, 2 October 2026
 
+## Form recovery and operational learning, 5 October 2026
+
+Reviewed the changed browser interaction, semantic step identity, queue eligibility, readiness refresh, attempt classification, SQLite hints and recovery-budget transactions. The ten historical technical holds were distinct from unknown answers, lower fit, location review and unprocessed records. A read-only snapshot copied to a private diagnostic workspace confirmed that all ten qualify under current local readiness; this is eligibility evidence, not proof that a live provider form has been resolved. The actual agent remained paused throughout validation.
+
+Native checkbox/radio interaction now has verified label and scoped ARIA alternatives. React replacements are reacquired by the question's type, label and group, with unchanged choices and checked/valid state required before proceeding. Disabled ancestors and hidden clones cannot establish answers. Unsupported pure ARIA radio mappings stop for review instead of silently accepting a prefilled answer. Method memory contains only a whitelisted control shape and strategy; it grants no new permission and stores no personal answer or executable selector.
+
+Generated element IDs could previously make an unchanged form look like a new step. Step identity now uses question semantics, visible headings and navigation actions, excluding IDs, field values and DOM order. Reversible Next/Review recovery has three passes without repeated uploads; backward cycles stop before another pass through a completed step. Easy Apply opening handles a unique sticky action outside main, a differing accessible button name and a same-page link. Authentication checks remain authoritative before recovery, after opening and when a browser wait fails. A test redirect now follows the actual form-opening phase rather than assuming a fixed ordinal locator wait.
+
+Across cycles, a transactional budget permits two resumptions only for a classified technical hold whose latest attempt was released before the submission click. All current gates except the held state and the independently enforced pause must pass. Existing verified documents are reused. Concurrent claims cannot exceed the budget; corrupt hints, unknown facts, altered documents, exhausted sending capacity and uncertain outcomes remain held. Provider reasons now persist in the application's blockers. The irreversible Submit click and receipt/reconciliation boundary are unchanged. Fixture validation includes semantic renders, transient controls, partial opening, concurrency, restart persistence, pause and no-send assertions; [delivery status](STATUS.md) records measured results.
+
 ## Security and resource-boundary follow-up, 5 October 2026
 
 Reviewed API authentication/intake, CLI binding, frontend request/session ownership, public discovery, AI evidence contracts, SQLite transactions, immutable artefacts, portraits, browser final gates, dependency locks and CI permissions. Two concrete faults were corrected: board response size was checked after a full download, and early middleware refusals bypassed the configured response headers.
