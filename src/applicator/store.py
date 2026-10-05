@@ -207,7 +207,8 @@ class Store:
             )
             if not technical or re.search(r"authwall|checkpoint|challenge|login", detail, re.I):
                 return False
-            key = f"form_recovery:v1:{app_id}"
+            # A tested adapter upgrade gets a fresh bounded budget; restart does not.
+            key = f"form_recovery:v2:{app_id}"
             saved = db.execute("SELECT value FROM config WHERE key=?", (key,)).fetchone()
             value = saved[0] if saved else "0"
             if value not in {"0", "1"}:

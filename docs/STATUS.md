@@ -1,6 +1,14 @@
 # Delivery and validation record
 
-Version 0.3.0 reviewed through bounded form recovery on 5 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+Version 0.3.0 reviewed through provider form diagnosis on 5 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+
+## Provider form diagnosis, 5 October 2026
+
+The subsequent live run confirmed three additional applications. Seven technical holds were traced to three unrecognised `Phone` labels, two city typeaheads without HTML label associations, one narrative answer in a numeric Python field and one closed opportunity. Live inspection opened forms and examined city suggestions without advancing, reviewing or submitting an application. Four new missing-fact questions were distinguished from these adapter failures. Exact candidate answers were subsequently approved locally; the candidate revision and document manifests were retained. A newly recorded question changes its job fingerprint and can legitimately queue fresh document preparation.
+
+The fixes recognise the observed phone and city patterns, verify unique offered city/country selection after React updates, reject narrative numeric values before filling and stop on provider inline validation with label-only diagnostics. Closed primary opportunities stop opening recovery without treating recommendation-card status as the reviewed vacancy. Residence uses confirmed current location and does not infer legal eligibility. The tested version 2 recovery budget preserves earlier history, permits at most two new qualifying resumptions and survives restart. Uncertain and confirmed sends cannot enter recovery.
+
+Focused validation passed 159 form/authentication cases, the additional no-main fallback case, 152 recovery/routine-answer cases and all 155 React unit cases at 100% per runtime file. Ruff, strict mypy, TypeScript, ESLint and formatting passed. The complete 975-case Python run and its fresh 19-module coverage gate are in progress; the earlier complete result below is historical, not a measurement of the current changes. No ordinary test uses live credentials, sends applications/invitations or incurs model charges. Private diagnostics are excluded from Git.
 
 ## Bounded form recovery and operational learning, 5 October 2026
 

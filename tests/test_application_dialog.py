@@ -363,6 +363,7 @@ def resume_html(case):
     [
         "custom",
         "labelled",
+        "modern_phone",
         "not_selected",
         "extra_upload",
         "legal_in_resume",
@@ -383,18 +384,31 @@ def test_resume_chooser_proves_the_job_cv_selection_and_does_not_skip_legal_fiel
     with sync_playwright() as p, p.chromium.launch(headless=True, **browser_options()) as browser:
         page = browser.new_page()
         html = resume_html(case)
+        if case == "modern_phone":
+            html = html.replace(
+                "<section>",
+                '<label>Phone country code<select id="country"><option>Ireland (+353)</option></select></label><label>Phone<input id="phone" type="tel"></label><section>',
+                1,
+            )
+            html = html.replace(
+                '<label><input type="radio" id="old" name="cv">Previous.pdf</label>',
+                '<input type="radio" id="old" name="cv" checked><span>Previous.pdf</span>',
+            )
         if case == "legacy":
             html = '<dialog open><label>CV<input type="file"></label><button>Next</button></dialog>'
         page.set_content(html)
         dialog = application_dialog(page)
         if case == "legacy":
             assert upload_resume(page, dialog, document) is None
-        elif case in {"custom", "labelled"}:
+        elif case in {"custom", "labelled", "modern_phone"}:
             ids = upload_resume(page, dialog, document)
             assert ids == {"old", "uploaded"}
             assert page.locator("#uploaded").is_checked()
             assert page.locator("#picker").evaluate("el=>el.files[0].name") == document.name
             fill_questions(page, profile, resume_field_ids=ids)
+            if case == "modern_phone":
+                assert page.locator("#phone").input_value() == "000000000"
+                assert not page.locator("#old").is_checked()
         else:
             with pytest.raises(ValueError):
                 upload_resume(page, dialog, document)

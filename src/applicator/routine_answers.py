@@ -7,6 +7,7 @@ from collections.abc import Callable
 from openai import OpenAI
 from pydantic import Field
 
+from .location_policy import country
 from .models import Contract, Job, Profile, Question
 from .policy import TECHNOLOGIES, contains, normalise
 from .question_adviser import MODEL, question_key
@@ -56,12 +57,20 @@ def routine_answer(
         "email": profile.email,
         "email address": profile.email,
         "phone number": profile.phone,
+        "phone": profile.phone,
         "mobile phone number": profile.phone,
         "current location": profile.location,
         "where are you currently based": profile.location,
     }.get(label)
     if contact and (not question.choices or contact in question.choices):
         return RoutineAnswer(answer=contact, source="candidate_facts")
+    if (
+        label == "are you currently located and living in ireland"
+        and country(profile.location) == "ireland"
+    ):
+        if "Yes" in question.choices:
+            return RoutineAnswer(answer="Yes", source="candidate_facts")
+        return None
     sponsorship = bool(
         re.fullmatch(
             r"(?:will|do) you (?:now or in the future )?require (?:visa |employer )?sponsorship(?: (?:now or in the future|for employment(?: visa status)?))?",
@@ -76,11 +85,11 @@ def routine_answer(
     vocabulary = {normalise(term) for term in TECHNOLOGIES}
     vocabulary.update(normalise(tag) for item in evidence for tag in item.tags if tag.strip())
     technologies = sorted(term for term in vocabulary if contains(label, term))
-    professional = bool(re.search(r"\b(?:commercial|professional|paid)\b", label))
+    professional = bool(re.search(r"\b(?:commercial|professional|paid|work)\b", label))
     if professional:
         evidence = [item for item in evidence if item.category == "experience"]
     if technologies and re.fullmatch(
-        r"how many years(?: of)? experience (?:do you have )?(?:with|using|in) .+", label
+        r"how many years(?: of)? (?:work )?experience (?:do you have )?(?:with|using|in) .+", label
     ):
         counts: dict[str, list[str]] = {}
         if len(technologies) == 1:

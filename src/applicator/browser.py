@@ -14,6 +14,7 @@ from playwright.sync_api import BrowserContext, Locator, Page, Playwright, sync_
 from playwright.sync_api import Error as BrowserError
 
 from .documents import filename_stem
+from .location_policy import country, normalise_location
 from .models import Job, Profile, Question
 from .photos import save_photo
 from .submission_records import capture_confirmation
@@ -341,7 +342,9 @@ def approved_answer(label: str, profile: Profile) -> str | None:
         "email address": profile.email,
         "email": profile.email,
         "phone number": profile.phone,
+        "phone": profile.phone,
         "mobile phone number": profile.phone,
+        "location (city)": profile.location,
     }
     return exact.get(" ".join(label.casefold().split())) or None
 
@@ -401,22 +404,30 @@ def form_questions(page: Page) -> list[dict[str, Any]]:
         return {label,required:text(labels[0]).endsWith('*')};
       };
       const widget = el => el.closest('[role="checkbox"]');
+      const locationField = el => {
+        if (!el.matches('input[data-testid="typeahead-input"][aria-autocomplete="list"]') || el.getAttribute('placeholder')!=='Enter city or location') return null;
+        const row=el.closest('[componentkey^="easyApplyFieldFocus"]');
+        const labels=row && [...row.children].filter(node=>node.tagName==='P' && text(node));
+        if (!labels || labels.length!==1 || row.querySelectorAll('input[data-testid="typeahead-input"]').length!==1 || unmark(text(labels[0]))!=='Location (city)' ||
+          [text(el.labels?.[0]),el.getAttribute('aria-label'),labelledBy(el)].some(value=>value && unmark(value)!=='Location (city)')) return null;
+        return {label:unmark(text(labels[0])),required:text(labels[0]).endsWith('*')};
+      };
       const active = el => el.checkVisibility({visibilityProperty:true,opacityProperty:true}) || (['checkbox','radio'].includes(el.type) &&
         ([...(el.labels || [])].some(label=>label.checkVisibility({visibilityProperty:true,opacityProperty:true})) ||
           el.closest('[role="checkbox"],[role="radio"]')?.checkVisibility({visibilityProperty:true,opacityProperty:true})));
-      const required = el => el.required || el.getAttribute('aria-required') === 'true' || widget(el)?.getAttribute('aria-required') === 'true' || (el.type==='radio' && (groupFor(el)?.getAttribute('aria-required')==='true' || semanticGroup(el)?.required));
+      const required = el => el.required || el.getAttribute('aria-required') === 'true' || widget(el)?.getAttribute('aria-required') === 'true' || locationField(el)?.required || (el.type==='radio' && (groupFor(el)?.getAttribute('aria-required')==='true' || semanticGroup(el)?.required));
       const labelText = el => {
         const label=el.labels?.[0]?.cloneNode(true);
         if(label) label.querySelectorAll('input,select,textarea,[aria-hidden="true"]').forEach(n=>n.remove());
         const choice = el.type==='radio' && semanticGroup(el) ? text(el.closest('[role="radio"]')) : '';
-        const value = (text(label) || el.getAttribute('aria-label') || labelledBy(el) || widget(el)?.getAttribute('aria-label') || labelledBy(widget(el)) || choice || '').trim();
+        const value = (text(label) || el.getAttribute('aria-label') || labelledBy(el) || widget(el)?.getAttribute('aria-label') || labelledBy(widget(el)) || locationField(el)?.label || choice || '').trim();
         return required(el) ? unmark(value) : value;
       };
       const groupLabel = el => text(groupFor(el)?.querySelector('legend')) || groupFor(el)?.getAttribute('aria-label') || labelledBy(groupFor(el)) || semanticGroup(el)?.label || '';
       return [...dialog.querySelectorAll('input,select,textarea,[role="combobox"],[role="checkbox"],[role="radio"]')]
       .filter(el => active(el) && !el.matches(':disabled') && !el.closest('[aria-disabled="true"]') && el.type !== 'hidden' && el.type !== 'file' && !(el.tagName==='INPUT' && ['submit','button','reset'].includes(el.type)) &&
         (!el.matches('[role="checkbox"]') || !el.querySelector('input[type="checkbox"]')) && (!el.matches('[role="radio"]') || !el.querySelector('input[type="radio"]')))
-      .map(el => ({id:el.id, type:el.getAttribute('role')==='combobox' ? 'combobox' : el.type || el.getAttribute('role'), value:el.value || el.getAttribute('aria-valuetext') || (el.getAttribute('role')==='combobox' ? text(el) : ''), checked:el.checked || ['true','mixed'].includes(widget(el)?.getAttribute('aria-checked')),
+      .map(el => ({id:el.id, type:locationField(el) ? 'location-typeahead' : el.getAttribute('role')==='combobox' ? 'combobox' : el.type || el.getAttribute('role'), value:el.value || el.getAttribute('aria-valuetext') || (el.getAttribute('role')==='combobox' ? text(el) : ''), checked:el.checked || ['true','mixed'].includes(widget(el)?.getAttribute('aria-checked')),
         label:labelText(el),
         group:el.type === 'radio' ? (required(el) ? unmark(groupLabel(el)) : groupLabel(el).trim()) : '',
         group_choices:el.type === 'radio' && el.name ? [...(groupFor(el) || dialog).querySelectorAll('input[type=radio]')].filter(other=>active(other) && other.name===el.name && !other.matches(':disabled') && !other.closest('[aria-disabled="true"]')).map(labelText) : [],
@@ -429,10 +440,16 @@ def open_easy_apply(page: Page, progress: Callable[[str, str], None]) -> None:
     """Bounded opening recovery; never click again once a dialogue has appeared."""
     for attempt in range(3):
         ensure_linkedin(page)
+        main = page.get_by_role("main")
+        if main.count() == 1 and main.evaluate("""main => {
+          const body=main.querySelector('#job-details') || [...main.querySelectorAll('h2,[role="heading"]')].find(el=>el.textContent.trim()==='About the job');
+          return body && [...main.querySelectorAll('p,span')].some(el=>!el.children.length && el.checkVisibility() &&
+            el.textContent.trim()==='No longer accepting applications' && (el.compareDocumentPosition(body)&Node.DOCUMENT_POSITION_FOLLOWING));
+        }"""):
+            raise ValueError("The LinkedIn opportunity is no longer accepting applications")
         if page.get_by_role("dialog").filter(visible=True).count():
             application_dialog(page)
             return
-        main = page.get_by_role("main")
         actions = (
             main.get_by_role("button", name=re.compile(r"^Easy Apply\b"))
             .or_(main.get_by_role("link", name=re.compile(r"^Easy Apply\b")))
@@ -505,9 +522,15 @@ def advance_application(
             label?.querySelectorAll('input,select,textarea,[aria-hidden="true"]').forEach(node=>node.remove());
             return (label?.textContent.trim() || el.getAttribute('aria-label') || 'Unlabelled field').slice(0,500);
           })""")
+        invalid.extend(
+            dialog.evaluate("""dialog => [...dialog.querySelectorAll('[componentkey^="easyApplyFieldFocus"]')]
+          .filter(row=>[...row.children].some(node=>['status','alert'].includes(node.getAttribute('role')) && node.checkVisibility() && node.textContent.trim()))
+          .map(row=>[...row.children].find(node=>node.tagName==='P')?.textContent.trim().replace(/\\s*\\*$/,'') || 'Unlabelled field')""")
+        )
         if invalid:
             raise ValueError(
-                "The application did not advance; invalid fields: " + ", ".join(invalid)
+                "The application did not advance; invalid fields: "
+                + ", ".join(dict.fromkeys(invalid))
             )
         progress(
             "recovering_form", f"Re-reading and verifying unchanged form step ({attempt + 1}/3)."
@@ -535,7 +558,7 @@ def contact_phone_answers(fields: list[dict[str, Any]], profile: Profile) -> dic
     phones = [
         field
         for field in fields
-        if str(field["label"]).casefold() in {"phone number", "mobile phone number"}
+        if str(field["label"]).casefold() in {"phone", "phone number", "mobile phone number"}
     ]
     if len(countries) != 1 or len(phones) != 1:
         raise ValueError("Ambiguous phone controls require manual review")
@@ -758,6 +781,46 @@ def set_boolean_control(
     )
 
 
+def fill_location_typeahead(page: Page, field: dict[str, Any], profile: Profile) -> None:
+    """Select a uniquely offered city in the candidate's confirmed current country."""
+    city = profile.location.split(",")[0].strip()
+    nation = country(profile.location)
+    if not profile.confirmed or not city or not nation or normalise_location(city) == nation:
+        raise ValueError("Approve an exact answer for: Location (city)")
+    dialog = application_dialog(page)
+    field_locator(dialog, current_field(page, field)).fill(city)
+    # React may replace the input and its generated identifier after typing.
+    locator = field_locator(dialog, current_field(page, field))
+    root = locator.locator('xpath=ancestor::*[starts-with(@componentkey,"easyApplyFieldFocus")][1]')
+    listbox = root.locator('[role="listbox"][data-testid="typeahead-results-container"]')
+    listbox.wait_for(state="visible", timeout=10000)
+    if listbox.get_attribute("aria-labelledby") != locator.get_attribute("id"):
+        raise ValueError("Unmapped city suggestions require manual review")
+    options = (
+        listbox.get_by_role("option")
+        .filter(visible=True)
+        .locator("xpath=self::*[not(@disabled) and not(@aria-disabled='true')]")
+    )
+    choices = options.all_text_contents()
+    matches = [
+        index
+        for index, choice in enumerate(choices)
+        if normalise_location(choice.split(",")[0]) == normalise_location(city)
+        and country(choice) == nation
+    ]
+    if len(matches) != 1:
+        raise ValueError("City suggestions do not uniquely match the approved location")
+    selected = choices[matches[0]].strip()
+    options.nth(matches[0]).click(timeout=2000)
+    locator = field_locator(dialog, current_field(page, field))
+    if (
+        locator.input_value() != selected
+        or not locator.evaluate("el => el.checkValidity()")
+        or listbox.is_visible()
+    ):
+        raise ValueError("The approved city suggestion was not selected")
+
+
 def fill_questions(
     page: Page,
     profile: Profile,
@@ -806,6 +869,9 @@ def fill_questions(
             )
         if field["type"] == "select-multiple":
             raise ValueError(f"Multiple selections require an explicit approved mapping: {label}")
+        if field["type"] == "location-typeahead":
+            fill_location_typeahead(page, field, profile)
+            continue
         if field["type"] == "radio":
             group = field["group"]
             if not group or not field["group_choices"]:
@@ -911,6 +977,11 @@ def fill_questions(
                 "datetime-local",
             }:
                 raise ValueError(f"Unsupported input type requires manual review: {label}")
+            if (
+                re.match(r"how many years\b", label, re.I)
+                or locator.get_attribute("inputmode") in {"numeric", "decimal"}
+            ) and not re.fullmatch(r"\d+(?:\.\d+)?", value):
+                raise ValueError(f"Approve an exact answer for: {label}")
             if not locator.evaluate(
                 """(el, value) => {
                 const probe=el.cloneNode(true); probe.value=value;

@@ -1,5 +1,15 @@
 # Source review, 2 October 2026
 
+## Provider form audit, 5 October 2026
+
+A later operator run confirmed three additional sends but exposed seven technical holds: three unrecognised `Phone` labels beside country-code selects, two unlabelled city typeaheads, one numeric Python answer containing an approved narrative and one unavailable Easy Apply action. Read-only live inspection established the actual form patterns and identified the last opportunity as closed. No Next, Review or Submit action was performed during that inspection. Provider captures and candidate answers remain in ignored local files; committed regressions contain fictional data only.
+
+The adapter recognises the phone alias and a tightly scoped `Location (city)` typeahead pattern. It selects a unique offered city/country match and verifies its value and closed suggestions after a possible React replacement. Conflicting labels, disabled options, duplicate matches and foreign cities stop for review. Numeric questions reject narrative answers before filling, and inline provider validation records field labels without rejected values. A primary header closure stops retries without confusing recommendation cards with the reviewed opportunity.
+
+Routine current-residence questions use the confirmed candidate location; this rule does not grant legal work eligibility. Work-experience durations require an explicit approved numeric statement from employment evidence, while independent projects alone cannot supply professional years. Explicit operator answers were saved locally to pending applications without changing the candidate revision or existing document manifests. A newly discovered question may still require fresh job-specific documents because its vacancy fingerprint has changed.
+
+The regression suite also verifies the selected vacancy-specific CV alongside modern phone controls and a previously selected CV. The tested adapter upgrade uses a versioned two-resumption budget: old history is retained, restart cannot reset the new budget, and uncertain or confirmed sends remain ineligible. Full results are recorded in [delivery status](STATUS.md).
+
 ## Form recovery and operational learning, 5 October 2026
 
 Reviewed the changed browser interaction, semantic step identity, queue eligibility, readiness refresh, attempt classification, SQLite hints and recovery-budget transactions. The ten historical technical holds were distinct from unknown answers, lower fit, location review and unprocessed records. A read-only snapshot copied to a private diagnostic workspace confirmed that all ten qualify under current local readiness; this is eligibility evidence, not proof that a live provider form has been resolved. The actual agent remained paused throughout validation.
