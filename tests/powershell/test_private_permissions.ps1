@@ -22,6 +22,14 @@ function Assert-Private([string]$Path) {
         }
     }
 }
+function Get-ComparableDacl([string]$Sddl) {
+    $taskDescriptor = [Security.AccessControl.RawSecurityDescriptor]::new($Sddl)
+    # Set-Acl normalises this automatic bookkeeping flag even when all permissions match.
+    # Retain every ACE/mask/order/inheritance flag and the DACL protection state.
+    $taskDescriptor.SetFlags($taskDescriptor.ControlFlags -band
+        (-bnot [Security.AccessControl.ControlFlags]::DiscretionaryAclAutoInherited))
+    return $taskDescriptor.GetSddlForm([Security.AccessControl.AccessControlSections]::Access)
+}
 try {
     $taskFixture = New-TestWorkspace 'ordinary'
     $taskSource = Join-Path $taskFixture 'src\applicator\fictional.py'
@@ -93,6 +101,33 @@ try {
     'fictional rollback content' | Set-Content -LiteralPath $taskRollbackFile
     $taskFailPath = Join-Path $taskRollback '.env'
     'FICTIONAL_VALUE=true' | Set-Content -LiteralPath $taskFailPath
+    # Reproduce a legacy descriptor without AI metadata, as seen on hosted Windows runners.
+    # This native setter is fixture-only; the production helper uses Set-Acl.
+    if (-not ('ApplicatorLegacyAclFixture' -as [type])) {
+        Add-Type @'
+using System.Runtime.InteropServices;
+public static class ApplicatorLegacyAclFixture {
+    [DllImport("advapi32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool SetFileSecurity(string path, uint sections, byte[] descriptor);
+}
+'@
+    }
+    $taskLegacyAcl = Get-ComparableDacl ((Get-Acl -LiteralPath $taskFailPath).GetSecurityDescriptorSddlForm(
+        [Security.AccessControl.AccessControlSections]::Access
+    ))
+    $taskLegacyDescriptor = [Security.AccessControl.RawSecurityDescriptor]::new($taskLegacyAcl)
+    $taskBinary = [byte[]]::new($taskLegacyDescriptor.BinaryLength)
+    $taskLegacyDescriptor.GetBinaryForm($taskBinary, 0)
+    if (-not [ApplicatorLegacyAclFixture]::SetFileSecurity($taskFailPath, 4, $taskBinary)) {
+        throw 'Legacy fictional DACL setup failed.'
+    }
+    $taskObservedLegacy = [Security.AccessControl.RawSecurityDescriptor]::new(
+        (Get-Acl -LiteralPath $taskFailPath).GetSecurityDescriptorSddlForm([Security.AccessControl.AccessControlSections]::Access)
+    )
+    if ($taskObservedLegacy.ControlFlags -band [Security.AccessControl.ControlFlags]::DiscretionaryAclAutoInherited) {
+        throw 'The legacy fixture unexpectedly acquired auto-inheritance metadata.'
+    }
     $taskPrior = @{}
     foreach ($taskPath in @((Join-Path $taskRollback 'data'), $taskRollbackFile, $taskFailPath)) {
         $taskPrior[$taskPath] = (Get-Acl -LiteralPath $taskPath).GetSecurityDescriptorSddlForm(
@@ -116,9 +151,20 @@ try {
         $taskCurrentDacl = (Get-Acl -LiteralPath $taskPath).GetSecurityDescriptorSddlForm(
             [Security.AccessControl.AccessControlSections]::Access
         )
-        if ($taskCurrentDacl -ne $taskPrior[$taskPath]) { throw 'An original DACL was not restored.' }
+        if ((Get-ComparableDacl $taskCurrentDacl) -ne (Get-ComparableDacl $taskPrior[$taskPath])) {
+            throw 'Original access rules or their protection state were not restored.'
+        }
     }
-    Write-Output 'Seven Windows ACL scenarios passed: protection, repeat, junction refusal, empty workspace, wrong root, default path and rollback.'
+    # The comparator must still detect real changes to access masks or protection.
+    $taskChanged = [Security.AccessControl.RawSecurityDescriptor]::new($taskLegacyAcl)
+    $taskChanged.DiscretionaryAcl[0].AccessMask = $taskChanged.DiscretionaryAcl[0].AccessMask -bxor 1
+    if ((Get-ComparableDacl $taskChanged.GetSddlForm([Security.AccessControl.AccessControlSections]::Access)) -eq
+        (Get-ComparableDacl $taskLegacyAcl)) { throw 'An access-mask change was ignored.' }
+    $taskChanged = [Security.AccessControl.RawSecurityDescriptor]::new($taskLegacyAcl)
+    $taskChanged.SetFlags($taskChanged.ControlFlags -bxor [Security.AccessControl.ControlFlags]::DiscretionaryAclProtected)
+    if ((Get-ComparableDacl $taskChanged.GetSddlForm([Security.AccessControl.AccessControlSections]::Access)) -eq
+        (Get-ComparableDacl $taskLegacyAcl)) { throw 'A protection-state change was ignored.' }
+    Write-Output 'Eight Windows ACL scenarios passed, including legacy metadata rollback and comparator rejection of changed permissions.'
 } finally {
     $taskResolved = [IO.Path]::GetFullPath($taskTemporary)
     $taskTempPrefix = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\') + '\'
