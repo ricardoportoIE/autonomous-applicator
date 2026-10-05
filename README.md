@@ -165,12 +165,16 @@ git clone https://github.com/ricardoportoIE/autonomous-applicator.git
 cd autonomous-applicator
 uv sync --extra dev --python 3.14
 uv run python -m playwright install chromium
+New-Item -ItemType Directory -Path data -Force | Out-Null
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/protect_private_workspace.ps1
 uv run python -m applicator.cli serve
 ```
 
 On Windows, browser integrations use installed Edge when available. Open **http://127.0.0.1:8765** and enter the local token printed by the server. Keep the token private and the server bound to loopback. Add and confirm candidate facts in the dashboard before enabling automation.
 
-For AI, copy `.env.example` to the ignored local `.env`, set a fresh `OPENAI_API_KEY`, retain `OPENAI_MODEL=gpt-6.1-sol`, and restart the server. Enable **Use GPT-6.1 Sol for document preparation by default** in Agent settings. The Python server loads the key; the frontend does not receive it.
+The private-permissions command above is for Windows. It restricts existing `data`, `tmp`, `output` and private `.env` files to the current account, SYSTEM and Administrators, saves prior DACLs locally and refuses reparse points. Source files and `.env.example` retain their permissions. On another operating system, secure these paths with account permissions before storing credentials. Custom data directories outside the repository require their own permissions. See [security](docs/SECURITY.md#credential-and-file-handling).
+
+For AI, copy `.env.example` to the ignored local `.env`, rerun the Windows private-permissions helper before adding credentials, set a fresh `OPENAI_API_KEY`, retain `OPENAI_MODEL=gpt-6.1-sol`, and restart the server. Enable **Use GPT-6.1 Sol for document preparation by default** in Agent settings. The Python server loads the key; the frontend does not receive it.
 
 For permitted LinkedIn access, complete manual sign-in and verification in the dedicated browser:
 

@@ -72,6 +72,8 @@ The hardening contributes 53 cases to the 865-case Python inventory: 43 security
 
 CI runs the default offline benchmark and uploads `test-results/local-benchmark.json` per platform/interpreter alongside coverage. [Performance](PERFORMANCE.md) defines its methodology, baseline and limits. Byte/intake-time limits are tested behaviour gates; benchmark milliseconds are observations rather than CI pass/fail thresholds. The [security model](SECURITY.md) defines the account and provider boundaries exercised by the tests.
 
+Windows jobs additionally run `tests/powershell/test_private_permissions.ps1` outside the Python coverage metric. Seven native ACL scenarios use disposable fictional files: recursive private protection, repeat execution, junction refusal without changing the target, an empty workspace, non-project root refusal, default workspace resolution and injected-write-failure rollback. Assertions also verify unchanged content/public-source DACLs and private permission backups. This tooling suite does not claim Python's 100% runtime metric for PowerShell. Reproduce it with `powershell -NoProfile -ExecutionPolicy Bypass -File tests/powershell/test_private_permissions.ps1`.
+
 ## Interpretation
 
 100% coverage means every measured application statement and branch outcome was exercised by the suite. Assertions establish the intended behaviour for those cases. It does not establish every possible input, future provider layout, network condition or hiring outcome. Live provider compatibility still depends on the declared authorisation, valid sign-in and the current supported interface contract. Unknown behaviour continues to require review.

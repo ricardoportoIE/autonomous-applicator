@@ -5,10 +5,14 @@
 ```powershell
 uv sync --extra dev --python 3.14
 Copy-Item .env.example .env
+New-Item -ItemType Directory -Path data -Force | Out-Null
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/protect_private_workspace.ps1
 uv run python -m applicator.cli serve
 ```
 
 Use `http://127.0.0.1:8765` and the access token printed in the terminal. The application automatically uses an installed Microsoft Edge on Windows; otherwise install Chromium with `uv run python -m playwright install chromium`. Set `APPLICATOR_BROWSER_CHANNEL` to `chrome`, `msedge` or `chromium` if needed.
+
+The private-permissions helper limits existing repository-local `data`, `tmp`, `output` and private `.env` files to the current Windows account, SYSTEM and Administrators. It saves the original DACLs in ignored `tmp`, checks all paths before mutation, refuses reparse points and restores prior DACLs if protection fails. It changes permissions only, preserves file content and leaves public source/sample permissions unchanged. Rerun after creating extra secret files or restoring backups. Apply account permissions separately to a custom data directory outside the repository. [Security and privacy](SECURITY.md) documents the trust boundary; the Windows CI suite checks protection and rollback using fictional files.
 
 The readiness strip shows the saved LinkedIn authorisation, profile confirmation and remaining daily attempts. A scope declaration is separate from enabling application automation or networking. Use **Lock workspace** to clear credentials and visible candidate information from this tab; locking the tab does not pause the background agent. Use **Pause all automation** to stop new attempts.
 
