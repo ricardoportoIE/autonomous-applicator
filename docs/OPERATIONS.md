@@ -2,6 +2,8 @@
 
 ## First run on Windows
 
+Technical form recovery runs within the normal FIFO worker. The monitor shows **recovering form** and **form recovered**; inspect the application's status check and activity for exhausted strategies. The worker can resume a proven pre-send technical hold twice, reusing valid documents. Unknown answers and genuine availability preferences still need approval. Restart preserves recovery hints and budgets. [Queue operation](APPLICATION_QUEUE.md#bounded-form-recovery-and-local-learning) records the limits and evidence required for resumption.
+
 ```powershell
 uv sync --extra dev --python 3.14
 Copy-Item .env.example .env

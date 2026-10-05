@@ -134,7 +134,7 @@ For documents, AI ranks existing evidence identifiers for the vacancy. Validatio
 
 For questionnaires, **Suggest with GPT-6.1 Sol** returns a separate draft with supporting facts and review notes. Contact fields and sensitive answers are excluded from that request. Unknown legal, immigration or exceptional facts require candidate input; a provider's prefilled answer is not approval.
 
-Recorded outcomes can inform reviewed improvements. The system does not retrain itself, change qualifications or alter submission permissions automatically. [Live AI comparisons](docs/AI_BENCHMARK.md) and the [vacancy-specific CV audit](docs/CV_PREPARATION.md) document separately authorised experiments; ordinary tests use fixtures and incur no model charges.
+Browser recovery remembers verified native, label or ARIA interactions in local SQLite, keyed by control shape rather than a person's answer. Every reuse checks the current question, choices and resulting state. Reversible controls and unchanged Next/Review steps have three recovery passes; a proven pre-submission technical hold can resume at most twice when readiness still passes. Documents are reused, and a sending or uncertain attempt is never replayed. This is bounded operational learning; the system does not retrain itself, change qualifications or alter submission permissions automatically. [Live AI comparisons](docs/AI_BENCHMARK.md) and the [vacancy-specific CV audit](docs/CV_PREPARATION.md) document separately authorised experiments; ordinary tests use fixtures and incur no model charges.
 
 ## Quality and verification
 
@@ -154,7 +154,7 @@ The backend requires **100% statement and branch coverage in every one of its 19
 
 Verification results, measured coverage and any outstanding checks are recorded in [delivery status](docs/STATUS.md). [Review findings](docs/CODE_REVIEW.md) explain corrected faults and their regressions. Coverage establishes execution, not compatibility with every live provider layout; behaviour assertions and isolated provider fixtures provide additional evidence.
 
-The security review adds **53 cases**, bringing the Python inventory to **865**, and preserves both 100% runtime coverage gates. The [threat model](docs/SECURITY.md) defines protection against hostile web pages, malformed requests and untrusted provider content, together with the limits of a local single-user application. Tests isolate runtime credentials and prevent CLI fixtures from loading the operator's `.env`. The [offline benchmark](docs/PERFORMANCE.md) records a 1,000-opportunity API list median of **11.95 ms** and p95 of **15.61 ms** on Windows/Python 3.14.2; these are in-process read measurements, excluding browser rendering, document generation and model/provider latency.
+The security review added **53 cases** to an 865-case baseline. Bounded form recovery adds **59 cases**, bringing the Python inventory to **924**, with both 100% runtime coverage gates enforced. The [threat model](docs/SECURITY.md) defines protection against hostile web pages, malformed requests and untrusted provider content, together with the limits of a local single-user application. Tests isolate runtime credentials and prevent CLI fixtures from loading the operator's `.env`. The [offline benchmark](docs/PERFORMANCE.md) records a 1,000-opportunity API list median of **11.95 ms** and p95 of **15.61 ms** on Windows/Python 3.14.2; these are in-process read measurements, excluding browser rendering, document generation and model/provider latency.
 
 ## Run locally
 

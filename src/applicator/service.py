@@ -83,6 +83,8 @@ class Service:
             row["state"] == State.READY,
             "Prepared and ready."
             if row["state"] == State.READY
+            else "Review hold: " + " ".join(row["evaluation"]["blockers"])
+            if row["state"] == State.REVIEW and row["evaluation"].get("blockers")
             else "Prepare pending records; reconcile uncertain attempts. Submitted records cannot be retried.",
         )
         permitted = job.source in (sources if sources is not None else self.adapters.keys())
@@ -352,6 +354,14 @@ class Service:
             expected_job=job,
         )
 
+    def recoverable_form_hold(self, app_id: int) -> bool:
+        if not self.store.form_recovery_available(app_id):
+            return False
+        report = self.preflight(app_id)
+        return all(
+            check.passed for check in report.checks if check.code not in {"state", "automation"}
+        )
+
     def queue_pending(self) -> bool:
         """Whether existing FIFO records can progress without another discovery pass."""
         _, revision = self.store.profile()
@@ -364,6 +374,7 @@ class Service:
                     row["revision"] != revision
                     or not row["evaluation"]
                     or row["evaluation"].get("preparation_pending", False)
+                    or self.recoverable_form_hold(row["id"])
                 )
             )
             for row in self.store.applications()
@@ -559,8 +570,9 @@ class Service:
                 or not row["evaluation"]
                 or row["evaluation"].get("preparation_pending", False)
             )
+            recoverable = row["state"] == State.REVIEW and self.recoverable_form_hold(row["id"])
             if row["state"] not in {State.REVIEW, State.READY} or (
-                row["state"] == State.REVIEW and not stale
+                row["state"] == State.REVIEW and not stale and not recoverable
             ):
                 continue
             app_id = row["id"]
@@ -568,6 +580,16 @@ class Service:
                 "evaluating", "Starting the next opportunity in order of arrival.", app_id
             )
             try:
+                if recoverable:
+                    if not self.store.form_recovery_available(app_id, claim=True):
+                        operation.result("review")
+                        continue
+                    operation.progress(
+                        "recovering_form",
+                        "Resuming a proven pre-submission technical stop with verified existing documents.",
+                    )
+                    self.refresh_readiness(app_id)
+                    row = self.store.application(app_id)
                 if stale or row["state"] == State.REVIEW:
                     self.prepare(app_id, progress=operation.progress)
                 if stopping and stopping():

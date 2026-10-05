@@ -431,4 +431,4 @@ def test_failed_next_validation_stops_without_duplicate_document_upload(
     monkeypatch.setattr(LinkedInBrowser, "context", fixture_context)
     with pytest.raises(ReviewRequired, match="did not advance"):
         LinkedInBrowser(data, profile).submit(job, {}, tmp_path)
-    assert events == ["upload", "next"]
+    assert events == ["upload", "next", "next", "next"]

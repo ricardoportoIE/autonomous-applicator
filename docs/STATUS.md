@@ -1,6 +1,14 @@
 # Delivery and validation record
 
-Version 0.3.0 reviewed through the security and offline performance follow-up on 5 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+Version 0.3.0 reviewed through bounded form recovery on 5 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+
+## Bounded form recovery and operational learning, 5 October 2026
+
+The live diagnostic distinguished technical provider stops from unknown questions, lower fit, location review and unprocessed imports. The browser now tries native, associated-label and scoped ARIA strategies, reacquires semantically identical controls after React replaces IDs and verifies native/accessible state before continuing. CSS-hidden clones and controls disabled through a fieldset or ARIA ancestor are excluded. Successful method hints persist locally without answers or arbitrary selectors. Next/Review can recover an unchanged step without duplicate uploads; Easy Apply opening handles a same-page link and an already opened dialogue after a timeout. Submit remains outside retry loops.
+
+A transactional budget permits two automatic resumptions of a classified, released pre-send technical hold when the full current readiness checks pass. Existing valid documents are reused. Authentication, unknown facts, exhausted capacity, altered materials and uncertain sends retain their boundaries. The monitor records recovery methods and outcomes; new provider holds include their actual reason in the evaluation and readiness status check.
+
+The source inventory is **924 Python cases**, including **59 new recovery cases**. The **202 focused provider/field/queue cases passed in 315.11 seconds**, followed by **59 recovery cases in 104.50 seconds** including the final CSS/disabled-ancestor and privacy assertions. **155 React tests passed at 100% in each of ten runtime modules**. Ruff, strict mypy, TypeScript and repository hygiene passed. Full-suite and independent CI results are recorded separately; focused checks do not establish complete backend coverage. These checks used disposable fictional workspaces and intercepted providers, made no paid model calls and sent no real applications or invitations. The operator's agent remains paused.
 
 ## Security and offline performance, 5 October 2026
 

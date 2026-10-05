@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import re
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -153,6 +154,73 @@ class Store:
         with self.connect() as db:
             row = db.execute("SELECT value FROM config WHERE key=?", (key,)).fetchone()
             return str(row[0]) if row else None
+
+    def recovery_strategy(self, shape: str, strategy: str | None = None) -> str | None:
+        """Remember a verified interaction method, never an answer or site instruction."""
+        methods = {"native", "label", "aria"}
+        if not re.fullmatch(r"(?:checkbox|radio)-[01]{3}", shape):
+            raise ValueError("Unsupported recovery shape")
+        if strategy is not None and strategy not in methods:
+            raise ValueError("Unsupported recovery strategy")
+        key = "browser_recovery:" + shape
+        with self.connect(True) as db:
+            if strategy is not None:
+                db.execute("INSERT OR REPLACE INTO config VALUES (?,?)", (key, strategy))
+                return strategy
+            row = db.execute("SELECT value FROM config WHERE key=?", (key,)).fetchone()
+            return row[0] if row and row[0] in methods else None
+
+    def form_recovery_available(self, app_id: int, *, claim: bool = False) -> bool:
+        """At most two automatic resumptions of a proven pre-send technical stop."""
+        with self.connect(True) as db:
+            row = db.execute("SELECT state FROM applications WHERE id=?", (app_id,)).fetchone()
+            attempt = db.execute(
+                "SELECT status FROM attempts WHERE application_id=? ORDER BY id DESC LIMIT 1",
+                (app_id,),
+            ).fetchone()
+            event = db.execute(
+                "SELECT detail FROM events WHERE application_id=? AND kind='provider_review_required' ORDER BY id DESC LIMIT 1",
+                (app_id,),
+            ).fetchone()
+            if (
+                not row
+                or row[0] != State.REVIEW
+                or not attempt
+                or attempt[0] != "released"
+                or not event
+            ):
+                return False
+            detail = event[0]
+            technical = detail.startswith(
+                (
+                    "Locator.",
+                    "Ambiguous phone controls",
+                    "Unlabelled form control",
+                    "The application did not advance",
+                    "The approved checkbox",
+                    "The approved radio",
+                    "Form control identity",
+                    "Ambiguous form control",
+                    "Easy Apply control",
+                    "Approved answer does not match available choices: Will you now or in the future require sponsorship for employment visa status?",
+                )
+            )
+            if not technical or re.search(r"authwall|checkpoint|challenge|login", detail, re.I):
+                return False
+            key = f"form_recovery:v1:{app_id}"
+            saved = db.execute("SELECT value FROM config WHERE key=?", (key,)).fetchone()
+            value = saved[0] if saved else "0"
+            if value not in {"0", "1"}:
+                return False
+            if claim:
+                db.execute("INSERT OR REPLACE INTO config VALUES (?,?)", (key, str(int(value) + 1)))
+                self.event(
+                    db,
+                    "form_recovery_queued",
+                    f"Technical recovery {int(value) + 1}/2; no previous submission click.",
+                    app_id,
+                )
+            return True
 
     def settings(self) -> Settings:
         return Settings.model_validate_json(self.get_config("settings") or "{}")
@@ -799,7 +867,9 @@ class Store:
         question: Question | None = None,
     ) -> None:
         with self.connect(True) as db:
-            row = db.execute("SELECT job,state FROM applications WHERE id=?", (app_id,)).fetchone()
+            row = db.execute(
+                "SELECT job,state,evaluation FROM applications WHERE id=?", (app_id,)
+            ).fetchone()
             if not row:
                 raise KeyError(app_id)
             if attempt is not None:
@@ -843,9 +913,14 @@ class Store:
                     "AND job_fingerprint=? AND answer_key!=?",
                     (fingerprint(job), app_id, previous_fingerprint, key),
                 )
+            evaluation = json.loads(row[2])
+            evaluation["state"] = State.REVIEW
+            blockers = evaluation.setdefault("blockers", [])
+            if detail not in blockers:
+                blockers.append(detail[:2000])
             db.execute(
-                "UPDATE applications SET state=?,job=? WHERE id=?",
-                (State.REVIEW, job.model_dump_json(), app_id),
+                "UPDATE applications SET state=?,job=?,evaluation=? WHERE id=?",
+                (State.REVIEW, job.model_dump_json(), json.dumps(evaluation), app_id),
             )
             self.event(db, "provider_review_required", detail[:2000], app_id)
 

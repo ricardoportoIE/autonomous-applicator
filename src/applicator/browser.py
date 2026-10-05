@@ -1,6 +1,7 @@
 """Dedicated local browser automation with fixed origins and explicit form contracts."""
 
 import hashlib
+import json
 import os
 import re
 from collections.abc import Callable, Iterator
@@ -350,7 +351,7 @@ def application_dialog(page: Page) -> Locator:
     dialog = page.get_by_role("dialog").filter(visible=True)
     dialog.wait_for(timeout=10000)
     controls = dialog.locator(
-        'input:not([type="hidden"]), select, textarea, [role="checkbox"], [role="combobox"]'
+        'input:not([type="hidden"]), select, textarea, [role="checkbox"], [role="combobox"], [role="radio"], label[for], label:has(input)'
     )
     actions = dialog.get_by_role("button", name=re.compile(r"^(Next|Review|Submit application)$"))
     controls.or_(actions).filter(visible=True).first.wait_for(timeout=10000)
@@ -388,6 +389,9 @@ def form_questions(page: Page) -> list[dict[str, Any]]:
         return {label,required:text(labels[0]).endsWith('*')};
       };
       const widget = el => el.closest('[role="checkbox"]');
+      const active = el => el.checkVisibility({visibilityProperty:true,opacityProperty:true}) || (['checkbox','radio'].includes(el.type) &&
+        ([...(el.labels || [])].some(label=>label.checkVisibility({visibilityProperty:true,opacityProperty:true})) ||
+          el.closest('[role="checkbox"],[role="radio"]')?.checkVisibility({visibilityProperty:true,opacityProperty:true})));
       const required = el => el.required || el.getAttribute('aria-required') === 'true' || widget(el)?.getAttribute('aria-required') === 'true' || (el.type==='radio' && (groupFor(el)?.getAttribute('aria-required')==='true' || semanticGroup(el)?.required));
       const labelText = el => {
         const label=el.labels?.[0]?.cloneNode(true);
@@ -398,14 +402,102 @@ def form_questions(page: Page) -> list[dict[str, Any]]:
       };
       const groupLabel = el => text(groupFor(el)?.querySelector('legend')) || groupFor(el)?.getAttribute('aria-label') || labelledBy(groupFor(el)) || semanticGroup(el)?.label || '';
       return [...dialog.querySelectorAll('input,select,textarea,[role="combobox"],[role="checkbox"]')]
-      .filter(el => !el.disabled && el.getAttribute('aria-disabled')!=='true' && el.type !== 'hidden' && el.type !== 'file' && !(el.tagName==='INPUT' && ['submit','button','reset'].includes(el.type)) &&
+      .filter(el => active(el) && !el.matches(':disabled') && !el.closest('[aria-disabled="true"]') && el.type !== 'hidden' && el.type !== 'file' && !(el.tagName==='INPUT' && ['submit','button','reset'].includes(el.type)) &&
         (!el.matches('[role="checkbox"]') || !el.querySelector('input[type="checkbox"]')))
       .map(el => ({id:el.id, type:el.getAttribute('role')==='combobox' ? 'combobox' : el.type || el.getAttribute('role'), value:el.value || el.getAttribute('aria-valuetext') || (el.getAttribute('role')==='combobox' ? text(el) : ''), checked:el.checked || ['true','mixed'].includes(widget(el)?.getAttribute('aria-checked')),
         label:labelText(el),
         group:el.type === 'radio' ? (required(el) ? unmark(groupLabel(el)) : groupLabel(el).trim()) : '',
-        group_choices:el.type === 'radio' && el.name ? [...(groupFor(el) || dialog).querySelectorAll('input[type=radio]')].filter(other=>other.name===el.name && !other.disabled).map(labelText) : [],
+        group_choices:el.type === 'radio' && el.name ? [...(groupFor(el) || dialog).querySelectorAll('input[type=radio]')].filter(other=>active(other) && other.name===el.name && !other.disabled).map(labelText) : [],
         required:!!required(el),
         choices:el.tagName === 'SELECT' ? [...el.options].filter(o=>!o.disabled && !o.closest('optgroup[disabled]') && o.value!=='').map(o=>o.label.trim()) : []}));}""")
+    )
+
+
+def open_easy_apply(page: Page, progress: Callable[[str, str], None]) -> None:
+    """Bounded opening recovery; never click again once a dialogue has appeared."""
+    for attempt in range(3):
+        ensure_linkedin(page)
+        if page.get_by_role("dialog").filter(visible=True).count():
+            application_dialog(page)
+            return
+        main = page.get_by_role("main")
+        actions = (
+            main.get_by_role("button", name=re.compile(r"^Easy Apply\b"))
+            .or_(main.get_by_role("link", name=re.compile(r"^Easy Apply\b")))
+            .filter(visible=True)
+        )
+        try:
+            actions.first.wait_for(timeout=2000)
+            if actions.count() != 1:
+                raise ValueError("Easy Apply controls are ambiguous; review the opportunity")
+            href = actions.get_attribute("href", timeout=2000)
+            if href is not None:
+                target = urlsplit(actions.evaluate("el=>el.href"))
+                current = urlsplit(page.url)
+                if (target.scheme, target.netloc, target.path) != (
+                    current.scheme,
+                    current.netloc,
+                    current.path,
+                ):
+                    raise ValueError("External application links require manual hand-off")
+            actions.click(timeout=2000)
+            application_dialog(page)
+            return
+        except BrowserError:
+            progress("recovering_form", f"Re-reading Easy Apply controls ({attempt + 1}/3).")
+    raise ValueError("Easy Apply control unavailable after three recovery passes")
+
+
+def advance_application(
+    page: Page,
+    profile: Profile,
+    *,
+    resume_field_ids: set[str] | None,
+    resolver: Callable[[Question], str | None] | None,
+    progress: Callable[[str, str], None],
+    memory: Callable[[str, str | None], str | None],
+) -> None:
+    """Retry an unchanged reversible Next/Review step, without repeating uploads."""
+    original = application_step(application_dialog(page))
+    for attempt in range(3):
+        ensure_linkedin(page)
+        dialog = application_dialog(page)
+        if application_step(dialog) != original:
+            return
+        next_button = dialog.get_by_role("button", name=re.compile(r"^(Next|Review)$"))
+        if next_button.count() != 1:
+            raise ValueError("Unsupported Easy Apply step; review manually")
+        next_button.click(timeout=2000)
+        for _poll in range(10):
+            page.wait_for_timeout(200)
+            ensure_linkedin(page)
+            dialog = application_dialog(page)
+            if application_step(dialog) != original:
+                return
+        invalid = dialog.evaluate("""dialog => [...dialog.querySelectorAll('input,select,textarea,[aria-invalid="true"]')]
+          .filter(el=>el.checkVisibility() && (el.getAttribute('aria-invalid')==='true' || el.checkValidity && !el.checkValidity()))
+          .map(el=>{
+            const label=el.labels?.[0]?.cloneNode(true);
+            label?.querySelectorAll('input,select,textarea,[aria-hidden="true"]').forEach(node=>node.remove());
+            return (label?.textContent.trim() || el.getAttribute('aria-label') || 'Unlabelled field').slice(0,500);
+          })""")
+        if invalid:
+            raise ValueError(
+                "The application did not advance; invalid fields: " + ", ".join(invalid)
+            )
+        progress(
+            "recovering_form", f"Re-reading and verifying unchanged form step ({attempt + 1}/3)."
+        )
+        fill_questions(
+            page,
+            profile,
+            resume_field_ids=resume_field_ids,
+            resolver=resolver,
+            progress=progress,
+            memory=memory,
+        )
+    raise ValueError(
+        "The application did not advance after three recovery passes; inspect provider validation"
     )
 
 
@@ -520,6 +612,128 @@ def upload_resume(page: Page, dialog: Locator, document: Path) -> set[str] | Non
     return set(ids)
 
 
+def field_locator(dialog: Locator, field: dict[str, Any]) -> Locator:
+    """Resolve one labelled control within the current application dialogue."""
+    locator = (
+        dialog.locator("[id=" + json.dumps(str(field["id"])) + "]")
+        if field["id"]
+        else dialog.get_by_label(str(field["label"]), exact=True)
+    )
+    if locator.count() != 1:
+        raise ValueError("Ambiguous form control identifiers require manual review")
+    return locator
+
+
+def current_field(page: Page, field: dict[str, Any]) -> dict[str, Any]:
+    matches = [
+        item
+        for item in form_questions(page)
+        if (item["type"], item["label"], item["group"])
+        == (field["type"], field["label"], field["group"])
+    ]
+    if len(matches) != 1 or matches[0]["group_choices"] != field["group_choices"]:
+        raise ValueError("Form control identity or choices changed during recovery")
+    return matches[0]
+
+
+def set_boolean_control(
+    page: Page,
+    field: dict[str, Any],
+    target: bool,
+    *,
+    progress: Callable[[str, str], None] | None = None,
+    memory: Callable[[str, str | None], str | None] | None = None,
+) -> None:
+    """Try three verified interaction strategies, reacquiring by semantic identity."""
+    methods = ["native", "label", "aria"]
+    shape = ""
+    for attempt in range(3):
+        current = current_field(page, field)
+        dialog = page.get_by_role("dialog").filter(visible=True)
+        locator = field_locator(dialog, current)
+        try:
+            state = locator.evaluate("""el => {
+              const card=el.closest('[role="checkbox"],[role="radio"]');
+              return {native:el.tagName==='INPUT', checked:el.checked,
+                aria:card?.getAttribute('aria-checked') ?? null,
+                visible:el.checkVisibility(), labels:[...(el.labels || [])].filter(l=>l.checkVisibility()).length,
+                role:!!card, enabled:!el.matches(':disabled') && !el.closest('[aria-disabled="true"]'),
+                valid:el.checkValidity ? el.checkValidity() : true};
+            }""")
+            if not state["enabled"]:
+                raise ValueError("Control became disabled during recovery")
+            if not state["native"] and state["aria"] is None:
+                raise ValueError("An accessible control needs an explicit checked state")
+            native_ok = not state["native"] or state["checked"] == target
+            aria_ok = state["aria"] is None or state["aria"] == str(target).lower()
+            if native_ok and aria_ok and state["valid"]:
+                if not field["required"] or target or field["type"] == "radio":
+                    return
+            if native_ok and aria_ok:
+                raise ValueError(
+                    f"The approved {field['type']} answer was not selected: invalid constraint"
+                )
+            if not shape:
+                shape = (
+                    field["type"]
+                    + "-"
+                    + "".join(str(int(bool(state[key]))) for key in ("visible", "labels", "role"))
+                )
+                preferred = memory(shape, None) if memory else None
+                if preferred in methods:
+                    methods.remove(preferred)
+                    methods.insert(0, preferred)
+            method = methods[attempt]
+            if progress:
+                progress(
+                    "recovering_form",
+                    f"Trying {method} interaction ({attempt + 1}/3) for {field['type']}: {field['group'] or field['label']}.",
+                )
+            if method == "native":
+                if not state["native"] or not state["visible"]:
+                    continue
+                locator.set_checked(target, timeout=2000)
+            else:
+                clickable = (
+                    dialog.locator("label[for=" + json.dumps(str(current["id"])) + "]").or_(
+                        locator.locator("xpath=ancestor::label[1]")
+                    )
+                    if method == "label"
+                    else locator.locator(
+                        "xpath=ancestor-or-self::*[@role='checkbox' or @role='radio'][1]"
+                    )
+                ).filter(visible=True)
+                if clickable.count() != 1:
+                    continue
+                clickable.click(timeout=2000)
+            # Re-read after a click: React may replace the input, its ID or its wrapper.
+            fresh = current_field(page, field)
+            verified = field_locator(dialog, fresh).evaluate(
+                """(el, target) => {
+                  const card=el.closest('[role="checkbox"],[role="radio"]');
+                  const aria=card?.getAttribute('aria-checked');
+                  return !el.matches(':disabled') && !el.closest('[aria-disabled="true"]') &&
+                    (el.tagName!=='INPUT' || el.checked===target && el.checkValidity()) &&
+                    (aria==null || aria===String(target));
+                }""",
+                target,
+            )
+            if verified and (not field["required"] or target or field["type"] == "radio"):
+                if memory:
+                    memory(shape, method)
+                if progress:
+                    progress(
+                        "form_recovered", f"Verified {method} interaction for {field['type']}."
+                    )
+                return
+        except BrowserError:
+            # Retry only a reversible control action, never a submission click.
+            continue
+    raise ValueError(
+        f"The approved {field['type']} answer was not selected: {field['group'] or field['label']}; three recovery strategies exhausted"
+    )
+
+
 def fill_questions(
     page: Page,
     profile: Profile,
@@ -527,6 +741,7 @@ def fill_questions(
     resume_field_ids: set[str] | None = None,
     resolver: Callable[[Question], str | None] | None = None,
     progress: Callable[[str, str], None] | None = None,
+    memory: Callable[[str, str | None], str | None] | None = None,
 ) -> None:
     fields = form_questions(page)
     phone_answers = contact_phone_answers(fields, profile)
@@ -556,11 +771,10 @@ def fill_questions(
             and not label
         ):
             continue
-        if not label or not field_id:
+        if not label:
             raise ValueError("Unlabelled form control requires manual review")
-        locator = dialog.locator('[id="' + field_id.replace('"', '\\"') + '"]')
-        if locator.count() != 1:
-            raise ValueError("Ambiguous form control identifiers require manual review")
+        field = current_field(page, field)
+        locator = field_locator(dialog, field)
         if progress:
             progress(
                 "answering_questions",
@@ -578,20 +792,11 @@ def fill_questions(
             if value not in field["group_choices"]:
                 raise ValueError(f"Approved answer does not match available choices: {group}")
             if label == value:
-                card = locator.locator("xpath=ancestor::*[@role='radio'][1]")
-                if card.count() == 1 and card.is_visible():
-                    if card.get_attribute("aria-checked") != "true":
-                        card.click()
-                    if card.get_attribute("aria-checked") != "true" or not locator.is_checked():
-                        raise ValueError(
-                            "The approved radio answer was not selected; review manually"
-                        )
-                else:
-                    locator.check()
+                set_boolean_control(page, field, True, progress=progress, memory=memory)
             continue
         if field["type"] == "checkbox":
             if re.fullmatch(r"Follow .+ to stay up to date.*", label):
-                locator.uncheck()
+                set_boolean_control(page, field, False, progress=progress, memory=memory)
                 continue
             value = answer(label, ["Yes", "No"], field["required"])
             if not value:
@@ -603,19 +808,7 @@ def fill_questions(
             if value not in {"Yes", "No"}:
                 raise ValueError(f"Approved answer does not match available choices: {label}")
             target = value == "Yes"
-            card = locator.locator("xpath=ancestor-or-self::*[@role='checkbox'][1]")
-            if card.count() == 1 and card.get_attribute("aria-checked") is not None:
-                if card.get_attribute("aria-checked") != str(target).lower():
-                    (card if card.is_visible() else locator).click()
-                if card.get_attribute("aria-checked") != str(target).lower():
-                    raise ValueError(f"The approved checkbox answer was not selected: {label}")
-            else:
-                locator.set_checked(target)
-            if not locator.evaluate(
-                "(el, answer) => el.tagName==='INPUT' ? el.checked===answer.target && el.checkValidity() : !answer.required || answer.target",
-                {"target": target, "required": field["required"]},
-            ):
-                raise ValueError(f"The approved checkbox answer was not selected: {label}")
+            set_boolean_control(page, field, target, progress=progress, memory=memory)
             continue
         if field["type"] == "combobox":
             locator.click()
@@ -882,6 +1075,9 @@ class LinkedInBrowser:
             raise ReviewRequired("Configure a candidate profile before submitting applications")
         if linkedin_job_id(job.url) != job.source_id:
             raise ValueError("LinkedIn job identifier does not match the reviewed opportunity")
+        from .store import Store
+
+        recovery = Store(self.data / "applicator.sqlite3")
         with (
             sync_playwright() as playwright,
             self.context(playwright) as context,
@@ -903,7 +1099,7 @@ class LinkedInBrowser:
             if " ".join(current_job.description.split()) != " ".join(job.description.split()):
                 raise ValueError("Job description changed; re-import and review")
             self.report("opening_application", "Opening the Easy Apply form.")
-            page.get_by_role("button", name=re.compile(r"^Easy Apply\b")).first.click(timeout=10000)
+            open_easy_apply(page, self.report)
             seen_steps: set[str] = set()
             for _step in range(10):
                 ensure_linkedin(page)
@@ -932,6 +1128,7 @@ class LinkedInBrowser:
                     resume_field_ids=resume_fields,
                     resolver=self.question_resolver,
                     progress=self.report,
+                    memory=recovery.recovery_strategy,
                 )
                 self.report(
                     "uploading_documents",
@@ -973,9 +1170,17 @@ class LinkedInBrowser:
                     )
                 if submit.count():
                     # Do not follow companies as an implicit side effect of submission.
-                    follow = dialog.get_by_label(re.compile(r"^Follow .+ to stay up to date"))
-                    if follow.count():
-                        follow.uncheck()
+                    for field in form_questions(page):
+                        if field["type"] == "checkbox" and re.fullmatch(
+                            r"Follow .+ to stay up to date.*", field["label"]
+                        ):
+                            set_boolean_control(
+                                page,
+                                field,
+                                False,
+                                progress=self.report,
+                                memory=recovery.recovery_strategy,
+                            )
                     self.report("submitting", "Sending the application to LinkedIn.")
                     if self.before_submit:
                         self.before_submit()
@@ -997,13 +1202,16 @@ class LinkedInBrowser:
                         page, self.confirmation_folder
                     )
                     return f"linkedin:{job.source_id}:confirmed"
-                next_button = dialog.get_by_role("button", name=re.compile(r"^(Next|Review)$"))
-                if next_button.count() != 1:
-                    raise ValueError("Unsupported Easy Apply step; review manually")
                 seen_steps.add(application_step(dialog))
                 self.report("advancing_form", f"Validating and advancing form step {_step + 1}.")
-                next_button.click()
-                page.wait_for_timeout(600)
+                advance_application(
+                    page,
+                    self.profile,
+                    resume_field_ids=resume_fields,
+                    resolver=self.question_resolver,
+                    progress=self.report,
+                    memory=recovery.recovery_strategy,
+                )
             raise ValueError("Easy Apply exceeded the ten-step limit")
 
 
