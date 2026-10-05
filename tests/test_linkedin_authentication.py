@@ -86,7 +86,12 @@ def delayed_redirect(data, monkeypatch):
     def redirect_while_waiting(locator, **kwargs):
         waits.append(str(locator))
         if (trigger["receipt"] and "Your application was sent" in str(locator)) or (
-            not trigger["receipt"] and len(waits) == trigger["wait"]
+            not trigger["receipt"]
+            and (
+                locator.page.get_by_role("dialog").filter(visible=True).count() > 0
+                if trigger.get("phase") == "form"
+                else len(waits) == trigger["wait"]
+            )
         ):
             # The production check has already seen the canonical job/search URL.
             # Navigate deterministically here; retain a real Playwright wait/error.
@@ -129,6 +134,7 @@ def test_submission_authentication_stop_preserves_capacity_stage_and_archived_ev
     trigger, visits, actions, _ = delayed_redirect
     trigger["wait"] = 3 if phase == "form" else 1
     trigger["receipt"] = phase == "confirmation"
+    trigger["phase"] = phase
     job.source, job.source_id = "linkedin", "123"
     job.url, job.description = (
         "https://www.linkedin.com/jobs/view/123/",

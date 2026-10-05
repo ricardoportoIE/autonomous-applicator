@@ -10,6 +10,7 @@ from playwright.sync_api import TimeoutError as BrowserTimeout
 from applicator.browser import (
     ReviewRequired,
     advance_application,
+    application_step,
     browser_options,
     fill_questions,
     form_questions,
@@ -436,6 +437,45 @@ def test_invalid_field_diagnostics_exclude_dropdown_answer_values(profile):
 
 
 @pytest.mark.browser
+def test_unsupported_pure_aria_radio_cannot_be_skipped_as_an_approved_default(profile):
+    html = '<dialog open><div role="radiogroup" aria-label="Unreviewed legal question"><div id="yes" role="radio" aria-label="Yes" aria-checked="true">Yes</div><div id="no" role="radio" aria-label="No" aria-checked="false">No</div></div><button onclick="window.sent=true">Submit application</button></dialog>'
+    with sync_playwright() as p, p.chromium.launch(headless=True, **browser_options()) as browser:
+        page = browser.new_page()
+        page.set_content(html)
+        assert len(form_questions(page)) == 2
+        with pytest.raises(ValueError, match="Unlabelled radio group"):
+            fill_questions(page, profile)
+        assert page.evaluate("window.sent") is None
+        assert page.locator("#yes").get_attribute("aria-checked") == "true"
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("change", ["ids", "values", "order", "heading", "question"])
+def test_step_identity_uses_content_without_ids_or_personal_values(change):
+    html = '<dialog open><h2>Contact details</h2><fieldset><legend>Approved question</legend><label>Email<input id="email" value="private@example.test"></label><label>Phone<input id="phone" value="5550100"></label></fieldset><button>Next</button></dialog>'
+    with sync_playwright() as p, p.chromium.launch(headless=True, **browser_options()) as browser:
+        page = browser.new_page()
+        page.set_content(html)
+        dialog = page.get_by_role("dialog")
+        before = application_step(dialog)
+        assert "private@example.test" not in before and "5550100" not in before
+        if change == "ids":
+            page.locator("input").evaluate_all("nodes=>nodes.forEach(el=>el.id+='-new')")
+        elif change == "values":
+            page.locator("input").evaluate_all(
+                "nodes=>nodes.forEach(el=>el.value='Different private value')"
+            )
+        elif change == "order":
+            page.locator("fieldset").evaluate("el=>el.appendChild(el.querySelector('label'))")
+        elif change == "heading":
+            page.locator("h2").evaluate("el=>el.textContent='Additional questions'")
+        else:
+            page.locator("legend").evaluate("el=>el.textContent='Different reviewed question'")
+        after = application_step(dialog)
+        assert (after == before) == (change in {"ids", "values", "order"})
+
+
+@pytest.mark.browser
 @pytest.mark.parametrize("case", ["second_click", "stalled", "invalid"])
 def test_advance_recovery_does_not_reupload_or_submit(profile, case):
     handler = (
@@ -468,7 +508,9 @@ def test_advance_recovery_does_not_reupload_or_submit(profile, case):
 
 
 @pytest.mark.browser
-@pytest.mark.parametrize("case", ["link", "external", "ambiguous", "partial_open", "missing"])
+@pytest.mark.parametrize(
+    "case", ["link", "external", "ambiguous", "partial_open", "missing", "visible_text"]
+)
 def test_opening_recovery_remains_on_the_reviewed_opportunity(case, monkeypatch):
     action = (
         '<a href="#" onclick="document.querySelector(\'dialog\').showModal()">Easy Apply</a>'
@@ -477,6 +519,10 @@ def test_opening_recovery_remains_on_the_reviewed_opportunity(case, monkeypatch)
     )
     if case == "external":
         action = action.replace('href="#"', 'href="https://example.test/apply"')
+    if case == "visible_text":
+        action = action.replace(
+            "<button ", '<button aria-label="Apply to this reviewed opportunity" '
+        )
     if case == "ambiguous":
         action += action
     if case == "missing":

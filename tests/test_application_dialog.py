@@ -401,8 +401,9 @@ def test_resume_chooser_proves_the_job_cv_selection_and_does_not_skip_legal_fiel
 
 
 @pytest.mark.browser
+@pytest.mark.parametrize("change", ["unchanged", "react_ids", "cycle"])
 def test_failed_next_validation_stops_without_duplicate_document_upload(
-    data, profile, job, tmp_path, monkeypatch
+    data, profile, job, tmp_path, monkeypatch, change
 ):
     job.source, job.source_id, job.url = (
         "linkedin",
@@ -415,6 +416,19 @@ def test_failed_next_validation_stops_without_duplicate_document_upload(
         "document.querySelector('#next').onclick=()=>{document.querySelector('#next').hidden=true;document.querySelector('#submit').hidden=false;};",
         "document.querySelector('#next').onclick=()=>{};",
     )
+    if change == "react_ids":
+        html = html.replace(
+            "document.querySelector('#next').onclick=()=>{};",
+            "document.querySelector('#next').onclick=()=>{document.querySelector('input:not([type=file])').id+='-new';};",
+        )
+    elif change == "cycle":
+        html = html.replace(
+            '<section role="dialog" hidden>',
+            '<section role="dialog" hidden><h2 id="stage">Stage A</h2>',
+        ).replace(
+            "document.querySelector('#next').onclick=()=>{};",
+            "document.querySelector('#next').onclick=()=>{const title=document.querySelector('#stage');title.textContent=title.textContent==='Stage A'?'Stage B':'Stage A';};",
+        )
     events = []
 
     def fixture_context(self, playwright, **kwargs):
@@ -431,4 +445,6 @@ def test_failed_next_validation_stops_without_duplicate_document_upload(
     monkeypatch.setattr(LinkedInBrowser, "context", fixture_context)
     with pytest.raises(ReviewRequired, match="did not advance"):
         LinkedInBrowser(data, profile).submit(job, {}, tmp_path)
-    assert events == ["upload", "next", "next", "next"]
+    assert events == (
+        ["upload", "next", "next"] if change == "cycle" else ["upload", "next", "next", "next"]
+    )

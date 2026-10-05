@@ -362,7 +362,19 @@ def application_step(dialog: Locator) -> str:
     """Identify form controls and navigation without recording personal field values."""
     return str(
         dialog.evaluate(r"""dialog => JSON.stringify({
-      fields:[...dialog.querySelectorAll('input,select,textarea,[role="checkbox"],[role="combobox"]')].map(el=>[el.id,el.type || el.getAttribute('role')]),
+      fields:[...dialog.querySelectorAll('input,select,textarea,[role="checkbox"],[role="combobox"],[role="radio"]')]
+      .filter(el=>el.type!=='hidden' && (el.checkVisibility() || [...(el.labels || [])].some(label=>label.checkVisibility()) || el.closest('[role="checkbox"],[role="radio"]')?.checkVisibility()))
+      .map(el=>{
+        const text=node=>node?.textContent.trim() || '';
+        const labelledBy=node=>(node?.getAttribute('aria-labelledby') || '').split(/\s+/).map(id=>text(document.getElementById(id))).join(' ');
+        const label=el.labels?.[0]?.cloneNode(true);
+        label?.querySelectorAll('input,select,textarea,[aria-hidden="true"]').forEach(node=>node.remove());
+        const group=el.closest('fieldset,[role="radiogroup"]');
+        return [el.type || el.getAttribute('role'),text(label) || el.getAttribute('aria-label') || labelledBy(el),
+          text(group?.querySelector('legend')) || group?.getAttribute('aria-label') || labelledBy(group),
+          el.closest('[role="radio"]')?.getAttribute('aria-label') || ''];
+      }).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))),
+      headings:[...dialog.querySelectorAll('h1,h2,h3,[role="heading"]')].filter(el=>el.checkVisibility()).map(el=>el.textContent.trim()),
       actions:[...dialog.querySelectorAll('button')].filter(el=>el.checkVisibility() && /^(Next|Review|Submit application)$/.test(el.textContent.trim())).map(el=>el.textContent.trim())
     })""")
     )
@@ -401,13 +413,13 @@ def form_questions(page: Page) -> list[dict[str, Any]]:
         return required(el) ? unmark(value) : value;
       };
       const groupLabel = el => text(groupFor(el)?.querySelector('legend')) || groupFor(el)?.getAttribute('aria-label') || labelledBy(groupFor(el)) || semanticGroup(el)?.label || '';
-      return [...dialog.querySelectorAll('input,select,textarea,[role="combobox"],[role="checkbox"]')]
+      return [...dialog.querySelectorAll('input,select,textarea,[role="combobox"],[role="checkbox"],[role="radio"]')]
       .filter(el => active(el) && !el.matches(':disabled') && !el.closest('[aria-disabled="true"]') && el.type !== 'hidden' && el.type !== 'file' && !(el.tagName==='INPUT' && ['submit','button','reset'].includes(el.type)) &&
-        (!el.matches('[role="checkbox"]') || !el.querySelector('input[type="checkbox"]')))
+        (!el.matches('[role="checkbox"]') || !el.querySelector('input[type="checkbox"]')) && (!el.matches('[role="radio"]') || !el.querySelector('input[type="radio"]')))
       .map(el => ({id:el.id, type:el.getAttribute('role')==='combobox' ? 'combobox' : el.type || el.getAttribute('role'), value:el.value || el.getAttribute('aria-valuetext') || (el.getAttribute('role')==='combobox' ? text(el) : ''), checked:el.checked || ['true','mixed'].includes(widget(el)?.getAttribute('aria-checked')),
         label:labelText(el),
         group:el.type === 'radio' ? (required(el) ? unmark(groupLabel(el)) : groupLabel(el).trim()) : '',
-        group_choices:el.type === 'radio' && el.name ? [...(groupFor(el) || dialog).querySelectorAll('input[type=radio]')].filter(other=>active(other) && other.name===el.name && !other.disabled).map(labelText) : [],
+        group_choices:el.type === 'radio' && el.name ? [...(groupFor(el) || dialog).querySelectorAll('input[type=radio]')].filter(other=>active(other) && other.name===el.name && !other.matches(':disabled') && !other.closest('[aria-disabled="true"]')).map(labelText) : [],
         required:!!required(el),
         choices:el.tagName === 'SELECT' ? [...el.options].filter(o=>!o.disabled && !o.closest('optgroup[disabled]') && o.value!=='').map(o=>o.label.trim()) : []}));}""")
     )
@@ -424,8 +436,18 @@ def open_easy_apply(page: Page, progress: Callable[[str, str], None]) -> None:
         actions = (
             main.get_by_role("button", name=re.compile(r"^Easy Apply\b"))
             .or_(main.get_by_role("link", name=re.compile(r"^Easy Apply\b")))
+            .or_(main.locator("button").filter(has_text=re.compile(r"^\s*Easy Apply\s*$")))
             .filter(visible=True)
         )
+        if not actions.count():
+            # Some job layouts put the verified page's sticky action outside main.
+            # Require one page action rather than selecting the first matching card.
+            actions = (
+                page.get_by_role("button", name=re.compile(r"^Easy Apply\b"))
+                .or_(page.get_by_role("link", name=re.compile(r"^Easy Apply\b")))
+                .or_(page.locator("button").filter(has_text=re.compile(r"^\s*Easy Apply\s*$")))
+                .filter(visible=True)
+            )
         try:
             actions.first.wait_for(timeout=2000)
             if actions.count() != 1:
@@ -441,9 +463,11 @@ def open_easy_apply(page: Page, progress: Callable[[str, str], None]) -> None:
                 ):
                     raise ValueError("External application links require manual hand-off")
             actions.click(timeout=2000)
+            ensure_linkedin(page)
             application_dialog(page)
             return
         except BrowserError:
+            ensure_linkedin(page)
             progress("recovering_form", f"Re-reading Easy Apply controls ({attempt + 1}/3).")
     raise ValueError("Easy Apply control unavailable after three recovery passes")
 

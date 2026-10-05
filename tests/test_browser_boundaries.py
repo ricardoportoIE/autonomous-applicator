@@ -198,8 +198,12 @@ def test_easy_apply_records_uploads_progress_and_never_sends_after_the_step_budg
         )
     else:
         html = html.replace(
+            '<section role="dialog" hidden>',
+            '<section role="dialog" hidden><h2 id="stage">Stage 0</h2>',
+        )
+        html = html.replace(
             "document.querySelector('#next').hidden=true;document.querySelector('#submit').hidden=false;",
-            "const field=document.querySelector('input:not([type=file])');field.id='step-'+(++window.formStep);",
+            "const field=document.querySelector('input:not([type=file])');field.id='step-'+(++window.formStep);document.querySelector('#stage').textContent='Stage '+window.formStep;",
         ).replace("<script>", "<script>window.formStep=0;", 1)
     actions = []
 
