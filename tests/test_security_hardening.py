@@ -75,7 +75,11 @@ def test_valid_local_authorities_keep_exact_origin_matching(data, authority):
     assert_private_headers(response)
 
 
-@settings(max_examples=40, suppress_health_check=[HealthCheck.function_scoped_fixture])
+# API construction and SQLite setup are included in this functional property.
+# Dedicated performance and intake-deadline tests measure the timing contracts.
+@settings(
+    max_examples=40, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture]
+)
 @given(suffix=st.text(alphabet="abcdefghijklmnopqrstuvwxyz0123456789", min_size=1, max_size=40))
 def test_dns_rebinding_suffixes_never_gain_local_access(data, suffix):
     response = TestClient(create_app(data, TOKEN)).get(

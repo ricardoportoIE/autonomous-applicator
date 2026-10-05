@@ -93,4 +93,6 @@ Windows jobs additionally run `tests/powershell/test_private_permissions.ps1` ou
 
 ## Interpretation
 
+The hostile-authority property retains 40 generated suffixes and all rejection/header assertions. Its Hypothesis deadline is disabled because each example includes constructing the complete API, disposable SQLite setup and a request under coverage instrumentation. A Windows example took 399.88 ms and exceeded the default 200 ms while its security assertions passed. Dedicated performance measurements and the tested ten-second intake deadline retain their timing checks; no application timeout, security guard or coverage gate is relaxed.
+
 100% coverage means every measured application statement and branch outcome was exercised by the suite. Assertions establish the intended behaviour for those cases. It does not establish every possible input, future provider layout, network condition or hiring outcome. Live provider compatibility still depends on the declared authorisation, valid sign-in and the current supported interface contract. Unknown behaviour continues to require review.
