@@ -68,7 +68,15 @@ Before delivery, rerun the complete suite and the inventory gate. Additional req
 uv run python -m pytest tests/test_provider_form_regressions.py tests/test_form_recovery.py tests/test_application_dialog.py tests/test_linkedin_authentication.py --no-cov -o 'addopts=--strict-markers'
 ```
 
-The initial recovery pass added 66 cases and two variants to an existing stalled-dialogue case. Its historical 933-case Windows/Python 3.14.2 suite passed in 1,651.82 seconds with 2,826 statements and 992 branch outcomes exercised across all 19 runtime modules. The subsequent provider audit adds 41 fictional form regressions, one versioned-budget regression and one modern phone/CV integration variant, bringing the current inventory to 976. The new cases verify city suggestions in different countries, duplicate/disabled/unmapped choices, React identifier replacement, final selection validity, numeric narrative rejection, telephone keyboard hints, label-only inline validation, primary closed-job status and conservative residence/employment facts. Focused checks do not replace the full suite or inventory gate. [Delivery status](STATUS.md) records current complete measurements and remote runner availability.
+The initial recovery pass added 66 cases and two variants to an existing stalled-dialogue case. Its historical 933-case Windows/Python 3.14.2 suite passed in 1,651.82 seconds with 2,826 statements and 992 branch outcomes exercised across all 19 runtime modules. The subsequent provider audit adds 41 fictional form regressions, one versioned-budget regression and one modern phone/CV integration variant, bringing that inventory to 976 before the questionnaire interpretation enhancement below. The new cases verify city suggestions in different countries, duplicate/disabled/unmapped choices, React identifier replacement, final selection validity, numeric narrative rejection, telephone keyboard hints, label-only inline validation, primary closed-job status and conservative residence/employment facts. Focused checks do not replace the full suite or inventory gate. [Delivery status](STATUS.md) records current complete measurements and remote runner availability.
+
+## Questionnaire HTML interpretation reproduction
+
+```powershell
+uv run python -m pytest tests/test_ai_form_interpretation.py tests/test_form_benchmark.py --no-cov -o 'addopts=--strict-markers'
+```
+
+The enhancement adds 65 cases to the previous 976-case inventory: 54 grounded interpretation/HTML cases and 11 opt-in benchmark contract checks. Seven of the interpretation cases run real Chromium against fictional forms. They verify contact type compatibility, choices, semantic attributes, value omission, escaping, review guards, application-scoped precedence, cached persistence, progress details and rejection before filling or advancing. Model contracts check the requested and returned model, valid sources and mappings. They do not call the paid API. The separate eight-call fictional comparison is recorded in [the AI benchmark](AI_BENCHMARK.md#questionnaire-html-comparison-5-october-2026). The complete suite and inventory gate remain required for delivery; focused measurements are not full coverage claims.
 
 ## Security and performance reproduction
 

@@ -11,7 +11,7 @@ from .models import Advice, Job, Preflight, Profile, Question, State, Submission
 from .operations import Operation, Operations
 from .policy import answer_questions, evaluate, select_evidence
 from .question_adviser import question_key
-from .routine_answers import Selector, routine_answer
+from .routine_answers import RoutineSelection, Selector, routine_answer
 from .store import Store
 from .submission_records import SubmissionRecords
 
@@ -226,7 +226,7 @@ class Service:
                     "Resolving routine questions from approved facts.",
                 )
                 try:
-                    self.resolve_question(app_id, profile, revision, job, question)
+                    self.resolve_question(app_id, profile, revision, job, question, progress=report)
                 except ValueError as exc:
                     with self.store.connect() as db:
                         self.store.event(db, "routine_question_review", type(exc).__name__, app_id)
@@ -471,13 +471,27 @@ class Service:
 
             def resolve_live(question: Question) -> str | None:
                 nonlocal pending_question
+                # Retain the observed question even if the interpreter raises.
+                pending_question = question
                 report(
                     "answering_routine_questions",
                     f"Checking approved answers for: {question.label}. Offered choices: {len(question.choices)}.",
                 )
-                answer = self.resolve_question(app_id, profile, revision, job, question)
-                if answer is None:
-                    pending_question = question
+                try:
+                    answer = self.resolve_question(
+                        app_id, profile, revision, job, question, progress=report
+                    )
+                except ValueError as exc:
+                    with self.store.connect() as db:
+                        self.store.event(
+                            db,
+                            "routine_question_review",
+                            f"{question.id}: {type(exc).__name__}",
+                            app_id,
+                        )
+                    raise ReviewRequired("Approve an exact answer for: " + question.label) from exc
+                if answer is not None:
+                    pending_question = None
                 return answer
 
             adapter.question_resolver = resolve_live
@@ -518,7 +532,14 @@ class Service:
         return receipt
 
     def resolve_question(
-        self, app_id: int, profile: Profile, revision: int, job: Job, question: Question
+        self,
+        app_id: int,
+        profile: Profile,
+        revision: int,
+        job: Job,
+        question: Question,
+        *,
+        progress: Callable[[str, str], None] | None = None,
     ) -> str | None:
         if not self.store.settings().routine_answers_enabled:
             return None
@@ -531,7 +552,28 @@ class Service:
         cached = effective.answers.get(question_key(question))
         if cached and (not question.choices or cached in question.choices):
             return cached
-        resolution = routine_answer(profile, job, question, self.question_selector)
+        selector = self.question_selector
+        if selector is not None:
+
+            def select_question(
+                candidate: Profile, vacancy: Job, item: Question
+            ) -> RoutineSelection:
+                if progress is not None:
+                    control = (
+                        item.form_context.control_type
+                        if item.form_context is not None
+                        else "narrative"
+                    )
+                    progress(
+                        "answering_routine_questions",
+                        f"GPT-6.1 Sol is interpreting the {control} question: {item.label}.",
+                    )
+                return selector(candidate, vacancy, item)
+
+            tracked_selector: Selector | None = select_question
+        else:
+            tracked_selector = None
+        resolution = routine_answer(effective, job, question, tracked_selector)
         if resolution is None:
             return None
         self.store.save_routine_answer(

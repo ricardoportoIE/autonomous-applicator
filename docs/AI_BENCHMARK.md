@@ -1,5 +1,30 @@
 # Live OpenAI evidence-selection comparison
 
+## Questionnaire HTML comparison, 5 October 2026
+
+Eight real `gpt-6.1-sol` calls tested the new semantic HTML interpretation against [predeclared fictional cases](../benchmarks/ai_form_cases.json). The [measured report](../benchmarks/ai_form_interpretation_2026-10-05.json) records returned models, token usage, correctness and elapsed time. The baseline uses deterministic routine rules without a selector; the assisted route uses the production interpreter, its available-fact catalogue, verified sources and validation. All returned models matched the requested model.
+
+| Measure | Deterministic baseline | GPT-6.1 Sol assistance |
+| --- | --- | --- |
+| Correct outcomes | 2/8 | 8/8 |
+| Supported ordinary questions answered | 0/6 | 6/6 |
+| Deliberate review cases retained | 2/2 | 2/2 |
+| Observed assisted elapsed time | Not measured | Median 3.75 s; range 2.61–6.50 s |
+
+The supported cases cover a given-name paraphrase, technical-experience paraphrases in radio/select/checkbox/ARIA-combobox controls and an unfamiliar project narrative. A negated capability question and paid-work experience unsupported by the fictional project evidence stayed in review. The baseline's six additional holds were safe but unnecessary; the comparison does not imply that deterministic rules fabricated answers. The model used high reasoning effort and a 4,000-token output limit.
+
+No candidate data from the private workspace, browser session, employer website, application or invitation was used. This is a small, single-run regression comparison, not a population accuracy estimate or a live provider throughput benchmark. The ordinary suite independently tests invalid models, unavailable mappings, unverified sources, exceptional fields, native control checks and no-fill/no-advance failure behaviour with controlled responses.
+
+Reproduction requires explicit opt-in and a configured local API key:
+
+```powershell
+uv run python scripts/benchmark_form_interpretation.py --live
+```
+
+The default refuses paid calls. The opt-in run makes at most eight calls and writes a fictional report under `test-results`; provider errors retain their exception type without credential/request diagnostics. It does not start the browser or worker. See [questionnaire interpretation](QUESTION_INTERPRETATION.md) for architecture and boundaries.
+
+## Evidence-selection comparison, 3 October 2026
+
 On 3 October 2026, all twelve real `gpt-6.1-sol` requests completed successfully. Against a predeclared fixture rubric, the adviser selected more focused evidence than the local keyword method, with approximately three seconds of additional preparation time. Both methods retained approved factual content and unchanged submission gates.
 
 ## Method

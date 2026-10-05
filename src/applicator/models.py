@@ -1,7 +1,7 @@
 """Validated contracts shared by policy, persistence and the API."""
 
 from enum import StrEnum
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -43,6 +43,14 @@ class Profile(Contract):
         return self
 
 
+class FormContext(Contract):
+    """Transient, value-free HTML reconstructed from one observed form control."""
+
+    control_type: str = Field(min_length=1, max_length=40)
+    html: str = Field(min_length=1, max_length=12000)
+    constraints: dict[str, str] = Field(default_factory=dict, max_length=10)
+
+
 class Question(Contract):
     id: str = Field(pattern=r"^[a-zA-Z0-9_-]{1,64}$")
     label: str = Field(min_length=1, max_length=500)
@@ -50,6 +58,14 @@ class Question(Contract):
     required: bool = True
     choices: list[str] = Field(default_factory=list, max_length=100)
     sensitive: bool = False
+    # Provider presentation must not change opportunity/document fingerprints.
+    form_context: FormContext | None = Field(default=None, exclude=True)
+
+    def prompt_payload(self) -> dict[str, Any]:
+        payload = self.model_dump()
+        if self.form_context is not None:
+            payload["form_context"] = self.form_context.model_dump()
+        return payload
 
 
 class Job(Contract):

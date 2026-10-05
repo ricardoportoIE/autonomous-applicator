@@ -6,6 +6,7 @@ import os
 import re
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from html import escape
 from pathlib import Path
 from typing import Any, TypedDict
 from urllib.parse import urlencode, urlsplit
@@ -15,7 +16,7 @@ from playwright.sync_api import Error as BrowserError
 
 from .documents import filename_stem
 from .location_policy import country, normalise_location
-from .models import Job, Profile, Question
+from .models import FormContext, Job, Profile, Question
 from .photos import save_photo
 from .submission_records import capture_confirmation
 
@@ -427,13 +428,36 @@ def form_questions(page: Page) -> list[dict[str, Any]]:
       return [...dialog.querySelectorAll('input,select,textarea,[role="combobox"],[role="checkbox"],[role="radio"]')]
       .filter(el => active(el) && !el.matches(':disabled') && !el.closest('[aria-disabled="true"]') && el.type !== 'hidden' && el.type !== 'file' && !(el.tagName==='INPUT' && ['submit','button','reset'].includes(el.type)) &&
         (!el.matches('[role="checkbox"]') || !el.querySelector('input[type="checkbox"]')) && (!el.matches('[role="radio"]') || !el.querySelector('input[type="radio"]')))
-      .map(el => ({id:el.id, type:locationField(el) ? 'location-typeahead' : el.getAttribute('role')==='combobox' ? 'combobox' : el.type || el.getAttribute('role'), value:el.value || el.getAttribute('aria-valuetext') || (el.getAttribute('role')==='combobox' ? text(el) : ''), checked:el.checked || ['true','mixed'].includes(widget(el)?.getAttribute('aria-checked')),
+      .map(el => ({id:el.id, tag:el.tagName.toLowerCase(), type:locationField(el) ? 'location-typeahead' : el.getAttribute('role')==='combobox' ? 'combobox' : el.type || el.getAttribute('role'), value:el.value || el.getAttribute('aria-valuetext') || (el.getAttribute('role')==='combobox' ? text(el) : ''), checked:el.checked || ['true','mixed'].includes(widget(el)?.getAttribute('aria-checked')),
         label:labelText(el),
         group:el.type === 'radio' ? (required(el) ? unmark(groupLabel(el)) : groupLabel(el).trim()) : '',
         group_choices:el.type === 'radio' && el.name ? [...(groupFor(el) || dialog).querySelectorAll('input[type=radio]')].filter(other=>active(other) && other.name===el.name && !other.matches(':disabled') && !other.closest('[aria-disabled="true"]')).map(labelText) : [],
         required:!!required(el),
+        constraints:Object.fromEntries(['type','role','min','max','step','minlength','maxlength','pattern','inputmode'].filter(name=>el.hasAttribute(name)).map(name=>[name,el.getAttribute(name).slice(0,200)])),
         choices:el.tagName === 'SELECT' ? [...el.options].filter(o=>!o.disabled && !o.closest('optgroup[disabled]') && o.value!=='').map(o=>o.label.trim()) : []}));}""")
     )
+
+
+def question_context(field: dict[str, Any], label: str, choices: list[str]) -> FormContext:
+    """Rebuild only semantic HTML; never transmit values, IDs, scripts or page markup."""
+    control_type = str(field["type"])
+    constraints = {
+        key: str(value)[:200]
+        for key, value in field.get("constraints", {}).items()
+        if key
+        in {"type", "role", "min", "max", "step", "minlength", "maxlength", "pattern", "inputmode"}
+    }
+    attributes = "".join(f' {escape(key)}="{escape(value)}"' for key, value in constraints.items())
+    if field["required"]:
+        attributes += ' aria-required="true"'
+    tag = {"input": "input", "textarea": "textarea", "select": "select", "button": "button"}.get(
+        str(field.get("tag", "")), "div"
+    )
+    options = "".join(f"<option>{escape(choice)}</option>" for choice in choices)
+    opening = f'<{tag} data-control-type="{escape(control_type)}"{attributes}>'
+    control = opening if tag == "input" else opening + options + f"</{tag}>"
+    html = f"<label>{escape(label)}</label>" + control
+    return FormContext(control_type=control_type, html=html, constraints=constraints)
 
 
 def open_easy_apply(page: Page, progress: Callable[[str, str], None]) -> None:
@@ -833,17 +857,24 @@ def fill_questions(
     fields = form_questions(page)
     phone_answers = contact_phone_answers(fields, profile)
     dialog = page.get_by_role("dialog").filter(visible=True)
-    resolved: dict[tuple[str, tuple[str, ...]], str | None] = {}
+    resolved: dict[tuple[str, tuple[str, ...], str], str | None] = {}
 
     def answer(label: str, choices: list[str], required: bool) -> str | None:
         approved = approved_answer(label, profile)
         if resolver is None or (approved and (not choices or approved in choices)):
             return approved
-        key = (label, tuple(choices))
+        context = question_context(field, label, choices)
+        key = (label, tuple(choices), context.html)
         if key not in resolved:
             question_id = "q_" + hashlib.sha256(label.casefold().encode()).hexdigest()[:16]
             resolved[key] = resolver(
-                Question(id=question_id, label=label, choices=choices, required=required)
+                Question(
+                    id=question_id,
+                    label=label,
+                    choices=choices,
+                    required=required,
+                    form_context=context,
+                )
             )
         return resolved[key]
 

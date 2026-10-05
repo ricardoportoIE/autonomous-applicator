@@ -37,6 +37,8 @@ The daily cap counts confirmed applications sent. Preparation and routine questi
 
 ## Visible stages and logs
 
+When an unfamiliar ordinary provider question requires AI interpretation, the operation detail identifies **GPT-6.1 Sol**, the current control type and question label before awaiting the response. The model receives value-free semantic HTML and enabled choices, while application-scoped approvals and deterministic review guards retain priority. Valid interpretations are cached as version-bound routine answers; API or validation failure leaves review without advancing the form. The [questionnaire interpretation design](QUESTION_INTERPRETATION.md) describes input minimisation and supported decisions.
+
 ### Bounded form recovery and local learning
 
 Checkbox and radio recovery tries native input, associated visible label and scoped ARIA widget strategies. It reacquires the current control by its type, label and group, verifies unchanged choices and checks both native and accessible checked state. A React render may change element identifiers without changing the reviewed question. Hidden clones are excluded; a hidden boolean input remains usable when its own label or widget is visible. Labelled controls without IDs use their exact accessible label. Visible ambiguity, changed choices, invalid constraints and unknown facts stop safely.

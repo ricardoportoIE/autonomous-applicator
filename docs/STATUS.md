@@ -1,6 +1,14 @@
 # Delivery and validation record
 
-Version 0.3.0 reviewed through provider form diagnosis on 5 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+Version 0.3.0 reviewed through grounded questionnaire HTML interpretation on 5 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+
+## Questionnaire HTML interpretation, 5 October 2026
+
+GPT-6.1 Sol now receives transient, value-free semantic HTML for unfamiliar ordinary provider questions: control type, enabled choices, required state and bounded attributes. It may map the wording to an available canonical approved fact or select verified narrative evidence. The application derives the answer locally, honours application-scoped approvals, checks source/type compatibility and retains native browser validation. Numeric, legal, consent and unknown-fact boundaries remain in review. Model requests identify the current field/question in operation progress; a failed live interpretation retains its observed question and choices, releases the pre-send reservation and records a sanitised review event. The context is excluded from saved question records and job/document fingerprints.
+
+Added **65 cases**: 54 interpretation/HTML/persistence regressions and 11 benchmark-tool checks. The focused final interpretation/scoped-approval/API selection set passed 97 cases. All 155 React cases passed with 100% runtime coverage per file, and TypeScript, ESLint, Ruff, strict mypy, formatting, reproducible build, tracked-file privacy and dependency audits passed. The fresh complete 1,041-case Python suite is running against the final source. An earlier partial run was stopped to add the live API-failure persistence regression; it is not an accepted coverage result.
+
+The separate [eight-call fictional API comparison](AI_BENCHMARK.md#questionnaire-html-comparison-5-october-2026) passed 8/8 declared outcomes versus 2/8 under deterministic rules alone, answering six ordinary questions and retaining two deliberate reviews. Every returned model was `gpt-6.1-sol`; median elapsed time was 3.75 seconds, range 2.61–6.50 seconds. No provider action or private candidate data was used. The actual local worker remains paused with routine answers enabled and candidate revision 13 unchanged. [Interpretation design](QUESTION_INTERPRETATION.md) records the supported route and limits.
 
 ## Provider form diagnosis, 5 October 2026
 
@@ -12,7 +20,7 @@ Focused validation passed 159 form/authentication cases, the additional no-main 
 
 The independent fresh production-Chromium report measured **98.66% statements/lines, 92.00% branches and 98.12% functions**; React unit coverage remains 100% per runtime file. Ruff, strict mypy, TypeScript, ESLint, formatting, reproducible packaged assets, repository hygiene and dependency audits passed. The offline benchmark completed using disposable fictional workspaces. A further offline replay of the five private captured phone/city forms verified the observed patterns with every network request blocked and no personal values printed. No ordinary test uses live credentials, sends applications/invitations or incurs model charges. Private diagnostics are excluded from Git.
 
-In the [final runtime matrix](https://github.com/ricardoportoIE/autonomous-applicator/actions/runs/37379626127), both Linux jobs completed successfully; both Windows jobs were still executing the full Python suite when this record was written. The passing local Windows suite and the remote Linux results are separate evidence; this record does not claim four completed remote passes.
+The [provider-audit runtime matrix](https://github.com/ricardoportoIE/autonomous-applicator/actions/runs/37379626127) subsequently completed successfully on all four Windows/Linux and Python 3.12/3.14 jobs. These results validate the preceding provider-audit runtime and are separate from the questionnaire interpretation enhancement above.
 
 The dashboard was restarted after a private SQLite backup. HTTP 200, both automation switches off, no running operation and unchanged candidate revision 13 were verified. All 50 existing document files matched their recorded hashes, and all six confirmed submission records remained intact. The paused queue contains five technical holds eligible for the tested recovery, five jobs awaiting preparation against newly recorded questions, one ready application and eight other reviews for missing answers, location, fit or closure. No real application or invitation was sent during this audit, tests or restart. Successful live submission after these changes remains for the operator's next authorised run.
 

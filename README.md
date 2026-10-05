@@ -30,6 +30,8 @@ Question approval is scoped to one application. It rechecks readiness, preserves
 
 The browser distinguishes text and typed inputs, native selects, radio groups, native/ARIA checkboxes, mapped ARIA dropdowns and the supported city typeahead. It reads enabled choices, uses approved facts or exact answers, validates numeric requirements and field constraints, and confirms the resulting selection. City suggestions must uniquely match the confirmed current city and country. Provider validation and closed-vacancy messages produce specific holds. Unknown consent and ambiguous controls stay in review. **Start agent / Pause agent** wakes or pauses the same background worker immediately, retaining the separate networking preference.
 
+For unfamiliar ordinary questions, GPT-6.1 Sol interprets the field's wording and value-free semantic HTML, including its type, enabled choices and constraints. It selects an available approved-fact mapping or verified evidence; the application derives the answer locally and validates the actual control before advancing. Application-scoped approvals retain priority. The [questionnaire interpretation design](docs/QUESTION_INTERPRETATION.md) explains data minimisation, progress reporting and review boundaries. An eight-case fictional API comparison improved correct outcomes from 2/8 to 8/8, including two deliberate review cases; this is a bounded regression sample, rather than a general accuracy claim.
+
 ## What the workspace does
 
 | Capability | User outcome |

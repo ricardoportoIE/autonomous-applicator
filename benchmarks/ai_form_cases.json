@@ -1,0 +1,26 @@
+{
+  "profile": {
+    "name": "Alex Example",
+    "email": "alex@example.test",
+    "phone": "+353 00 000 0000",
+    "location": "Dublin, Ireland",
+    "confirmed": true,
+    "evidence": [{"id": "api", "category": "project", "title": "Independent API", "text": "Built an independent Python API with automated tests.", "tags": ["Python"], "source": "Fictional reviewed repository", "verified": true}]
+  },
+  "job": {
+    "source": "fixture", "source_id": "semantic-html-benchmark",
+    "title": "Python Developer", "company": "Example Employer", "location": "Dublin, Ireland",
+    "url": "https://example.test/jobs/python", "description": "Build Python APIs with automated tests.",
+    "requirements": ["Python"]
+  },
+  "cases": [
+    {"id": "given_name", "label": "Your given name", "type": "text", "tag": "input", "choices": [], "expected": "Alex"},
+    {"id": "radio", "label": "Have you previously used Python?", "type": "radio", "tag": "input", "choices": ["Yes", "No"], "expected": "Yes"},
+    {"id": "select", "label": "Have you previously used Python?", "type": "select-one", "tag": "select", "choices": ["Yes", "No"], "expected": "Yes"},
+    {"id": "checkbox", "label": "Have you previously used Python?", "type": "checkbox", "tag": "input", "choices": ["Yes", "No"], "expected": "Yes"},
+    {"id": "combobox", "label": "Have you previously used Python?", "type": "combobox", "tag": "button", "choices": ["Yes", "No"], "expected": "Yes"},
+    {"id": "narrative", "label": "What Python project demonstrates your suitability?", "type": "textarea", "tag": "textarea", "choices": [], "expected": "Built an independent Python API with automated tests."},
+    {"id": "negated", "label": "Have you never used Python?", "type": "radio", "tag": "input", "choices": ["Yes", "No"], "expected": null},
+    {"id": "paid_work", "label": "Have you previously used Python in paid work?", "type": "radio", "tag": "input", "choices": ["Yes", "No"], "expected": null}
+  ]
+}

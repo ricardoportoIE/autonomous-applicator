@@ -1,0 +1,178 @@
+{
+  "model": "gpt-6.1-sol",
+  "fictional_data_only": true,
+  "provider_actions": 0,
+  "created_at": "2026-10-05T22:47:15.228188+00:00",
+  "cases": [
+    {
+      "case": "given_name",
+      "control_type": "text",
+      "baseline_correct": false,
+      "returned_model": "gpt-6.1-sol",
+      "usage": {
+        "input_tokens": 530,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 50,
+        "output_tokens_details": {
+          "reasoning_tokens": 23
+        },
+        "total_tokens": 580
+      },
+      "assisted_correct": true,
+      "outcome": "answered",
+      "elapsed_seconds": 4.283
+    },
+    {
+      "case": "radio",
+      "control_type": "radio",
+      "baseline_correct": false,
+      "returned_model": "gpt-6.1-sol",
+      "usage": {
+        "input_tokens": 524,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 70,
+        "output_tokens_details": {
+          "reasoning_tokens": 38
+        },
+        "total_tokens": 594
+      },
+      "assisted_correct": true,
+      "outcome": "answered",
+      "elapsed_seconds": 3.417
+    },
+    {
+      "case": "select",
+      "control_type": "select-one",
+      "baseline_correct": false,
+      "returned_model": "gpt-6.1-sol",
+      "usage": {
+        "input_tokens": 538,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 69,
+        "output_tokens_details": {
+          "reasoning_tokens": 37
+        },
+        "total_tokens": 607
+      },
+      "assisted_correct": true,
+      "outcome": "answered",
+      "elapsed_seconds": 2.984
+    },
+    {
+      "case": "checkbox",
+      "control_type": "checkbox",
+      "baseline_correct": false,
+      "returned_model": "gpt-6.1-sol",
+      "usage": {
+        "input_tokens": 524,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 110,
+        "output_tokens_details": {
+          "reasoning_tokens": 78
+        },
+        "total_tokens": 634
+      },
+      "assisted_correct": true,
+      "outcome": "answered",
+      "elapsed_seconds": 4.076
+    },
+    {
+      "case": "combobox",
+      "control_type": "combobox",
+      "baseline_correct": false,
+      "returned_model": "gpt-6.1-sol",
+      "usage": {
+        "input_tokens": 539,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 97,
+        "output_tokens_details": {
+          "reasoning_tokens": 65
+        },
+        "total_tokens": 636
+      },
+      "assisted_correct": true,
+      "outcome": "answered",
+      "elapsed_seconds": 4.237
+    },
+    {
+      "case": "narrative",
+      "control_type": "textarea",
+      "baseline_correct": false,
+      "returned_model": "gpt-6.1-sol",
+      "usage": {
+        "input_tokens": 539,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 53,
+        "output_tokens_details": {
+          "reasoning_tokens": 25
+        },
+        "total_tokens": 592
+      },
+      "assisted_correct": true,
+      "outcome": "answered",
+      "elapsed_seconds": 2.682
+    },
+    {
+      "case": "negated",
+      "control_type": "radio",
+      "baseline_correct": true,
+      "returned_model": "gpt-6.1-sol",
+      "usage": {
+        "input_tokens": 525,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 161,
+        "output_tokens_details": {
+          "reasoning_tokens": 135
+        },
+        "total_tokens": 686
+      },
+      "assisted_correct": true,
+      "outcome": "review",
+      "elapsed_seconds": 6.497
+    },
+    {
+      "case": "paid_work",
+      "control_type": "radio",
+      "baseline_correct": true,
+      "returned_model": "gpt-6.1-sol",
+      "usage": {
+        "input_tokens": 466,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 24,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 490
+      },
+      "assisted_correct": true,
+      "outcome": "review",
+      "elapsed_seconds": 2.612
+    }
+  ],
+  "baseline_correct": 2,
+  "assisted_correct": 8
+}

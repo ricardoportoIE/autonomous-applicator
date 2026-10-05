@@ -1,0 +1,36 @@
+# Grounded questionnaire and HTML interpretation
+
+The provider adapter reads the current application dialogue and resolves known exact answers first. When an ordinary question is unfamiliar, GPT-6.1 Sol can interpret its wording and the observed control structure before the adapter fills it. This reduces unnecessary review holds caused by different labels for the same candidate fact or technical experience.
+
+## What the model receives
+
+Each live unresolved question carries transient `form_context`: the observed control type, enabled choices, required state and bounded attributes such as `type`, `role`, `inputmode`, `min`, `max`, `step`, `pattern` and length limits. The adapter reconstructs a small semantic HTML fragment from these allowlisted properties and the question label. It does not send the original page or a control's filled value, identifier, handler, token, hidden input or script. Attributes and text are escaped. A fragment exceeding 12,000 characters is rejected before a model request.
+
+This is a representation of the observed field, rather than its raw `outerHTML`. Native select options appear in the fragment; radio, checkbox and opened ARIA dropdown choices are supplied separately as the exact enabled labels. Contact values are copied locally when the model selects an available contact question; they are not included in the routine interpretation prompt. Verified professional evidence and the vacancy description are sent as required for semantic assessment.
+
+The context is excluded from ordinary question serialization, SQLite question records and job/document fingerprints. A provider presentation change therefore cannot invalidate an otherwise current CV. It is rebuilt when the browser reads the field again. The manual answer adviser also accepts context when supplied directly, but reopening a stored question in the dashboard does not recover transient HTML or start a browser inspection.
+
+## Decisions and validation
+
+The model uses the [Responses API and structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses). The requested and returned model must be `gpt-6.1-sol` or its provider snapshot. Live form interpretation uses high reasoning effort, at most 4,000 output tokens, the configured 180-second request deadline, no automatic SDK retry and `store=false`.
+
+The structured decision contains `needs_review`, `canonical_label` and up to three `evidence_ids`. It contains no generated answer, executable selector or browser action. There are two supported routes:
+
+- Map a paraphrase to an exact available canonical question. The catalogue contains only contact facts or supported technical experience that the deterministic resolver can already answer for this candidate and these choices. The application derives the answer locally. A canonical mapping cannot also select narrative evidence; an email/telephone mapping must match its native type.
+- Select verified evidence for a professional text or textarea answer. The application copies the original source wording, deduplicates identifiers, checks technology relevance and enforces the answer limit. A narrative cannot become a checkbox, radio, dropdown or contact value.
+
+Uninterpretable controls, unavailable facts, unsupported mappings and unverified identifiers remain in review. Numeric fields require explicit approved numbers. Legal eligibility, consent, salary, availability, expertise and unusual conditions retain review boundaries. Independent projects cannot establish paid-work experience. Exact application-scoped approvals take precedence over shared defaults, including while deriving a canonical answer.
+
+The model evaluates meaning; the adapter retains control identity, native validity, exact option matching, checked state and final value checks. AI cannot select an arbitrary element, override pause/capacity, alter a public profile or click Submit. Semantic model errors remain possible: grounded selection prevents fabricated candidate values but does not prove that every future question has been understood correctly.
+
+## Execution and records
+
+The existing **Answer routine questions from approved facts** setting controls this assistance. A local `OPENAI_API_KEY` and `OPENAI_MODEL=gpt-6.1-sol` are required for model interpretation. Missing configuration, a provider error or an invalid response leaves the question for review without another model or invented answer.
+
+During an actual model request the operation detail identifies GPT-6.1 Sol, the field type and question label. Valid answers are saved against the current application, candidate revision and vacancy fingerprint; source and evidence references are visible in Questions and the private journal. Re-reading the same compatible question reuses its saved answer. Before saving, the transaction checks the candidate and vacancy again.
+
+## Validation
+
+The enhancement adds 54 questionnaire/HTML regressions and 11 benchmark-tool checks. They exercise all supported control families, contact type compatibility, approved negative answers, source-only prose, unavailable paid-work facts, numeric keyboard hints, sensitive/exceptional questions, invalid mappings, escaping, value omission, oversized fragments, scoped persistence, model-stage progress and no-fill/no-advance failure behaviour. Ordinary tests and CI use controlled responses and fictional browser forms.
+
+The separate [live fictional benchmark](AI_BENCHMARK.md#questionnaire-html-comparison-5-october-2026) made eight authorised API calls, with no provider actions. It improved correct outcomes from 2/8 under deterministic rules alone to 8/8 with interpretation, including two deliberate review cases. This small sample validates the tested wording and contracts; it does not estimate accuracy across all LinkedIn or employer questionnaires.
