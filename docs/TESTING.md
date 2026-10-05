@@ -65,10 +65,10 @@ Before delivery, rerun the complete suite and the inventory gate. Additional req
 ## Form recovery reproduction
 
 ```powershell
-uv run python -m pytest tests/test_form_recovery.py tests/test_application_dialog.py tests/test_linkedin_authentication.py --no-cov -o 'addopts=--strict-markers'
+uv run python -m pytest tests/test_provider_form_regressions.py tests/test_form_recovery.py tests/test_application_dialog.py tests/test_linkedin_authentication.py --no-cov -o 'addopts=--strict-markers'
 ```
 
-The recovery file contains 66 new cases; two additional variants extend an existing stalled-dialogue case. The complete inventory is 933 cases. On Windows/Python 3.14.2, the fresh full suite passed in 1,651.82 seconds with 2,826 statements and 992 branch outcomes exercised across all 19 runtime modules. Focused checks do not replace the full suite or inventory gate. [Delivery status](STATUS.md) distinguishes local measurements from remote runner availability.
+The initial recovery pass added 66 cases and two variants to an existing stalled-dialogue case. Its historical 933-case Windows/Python 3.14.2 suite passed in 1,651.82 seconds with 2,826 statements and 992 branch outcomes exercised across all 19 runtime modules. The subsequent provider audit adds 41 fictional form regressions, one versioned-budget regression and one modern phone/CV integration variant, bringing the current inventory to 976. The new cases verify city suggestions in different countries, duplicate/disabled/unmapped choices, React identifier replacement, final selection validity, numeric narrative rejection, telephone keyboard hints, label-only inline validation, primary closed-job status and conservative residence/employment facts. Focused checks do not replace the full suite or inventory gate. [Delivery status](STATUS.md) records current complete measurements and remote runner availability.
 
 ## Security and performance reproduction
 

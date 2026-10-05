@@ -979,7 +979,10 @@ def fill_questions(
                 raise ValueError(f"Unsupported input type requires manual review: {label}")
             if (
                 re.match(r"how many years\b", label, re.I)
-                or locator.get_attribute("inputmode") in {"numeric", "decimal"}
+                or (
+                    field["type"] in {"text", "number"}
+                    and locator.get_attribute("inputmode") in {"numeric", "decimal"}
+                )
             ) and not re.fullmatch(r"\d+(?:\.\d+)?", value):
                 raise ValueError(f"Approve an exact answer for: {label}")
             if not locator.evaluate(

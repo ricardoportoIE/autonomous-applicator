@@ -1,5 +1,15 @@
 # Operating guide
 
+## Diagnosing a questionnaire hold
+
+Read the application's last stage, activity journal and submission record before retrying. `ReviewRequired` is a pre-send hold; a missing approved fact differs from a provider-control failure. A numeric experience field needs an exact numeric answer even when the approved profile contains a longer description. Do not convert dates automatically. Save the candidate's confirmed answer against the pending application and recheck readiness.
+
+The phone adapter recognises `Phone`, `Phone number` and `Mobile phone number`, and splits an international number only against a unique offered country code. City typeaheads must match the supported labelled provider pattern, current confirmed city and country, a uniquely offered enabled suggestion and a verified resulting selection. An unfamiliar pattern remains outside that mapping. Provider inline validation names the affected field without logging its rejected answer. A primary `No longer accepting applications` message identifies a closed vacancy rather than a transient opening failure.
+
+The phone/city adapter upgrade introduced recovery-budget version 2. A previously exhausted version 1 technical hold can receive at most two new resumptions if all current readiness checks pass. Both budgets remain local and persistent; restarting does not reset them. This excludes unknown answers, closed opportunities, authentication holds and any uncertain or confirmed send. Existing valid documents are reused; a changed job/question fingerprint queues new preparation instead.
+
+After diagnostic maintenance, leave automation paused until the operator starts the agent. New tests use fictional provider fixtures, not the live account. Raw diagnostic HTML, candidate answers and browser state must remain in ignored private directories and must never be attached to a public issue or commit.
+
 ## First run on Windows
 
 Technical form recovery runs within the normal FIFO worker. The monitor shows **recovering form** and **form recovered**; inspect the application's status check and activity for exhausted strategies. The worker can resume a proven pre-send technical hold twice, reusing valid documents. Unknown answers and genuine availability preferences still need approval. Restart preserves recovery hints and budgets. [Queue operation](APPLICATION_QUEUE.md#bounded-form-recovery-and-local-learning) records the limits and evidence required for resumption.

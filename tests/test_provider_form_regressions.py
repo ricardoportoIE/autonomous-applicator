@@ -39,6 +39,19 @@ def test_contact_phone_aliases_split_confirmed_international_number(local_browse
         page.close()
 
 
+@pytest.mark.browser
+def test_numeric_keyboard_hint_does_not_strip_an_approved_telephone_prefix(local_browser, profile):
+    page = local_browser.new_page()
+    try:
+        page.set_content(
+            '<dialog open><label>Phone<input id="phone" type="tel" inputmode="numeric" required></label></dialog>'
+        )
+        fill_questions(page, profile)
+        assert page.locator("#phone").input_value() == profile.phone
+    finally:
+        page.close()
+
+
 def city_html(case):
     label = "Location (city)*" if case == "required" else "Location (city)"
     attributes = 'aria-label="Unreviewed location claim"' if case == "conflict" else ""
