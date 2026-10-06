@@ -144,7 +144,9 @@ def test_full_record_has_private_proof_archived_downloads_dates_and_accessible_l
     app.state.store.set_settings(Settings(automation_enabled=True))
     app_id, attempt = add_confirmed_record(app, origin)
     page.set_viewport_size({"width": width, "height": 950})
+    page.reload()
     page.get_by_role("button", name="Applications", exact=True).click()
+    page.get_by_role("tab", name="Archive (1)", exact=True).click()
     page.get_by_role("button", name=re.compile("^Open Backend Engineer")).click()
     page.get_by_role("link", name="View full application record", exact=True).click()
     expect(
@@ -198,6 +200,13 @@ def test_full_record_has_private_proof_archived_downloads_dates_and_accessible_l
     assert page.url.endswith(f"#/applications/{app_id}")
     page.get_by_role("button", name="Back to application queue", exact=True).click()
     expect(page.get_by_role("heading", name="Application queue", exact=True)).to_be_visible()
+    expect(page.get_by_role("tab", name="Active (0)", exact=True)).to_have_attribute(
+        "aria-selected", "true"
+    )
+    expect(
+        page.get_by_role("link", name=re.compile("^Full record for Backend Engineer"))
+    ).to_have_count(0)
+    page.get_by_role("tab", name="Archive (1)", exact=True).click()
     page.get_by_role("link", name=re.compile("^Full record for Backend Engineer")).click()
     expect(page.locator("#application-record")).to_be_visible()
     page.get_by_role("button", name="Manage this application", exact=True).click()

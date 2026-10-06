@@ -1,4 +1,10 @@
-# Source review, 2 October 2026
+# Source review and verification record
+
+## Complete-system validation, 6 October 2026
+
+Reviewed all six failures from the 1,436-case complete execution. Two legacy assertions expected a full evidence paragraph after the authorised concise-answer change; two discovery mocks lacked the discarded-ID keyword; two record journeys searched the active queue after confirmed records moved to Archive. The corrections retain exact expected answers, evidence/model provenance, candidate/document immutability, sanitised discovery logs and zero-send/capacity assertions. Desktop/mobile record tests now load current data, open Archive, verify the empty active queue after reload, and retain screenshot/PDF downloads, accessibility, deep-link and locking assertions.
+
+All 51 affected cases passed in the final recheck, with no production-source changes or weaker limits. The complete backend measured every statement and branch outcome across all 21 modules, and the independent source-inventory gate passed. The full React suite passed all 181 cases with per-file 100% coverage in 11 modules; the packaged-browser report is separate. [Testing](TESTING.md#full-system-validation-6-october-2026) records exact counts, the initial full-run outcome, same-source recheck and remaining live-process activation boundary. Earlier review records below retain their original measured scope.
 
 ## Candidate-owned question instructions, 6 October 2026
 

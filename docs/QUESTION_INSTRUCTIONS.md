@@ -48,6 +48,8 @@ Edits use an expected version and reject stale drafts. The database rejects chan
 
 ## Validation
 
+The [complete-system acceptance](TESTING.md#full-system-validation-6-october-2026) includes all library regressions within the 1,436-case Python inventory. All 21 runtime modules reached 100% statements and branch outcomes. The complete React suite passed 181 cases with per-file 100% coverage in all 11 modules; the regenerated packaged-browser report has its separate measured scope and gates.
+
 Focused tests cover library capture, existing-record backfill, 249-choice records, deduplication, authenticated endpoints, stale edits, version history, change invalidation, queue re-preparation, exact approval precedence, model/source failures, prompt trust boundaries and native constraints. Real Chromium tests complete and hold intercepted provider forms, verify observer restoration and exercise the packaged Settings tabs/modal on desktop and mobile.
 
 A separate six-case test used the real GPT-6.1 Sol API with fictional facts. All six produced the expected outcome: exact and paraphrased numeric answers, a concise text answer, no cross-technology match, no unsupported salary answer, and review of conditional work permission. Observed calls took 3.72–8.03 seconds. This is a small regression sample, not a general accuracy or latency guarantee. No real application or invitation was sent. See [Testing](TESTING.md#question-instruction-library-6-october-2026) for the measured scope.

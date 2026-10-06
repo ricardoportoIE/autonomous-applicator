@@ -40,8 +40,11 @@ def test_routine_answer_is_visible_with_evidence_origin_without_profile_change(d
         )
     ).to_be_visible()
     expect(page.get_by_label(job.questions[0].label, exact=True)).to_have_value(
-        before[0].evidence[0].text
+        "I have experience with Python through independent projects."
     )
+    answer = store.application(row["id"])["routine_answers"][0]
+    assert answer["evidence_ids"] == ["python"]
+    assert answer["source"] == "gpt-6.1-sol"
     assert store.profile() == before
 
 

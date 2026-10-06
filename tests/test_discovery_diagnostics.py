@@ -102,7 +102,8 @@ def test_worker_persists_discovery_progress_without_application_or_capacity_chan
         Settings(automation_enabled=True, linkedin_authorised=True, discovery_enabled=True)
     )
 
-    def search(self, keywords, location):
+    def search(self, keywords, location, *, excluded_ids):
+        assert excluded_ids == set()
         self.report("reading_job_results", "Reading the LinkedIn search results.")
         if failed:
             self.report("reading_job_results", "The provider did not complete the read step.")

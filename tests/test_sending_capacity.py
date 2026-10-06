@@ -290,8 +290,8 @@ def test_routine_answer_is_scoped_cached_and_keeps_document_fingerprint(prepared
     original_manifest = store.application(app_id)["manifest"]
     original_fingerprint = fingerprint(profile)
     for _ in range(2):
-        assert (
-            service.resolve_question(app_id, profile, 1, job, question) == profile.evidence[0].text
+        assert service.resolve_question(app_id, profile, 1, job, question) == (
+            "I have experience with Python through independent projects."
         )
     assert selector.call_count == 1
     assert store.profile() == (profile, 1)
@@ -300,6 +300,7 @@ def test_routine_answer_is_scoped_cached_and_keeps_document_fingerprint(prepared
     assert service.preflight(app_id).can_submit
     row = store.application(app_id)["routine_answers"][0]
     assert row["question"]["label"] == question.label and row["source"] == "gpt-6.1-sol"
+    assert row["evidence_ids"] == ["python"]
     other, _ = store.add_job(
         job.model_copy(update={"source_id": "other", "url": "http://127.0.0.1:9999/other"})
     )

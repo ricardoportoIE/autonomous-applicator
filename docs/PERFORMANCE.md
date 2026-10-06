@@ -22,6 +22,18 @@ At 1,000 opportunities, settings median/p95 was 3.25/4.79 ms, worker status 2.68
 
 The measurements show response size and list allocations growing with queue size. There is no measured reason to weaken verification or parallelise submissions. For a substantially larger archive, server-side list pagination and bounded summaries should be assessed with representative long descriptions before implementing them; currently the dashboard retrieves the complete opportunity list.
 
+## Complete-validation recheck, 6 October 2026
+
+The [new report](../benchmarks/local_performance_2026-10-06.json) repeats the same fictional workload on Windows/Python 3.14.2 with the current question-library implementation. It was collected whilst the complete test suites were running, so timings include possible resource contention and do not provide a controlled comparison with the earlier baseline.
+
+| Opportunities | List median | List p95 | Response size | Peak traced Python allocations |
+| --- | --- | --- | --- | --- |
+| 1 | 4.17 ms | 5.91 ms | 498 bytes | 51,229 bytes |
+| 100 | 4.53 ms | 6.37 ms | 50,069 bytes | 353,967 bytes |
+| 1,000 | 14.45 ms | 23.99 ms | 504,573 bytes | 3,186,510 bytes |
+
+All count/order, fit and zero-send assertions passed. The independent performance-contract tests remain part of the complete Python suite. These in-process observations exclude TCP, rendering, PDFs, model calls and actual provider operations; no throughput or live submission latency is inferred.
+
 ## Reproduction and CI
 
 ```powershell
