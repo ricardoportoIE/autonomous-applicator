@@ -1,4 +1,4 @@
-"""Routine answers copied from approved facts; models select sources, never invent values."""
+"""Routine answers from approved facts and candidate policy; models select sources only."""
 
 import json
 import re
@@ -7,6 +7,7 @@ from collections.abc import Callable
 from openai import OpenAI
 from pydantic import Field
 
+from .answer_style import concise_text, experience_target, format_known_answer, numeric_field
 from .location_policy import country
 from .models import Contract, Job, Profile, Question
 from .policy import TECHNOLOGIES, answer_compatible, contains, normalise
@@ -41,15 +42,189 @@ DESCRIBE = re.compile(
     re.I,
 )
 
+# Kept separate from vacancy scoring: this vocabulary recognises questionnaire
+# subjects without changing the fit heuristic or adding candidate qualifications.
+QUESTION_TECHNOLOGIES = (
+    "Agile Software Development",
+    "Agile",
+    "Artificial Intelligence (AI)",
+    "Artificial Intelligence",
+    "AI",
+    "AI Agents",
+    "AI Software Development",
+    "RAG",
+    "RAG pipelines",
+    "NoSQL",
+    "MongoDB",
+    "Snowflake",
+    "TensorFlow",
+    "PyTorch",
+    "Apache Spark",
+    "Spark",
+    "Databricks",
+    "Scala",
+    "C++",
+    "C",
+    "Kotlin",
+    "Swift",
+    "Ruby",
+    "Rails",
+    "Angular",
+    "Vue",
+    "Node.js",
+    "Next.js",
+    "GraphQL",
+    "Kafka",
+    "RabbitMQ",
+    "Elasticsearch",
+    "Linux",
+    "GCP",
+    "Google Cloud",
+    "Cypress",
+    "Selenium",
+    "Jenkins",
+    "Ansible",
+    "Helm",
+    "Keras",
+    "LangChain",
+    "LangGraph",
+    "Scikit-learn",
+    "Power BI",
+)
+
+
+def unfamiliar_technology_answer(
+    profile: Profile, question: Question, technology_defaults: frozenset[str] = frozenset()
+) -> RoutineAnswer | None:
+    """Apply the candidate's explicit default only to absent, unanswered technologies."""
+    target = experience_target(question)
+    if target is None:
+        return None
+    context = question.form_context
+    numerical_choice = bool(
+        question.choices
+        and "0" in question.choices
+        and re.match(r"how many years\b", question.label, re.I)
+    )
+    if question.choices and not numerical_choice:
+        return None
+    allowed_controls = (
+        {"select-one", "radio", "combobox"} if numerical_choice else {"text", "textarea", "number"}
+    )
+    if context is not None and context.control_type not in allowed_controls:
+        return None
+    # Years/work describe the experience requested; other exceptional qualifications
+    # must not become an educational-experience claim or an automatic zero.
+    remainder = re.sub(r"\byears?\b", "", question.label, flags=re.I)
+    if REVIEW_TOPICS.search(remainder):
+        return None
+    vocabulary = {normalise(term) for term in (*TECHNOLOGIES, *QUESTION_TECHNOLOGIES)}
+    if normalise(target) not in vocabulary:
+        return None
+    # Even unverified profile mentions make the technology present. A prior answer
+    # with another wording also prevents this fallback from replacing a fact.
+    mentions = (
+        [part for item in profile.evidence for part in (item.title, item.text, *item.tags)]
+        + [profile.summary]
+        + [key for key in profile.answers if key not in technology_defaults]
+        + [value for key, value in profile.answers.items() if key not in technology_defaults]
+    )
+    aliases = {
+        "artificial intelligence (ai)": ("Artificial Intelligence", "AI"),
+        "artificial intelligence": ("Artificial Intelligence", "AI"),
+        "ai": ("Artificial Intelligence", "AI"),
+        "agile software development": ("Agile Software Development", "Agile"),
+        "rag pipelines": ("RAG pipelines", "RAG"),
+        "google cloud": ("Google Cloud", "GCP"),
+        "gcp": ("Google Cloud", "GCP"),
+    }.get(normalise(target), (target,))
+    if any(contains(part, alias) for part in mentions for alias in aliases):
+        return None
+    if numerical_choice or numeric_field(question):
+        value = "0"
+    else:
+        value = (
+            f"I have no professional experience with {target}. "
+            "My experience is educational, and I am developing my skills in this area."
+        )
+    if not answer_compatible(question, value):
+        return None
+    return RoutineAnswer(answer=value, source="candidate_technology_policy")
+
+
+def known_experience_duration(
+    profile: Profile, question: Question, technology_defaults: frozenset[str]
+) -> RoutineAnswer | None:
+    """Reuse a confirmed duration for the same subject without changing its scope."""
+    target = experience_target(question)
+    if target is None or question.choices:
+        return None
+    context = question.form_context
+    if context is not None and context.control_type not in {"text", "textarea", "number"}:
+        return None
+    professional = bool(
+        re.search(r"\b(?:professional|commercial|paid|work)\b", question.label, re.I)
+    )
+    numerical = numeric_field(question)
+    if numerical and not re.match(r"how many years\b", question.label, re.I):
+        return None  # A number control alone does not establish the requested unit.
+    counts: set[tuple[str, bool]] = set()
+    for key, value in profile.answers.items():
+        if key in technology_defaults or not key.startswith("question:how many years"):
+            continue
+        previous = Question(id="known_duration", label=key.removeprefix("question:"))
+        previous_target = experience_target(previous)
+        if previous_target is None or normalise(previous_target) != normalise(target):
+            continue
+        previous_professional = bool(
+            re.search(r"\b(?:professional|commercial|paid|work)\b", previous.label, re.I)
+        )
+        if (numerical and professional != previous_professional) or (
+            professional and not previous_professional
+        ):
+            continue
+        number = format_known_answer(previous, value)
+        if number and answer_compatible(previous, number):
+            counts.add((number, previous_professional))
+    if len(counts) != 1:
+        return None
+    number, work_scope = next(iter(counts))
+    if numerical:
+        answer = number
+    else:
+        scope = "professional " if work_scope else ""
+        unit = "year" if number == "1" else "years"
+        answer = f"I have {number} {unit} of {scope}experience with {target}."
+    if not answer_compatible(question, answer):
+        return None
+    return RoutineAnswer(answer=answer, source="approved_experience_duration")
+
 
 def routine_answer(
-    profile: Profile, job: Job, question: Question, selector: Selector | None = None
+    profile: Profile,
+    job: Job,
+    question: Question,
+    selector: Selector | None = None,
+    *,
+    technology_defaults: frozenset[str] = frozenset(),
 ) -> RoutineAnswer | None:
     if not profile.confirmed or question.sensitive:
         return None
+    if question_key(question) in technology_defaults:
+        default = unfamiliar_technology_answer(profile, question, technology_defaults)
+        if default is not None:
+            return default
     exact = profile.answers.get(question_key(question))
-    if exact and answer_compatible(question, exact):
-        return RoutineAnswer(answer=exact, source="approved_answer")
+    formatted = format_known_answer(question, exact) if exact else None
+    if formatted and answer_compatible(question, formatted):
+        return RoutineAnswer(answer=formatted, source="approved_answer")
+    if not exact:
+        known_duration = known_experience_duration(profile, question, technology_defaults)
+        if known_duration is not None:
+            return known_duration
+        default = unfamiliar_technology_answer(profile, question, technology_defaults)
+        if default is not None:
+            return default
     label = " ".join(question.label.casefold().split()).rstrip("?.:")
     contact = {
         "first name": profile.name.split()[0],
@@ -83,15 +258,13 @@ def routine_answer(
         if not question.choices or value in question.choices:
             return RoutineAnswer(answer=value, source="candidate_facts")
     evidence = [item for item in profile.evidence if item.verified]
-    vocabulary = {normalise(term) for term in TECHNOLOGIES}
+    vocabulary = {normalise(term) for term in (*TECHNOLOGIES, *QUESTION_TECHNOLOGIES)}
     vocabulary.update(normalise(tag) for item in evidence for tag in item.tags if tag.strip())
     technologies = sorted(term for term in vocabulary if contains(label, term))
     professional = bool(re.search(r"\b(?:commercial|professional|paid|work)\b", label))
     if professional:
         evidence = [item for item in evidence if item.category == "experience"]
-    if technologies and re.fullmatch(
-        r"how many years(?: of)? (?:work )?experience (?:do you have )?(?:with|using|in) .+", label
-    ):
+    if technologies and experience_target(question) and re.match(r"how many years\b", label):
         counts: dict[str, list[str]] = {}
         if len(technologies) == 1:
             for item in evidence:
@@ -108,20 +281,20 @@ def routine_answer(
                     counts.setdefault(match[1], []).append(item.id)
         if len(counts) == 1:
             value, identifiers = next(iter(counts.items()))
-            if not question.choices or value in question.choices:
+            if answer_compatible(question, value):
                 return RoutineAnswer(
                     answer=value, evidence_ids=identifiers, source="verified_evidence"
                 )
         return None
     if REVIEW_TOPICS.search(label):
         return None
-    if question.choices and "Yes" in question.choices and "No" in question.choices:
+    if not question.choices or ("Yes" in question.choices and "No" in question.choices):
         capability = re.fullmatch(
-            r"(?:do you have (?:any )?experience (?:with|using|in)|have you (?:used|worked with)) .+",
+            r"(?:do you have (?:(?:any|professional|commercial|paid|work) )?experience (?:with|using|in)|have you (?:used|worked with)) .+",
             label,
         )
         targets = re.sub(
-            r"^(?:do you have (?:any )?experience (?:with|using|in)|have you (?:used|worked with)) ",
+            r"^(?:do you have (?:(?:any|professional|commercial|paid|work) )?experience (?:with|using|in)|have you (?:used|worked with)) ",
             "",
             normalise(label),
         )
@@ -141,10 +314,14 @@ def routine_answer(
                 any(any(contains(tag, term) for tag in item.tags) for item in evidence)
                 for term in technologies
             ):
-                return RoutineAnswer(
-                    answer="Yes", evidence_ids=matching, source="verified_evidence"
-                )
-        if question.form_context is None:
+                capability_value = format_known_answer(question, "Yes")
+                if capability_value and answer_compatible(question, capability_value):
+                    return RoutineAnswer(
+                        answer=capability_value, evidence_ids=matching, source="verified_evidence"
+                    )
+        if question.choices and question.form_context is None:
+            return None
+        if numeric_field(question):
             return None
     context = question.form_context
     interpret_form = (
@@ -201,11 +378,32 @@ def routine_answer(
         for term in technologies
     ):
         return None  # Related-looking wording cannot substitute for the requested technology.
-    # The answer contains source text only. No generated claim or inferred duration is used.
+    # Use source wording or grounded local templates; never infer a duration or fact.
     paragraphs = [approved[identifier].text for identifier in identifiers]
-    answer = "\n\n".join(paragraphs)
-    if len(answer) > 3000:
+    if len("\n\n".join(paragraphs)) > 3000:
         raise ValueError("Routine evidence answer exceeds the form limit")
+    target = experience_target(question)
+    positive_sources = all(
+        re.match(r"(?:I )?(?:built|developed|created|implemented|delivered|worked)\b", text, re.I)
+        and not re.search(
+            r"\b(?:not|no|never|only|but|however|although|without|learning|studying|planned)\b",
+            text,
+            re.I,
+        )
+        for text in paragraphs
+    )
+    if target and technologies and positive_sources:
+        # Generalise only an already verified capability. Keep project/work scope;
+        # the model still selects source identifiers rather than writing facts.
+        categories = {approved[identifier].category for identifier in identifiers}
+        if professional and categories == {"experience"}:
+            answer = f"I have professional experience with {target}."
+        elif categories == {"project"}:
+            answer = f"I have experience with {target} through independent projects."
+        else:
+            answer = " ".join(concise_text(paragraph) for paragraph in paragraphs)
+    else:
+        answer = " ".join(concise_text(paragraph) for paragraph in paragraphs)
     return RoutineAnswer(answer=answer, evidence_ids=identifiers, source=MODEL)
 
 
@@ -219,7 +417,7 @@ def routine_catalogue(profile: Profile, job: Job, question: Question) -> dict[st
         "Phone number",
         "Current location",
     ]
-    terms = {normalise(term) for term in TECHNOLOGIES}
+    terms = {normalise(term) for term in (*TECHNOLOGIES, *QUESTION_TECHNOLOGIES)}
     terms.update(
         normalise(tag)
         for item in profile.evidence

@@ -54,7 +54,6 @@ def test_supported_technology_questions(profile, job, label):
 @pytest.mark.parametrize(
     "label",
     [
-        "Do you have experience with Java?",
         "Do you have experience with Python and Java?",
         "Do you have commercial experience with Python?",
         "Do you have experience with production Python?",
@@ -127,7 +126,7 @@ def test_model_selects_sources_but_does_not_write_answer(profile, job):
         return_value=RoutineSelection(evidence_ids=["python", "python"], needs_review=False)
     )
     result = routine_answer(profile, job, question, selector)
-    assert result.answer == profile.evidence[0].text
+    assert result.answer == "I have experience with Python through independent projects."
     assert result.evidence_ids == ["python"] and result.source == "gpt-6.1-sol"
     question.label = "Describe your professional Python experience"
     selector.return_value = RoutineSelection(evidence_ids=[], needs_review=True)
@@ -136,6 +135,8 @@ def test_model_selects_sources_but_does_not_write_answer(profile, job):
 
 
 def test_model_cannot_select_unrelated_sources_for_a_specific_skill(profile, job):
+    # A profile mention disables the absent-technology default in this source test.
+    profile.summary = "I am studying Java."
     question = Question(id="q", label="Describe your Java project experience")
     selector = Mock(return_value=RoutineSelection(evidence_ids=["python"], needs_review=False))
     assert routine_answer(profile, job, question, selector) is None

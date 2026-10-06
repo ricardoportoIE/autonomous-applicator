@@ -149,7 +149,7 @@ def test_duration_answers_accept_approved_non_negative_numbers(profile, job, val
     profile.answers[question_key(question)] = value
     job.questions = [question]
     assert answer_compatible(question, value)
-    assert answer_questions(job, profile) == ({"years": value}, [])
+    assert answer_questions(job, profile) == ({"years": value.strip()}, [])
     assert routine_answer(profile, job, question).answer == value.strip()
 
 

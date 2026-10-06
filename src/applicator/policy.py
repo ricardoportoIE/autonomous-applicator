@@ -1,7 +1,9 @@
 """Deterministic, evidence-led routing. Models cannot override submission gates."""
 
 import re
+from decimal import Decimal, InvalidOperation
 
+from .answer_style import format_known_answer, numeric_field
 from .location_policy import location_confirmed, location_needs_review
 from .models import Evaluation, Job, Profile, Question, Settings, State
 
@@ -72,8 +74,27 @@ def answer_compatible(question: Question, value: str) -> bool:
     """Known duration inputs require a number; explicit offered ranges remain valid."""
     if question.choices:
         return value in question.choices
-    if re.match(r"how many years\b", " ".join(question.label.split()), re.I):
-        return bool(re.fullmatch(r"\d+(?:\.\d+)?", value.strip(), re.ASCII))
+    if numeric_field(question):
+        if not re.fullmatch(r"\d+(?:\.\d+)?", value.strip(), re.ASCII):
+            return False
+        context = question.form_context
+        if context is not None:
+            try:
+                number = Decimal(value.strip())
+                lower = Decimal(context.constraints.get("min", "0"))
+                upper = Decimal(context.constraints.get("max", "Infinity"))
+                if not lower.is_finite() or upper.is_nan() or not lower <= number <= upper:
+                    return False
+                step = context.constraints.get("step")
+                if step and step != "any":
+                    increment = Decimal(step)
+                    if not increment.is_finite() or increment <= 0:
+                        return False
+                    if (number - lower) % increment:
+                        return False
+            except (InvalidOperation, ValueError):
+                return False
+        return True
     return bool(value.strip())
 
 
@@ -89,7 +110,7 @@ def answer_questions(job: Job, profile: Profile) -> tuple[dict[str, str], list[s
     }
     for question in job.questions:
         key = question.answer_key or "question:" + " ".join(question.label.casefold().split())
-        value = known.get(key, "")
+        value = format_known_answer(question, known.get(key, "")) or ""
         if question.sensitive or not answer_compatible(question, value):
             if question.required:
                 unresolved.append(question.id)

@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
+from .answer_style import format_known_answer
 from .browser import (
     FixtureBrowser,
     LinkedInBrowser,
@@ -587,15 +588,23 @@ class Service:
     ) -> str | None:
         if not self.store.settings().routine_answers_enabled:
             return None
-        if (
-            self.store.profile()[1] != revision
-            or self.store.application(app_id)["job"] != job.model_dump()
-        ):
+        row = self.store.application(app_id)
+        if self.store.profile()[1] != revision or row["job"] != job.model_dump():
             raise ValueError("Candidate or opportunity changed before resolving a routine question")
         effective = self.store.effective_profile(app_id, profile, job)
+        defaults = frozenset(
+            item["answer_key"]
+            for item in row["routine_answers"]
+            if item["source"] == "candidate_technology_policy"
+            and item["answer_key"] not in profile.answers
+            and item["answer_key"] not in row["approved_answers"]
+            and effective.answers.get(item["answer_key"]) == item["answer"]
+        )
         cached = effective.answers.get(question_key(question))
-        if cached and answer_compatible(question, cached):
-            return cached
+        if cached:
+            formatted = format_known_answer(question, cached)
+            if formatted and answer_compatible(question, formatted):
+                return formatted
         selector = self.question_selector
         if selector is not None:
 
@@ -617,7 +626,9 @@ class Service:
             tracked_selector: Selector | None = select_question
         else:
             tracked_selector = None
-        resolution = routine_answer(effective, job, question, tracked_selector)
+        resolution = routine_answer(
+            effective, job, question, tracked_selector, technology_defaults=defaults
+        )
         if resolution is None:
             return None
         self.store.save_routine_answer(

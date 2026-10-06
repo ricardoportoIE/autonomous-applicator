@@ -1,5 +1,13 @@
 # Source review, 2 October 2026
 
+## Candidate-authorised answer formatting, 6 October 2026
+
+Reviewed the shared formatter, deterministic technology policy, approved-duration reuse, effective-profile provenance, preparation/readiness and browser shortcut together. Previously compatible cached strings could bypass field-aware presentation. All three answer consumers now apply the same format rules. Numerical duration statements require complete approved wording; dates, approximations and unrelated numbers cannot become a count. Native choices retain exact labels, while positive capability and verified project/employment prose use short sentences without changing scope.
+
+The absent-technology fallback is an explicit operator preference, distinct from verified evidence and AI source selection. It considers summary/evidence/aliases/prior answers, honours sensitive and exceptional boundaries, checks truthful zero against numeric constraints and records its own source. Generated records are excluded from absence detection and duration-fact reuse, so later pages can receive the same educational answer; manual/global facts retain priority. Duration reuse stays with the same subject and compatible professional/general scope, rejects conflicts and keeps per-application approvals local. Cached answers can adapt between numerical and text controls without changing candidate facts or document fingerprints.
+
+The final focused checks passed 249 cases, including 122 new regressions and cross-application refusal boundaries. Both answer modules reached 100% statement/branch coverage without exclusions. Real Chromium tests verify actual field values and selections and never click Submit. The unchanged historical full coverage reports are distinguished from this targeted measurement in [Testing](TESTING.md#candidate-authorised-answer-policy-6-october-2026). The paused rollout preserved core records and document hashes.
+
 ## Questionnaire collection, 6 October 2026
 
 Reviewed the browser's per-control resolution, radio grouping, conditional rereads, reversible navigation, final sending gate, service exception handling, SQLite hold transaction and Questions tab. Previously an unresolved field raised immediately and the service retained only its latest resolver question. A structured pre-send review now carries the complete pending batch across reachable steps. Independent answers are still grounded and validated; a missing fact or rejected interpretation does not hide later fields on the same page.

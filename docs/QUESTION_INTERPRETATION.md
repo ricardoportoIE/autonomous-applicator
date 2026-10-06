@@ -2,6 +2,34 @@
 
 The provider adapter reads the current application dialogue and resolves known exact answers first. When an ordinary question is unfamiliar, GPT-6.1 Sol can interpret its wording and the observed control structure before the adapter fills it. This reduces unnecessary review holds caused by different labels for the same candidate fact or technical experience.
 
+## Candidate-authorised technology defaults and answer style
+
+The operator explicitly authorised a standard answer for a technology absent from the candidate profile which has not already been answered. The common resolver applies this preference during preparation and live forms; it does not add a qualification to the profile or ask AI to invent experience. The existing routine-answer switch controls the policy.
+
+| Observed question/control | Answer |
+| --- | --- |
+| Unanswered Java work-duration question; Java absent from profile | `0` |
+| Unanswered Java experience question in a number field, numeric input mode or recognised integer-only pattern | `0`, subject to field validation |
+| Unanswered free-text Java experience question; Java absent from profile | “I have no professional experience with Java. My experience is educational, and I am developing my skills in this area.” |
+| Exact approved positive Python capability answer in a free-text field | “Yes, I have experience with Python.” |
+| Exact approved negative professional Python capability answer in free text | “No, I do not have professional experience with Python.” |
+| Complete approved statement of 3 years' Java experience in a numerical duration field | `3` |
+| Confirmed Java professional duration of 3 years, asked again in free text | “I have 3 years of professional experience with Java.” |
+| Unanswered Java years question with an enabled exact `0` option | Select that exact option; never approximate an offered range |
+| An approved native select/radio/checkbox option | Its exact offered label; no prose is inserted |
+
+Numerical controls include native number inputs, numeric/decimal text input modes, recognised integer-only patterns and years questions rendered as ordinary text. The formatter checks complete approved duration statements rather than extracting arbitrary numbers: dates, approximate/negated durations and another technology's duration are not converted. Decimal numbers retain their value. Numerical minimum, maximum and explicit step constraints are checked locally, with final native validity retained in the browser. If zero is disallowed, the agent holds the question for review and never increases the value to satisfy the employer.
+
+The default recognises narrowly phrased experience questions about the supported technical vocabulary, including common languages, frameworks, data/AI tools and Agile Software Development. Profile summary, evidence titles/text/tags (including unverified mentions), aliases and existing factual answers prevent an absent-technology claim. Compound, unclassified or unusually qualified questions remain in review. A technology already present in the profile does not receive an inferred zero merely because its duration is missing. Salary, eligibility, consent, relocation, commuting and hybrid-working decisions retain their confirmed-fact requirements.
+
+Exact global and application-scoped approvals have priority. Existing prose qualifications are preserved. Positive verified project/employment descriptions can use short local capability templates whilst retaining independent-project versus professional scope; AI still selects evidence identifiers only. The formatter is shared by preparation/readiness, cached service answers and the browser's approved-answer shortcut, so those paths cannot insert incompatible narrative text into numerical fields.
+
+A confirmed numeric duration can also answer another recognised question about the same subject. Numerical paraphrases require the same professional/general scope; a total/project duration cannot establish employment duration. A free-text question may receive a short sentence retaining the confirmed number and its scope, with source `approved_experience_duration`. Zero remains “0 years” when derived from a duration approval; it does not independently establish educational experience or another personal fact. Dates, approximate/range answers, conflicting counts, different subjects and controls with no duration unit are not reused. Another application's scoped approvals remain unavailable. Generated policy defaults are distinguished from these factual approvals so their educational wording is preserved on subsequent pages.
+
+Answers produced by this explicit preference are recorded with source `candidate_technology_policy`, current candidate revision and vacancy fingerprint. Their own generated records do not make an absent technology appear present when it occurs again on another form page or with different wording. A subsequent manual approval or global fact takes precedence; a confirmed compatible duration can supply factual prose, while unsupported/conflicting wording stays in review. Reopening the store retains the correct numerical/text representation, including both sentences of the educational answer and changes in the observed control type. Another vacancy retains its own answer records. These records are not promoted to profile evidence or shared factual approvals.
+
+The change governs subsequent preparation and live resolution. Existing held applications are re-evaluated when deliberately prepared; installing the policy alone does not rewrite their records or resume a paused queue. No paid request is necessary for these deterministic defaults; GPT-6.1 Sol continues to handle evidence selection and supported unfamiliar wording through the existing integration.
+
 ## Legacy duration answers
 
 When a live resolver is available, the browser's exact-answer shortcut checks `answer_compatible` before bypassing it. The service applies the same check before returning a cached value. A legacy narrative for “How many years of work experience do you have with Python (Programming Language)?” cannot suppress live resolution merely because the label matches and the text field has no native numeric attributes. Without a resolver, the existing field validation still rejects incompatible values explicitly. Compatible numeric approvals remain authoritative. Provider-offered duration ranges remain exact choices.
@@ -29,9 +57,9 @@ The model uses the [Responses API and structured outputs](https://developers.ope
 The structured decision contains `needs_review`, `canonical_label` and up to three `evidence_ids`. It contains no generated answer, executable selector or browser action. There are two supported routes:
 
 - Map a paraphrase to an exact available canonical question. The catalogue contains only contact facts or supported technical experience that the deterministic resolver can already answer for this candidate and these choices. The application derives the answer locally. A canonical mapping cannot also select narrative evidence; an email/telephone mapping must match its native type.
-- Select verified evidence for a professional text or textarea answer. The application copies the original source wording, deduplicates identifiers, checks technology relevance and enforces the answer limit. A narrative cannot become a checkbox, radio, dropdown or contact value.
+- Select verified evidence for a professional text or textarea answer. The application uses original source wording or a short, grounded local capability template, deduplicates identifiers, checks technology relevance and enforces the answer limit. Templates preserve independent-project versus employment scope; negations and qualifications retain their source wording. A narrative cannot become a checkbox, radio, dropdown or contact value.
 
-Uninterpretable controls, unavailable facts, unsupported mappings and unverified identifiers remain in review. Numeric fields require explicit approved numbers. Legal eligibility, consent, salary, availability, expertise and unusual conditions retain review boundaries. Independent projects cannot establish paid-work experience. Exact application-scoped approvals take precedence over shared defaults, including while deriving a canonical answer.
+Uninterpretable controls, unavailable facts, unsupported mappings and unverified identifiers remain in review. Numeric fields require explicit approved numbers, verified complete duration statements or the explicitly authorised absent-technology zero described above. Legal eligibility, consent, salary, availability, expertise and unusual conditions retain review boundaries. Independent projects cannot establish paid-work experience. Exact application-scoped approvals take precedence over shared defaults, including while deriving a canonical answer.
 
 The model evaluates meaning; the adapter retains control identity, native validity, exact option matching, checked state and final value checks. AI cannot select an arbitrary element, override pause/capacity, alter a public profile or click Submit. Semantic model errors remain possible: grounded selection prevents fabricated candidate values but does not prove that every future question has been understood correctly.
 

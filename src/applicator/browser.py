@@ -24,6 +24,7 @@ from playwright.sync_api import (
 )
 from playwright.sync_api import Error as BrowserError
 
+from .answer_style import format_known_answer
 from .documents import digest, filename_stem
 from .location_policy import country, normalise_location
 from .models import FormContext, Job, Profile, Question
@@ -1059,8 +1060,13 @@ def _fill_question_fields(
         if observe_question:
             observe_question(question)
         approved = approved_answer(label, profile)
-        if resolver is None or (approved and answer_compatible(question, approved)):
-            return approved
+        formatted = format_known_answer(question, approved) if approved else None
+        if resolver is None:
+            # Preserve explicit validation of an incompatible approval in standalone
+            # adapter use; never replace it with an inferred/default answer.
+            return formatted or approved
+        if formatted and answer_compatible(question, formatted):
+            return formatted
         key = (label, tuple(choices), context.html)
         if key not in resolved:
             resolved[key] = resolver(question)

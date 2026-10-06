@@ -41,7 +41,9 @@ def test_routine_selector_configuration_and_provider_failure(data, profile, job,
     assert "private provider failure" not in str(app.state.store.events())
     if mode == "success":
         assert row["state"] == State.READY
-        assert row["routine_answers"][0]["answer"] == profile.evidence[0].text
+        assert row["routine_answers"][0]["answer"] == (
+            "I have experience with Python through independent projects."
+        )
         factory.assert_called_once_with(timeout=180, max_retries=0)
         assert sdk.responses.parse.call_args.kwargs["model"] == "gpt-6.1-sol"
     else:
