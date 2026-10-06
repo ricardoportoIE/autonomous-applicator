@@ -229,7 +229,9 @@ def test_status_stays_readable_during_slow_ai_and_competing_requests_are_rejecte
             assert session.post(f"/api/applications/{ids[1]}/submit").status_code == 409
         finally:
             release.set()
-        assert future.result(15).status_code == 200
+        # This checks ownership whilst AI is blocked, not PDF-rendering throughput.
+        # After release, three complete document sets still need to be generated.
+        assert future.result(timeout=60).status_code == 200
     assert trace == [(action, str(index)) for index in ids for action in ("ai", "submit")]
 
 
