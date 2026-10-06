@@ -10,6 +10,14 @@ The phone/city adapter upgrade introduced recovery-budget version 2. A previousl
 
 After diagnostic maintenance, leave automation paused until the operator starts the agent. New tests use fictional provider fixtures, not the live account. Raw diagnostic HTML, candidate answers and browser state must remain in ignored private directories and must never be attached to a public issue or commit.
 
+## Duplicate CV labels and numeric experience answers
+
+A provider can display the same filename in an uploaded-document reference and in several saved CV cards. The adapter selects the unique visible card with the exact current filename, verifies its ARIA and native radio state, and proves the upload changed the selected DOM control. A previous same-name selection alone is insufficient. Repeated references and deeply nested filename text do not create a false ambiguity. Multiple selected cards or an unsupported selection remain in review.
+
+Within one application run, an already verified CV is reused only when its SHA-256 digest and the selected DOM node are unchanged. This cache is discarded when the browser operation ends; it cannot trust a saved filename from an earlier application. The adapter revalidates the resume section and excludes only its proven document radios, preserving questionnaire and eligibility checks.
+
+Questions beginning with `How many years` require a non-negative numeric answer unless the provider offers explicit choices such as `3-5 years`. The same compatibility rule applies to local readiness, routine approved answers and newly saved application approvals. Descriptive or date-based answers cannot pass readiness. The operator can approve a known number for one application, overriding an older global narrative without changing the candidate revision or unrelated documents. No date or other application's approval is automatically converted into a new fact.
+
 ## First run on Windows
 
 Technical form recovery runs within the normal FIFO worker. The monitor shows **recovering form** and **form recovered**; inspect the application's status check and activity for exhausted strategies. The worker can resume a proven pre-send technical hold twice, reusing valid documents. Unknown answers and genuine availability preferences still need approval. Restart preserves recovery hints and budgets. [Queue operation](APPLICATION_QUEUE.md#bounded-form-recovery-and-local-learning) records the limits and evidence required for resumption.

@@ -125,7 +125,7 @@ def test_incomplete_portrait_is_waited_for_before_it_is_cached(data, monkeypatch
 
 
 @pytest.mark.browser
-@pytest.mark.parametrize("case", ["section_depth", "selection_depth", "ambiguous_selection"])
+@pytest.mark.parametrize("case", ["section_depth", "ambiguous_selection"])
 def test_unsupported_resume_widget_stops_before_any_submission(tmp_path, case):
     document = tmp_path / "Approved_CV.pdf"
     document.write_bytes(b"%PDF-1.4 fixture")
@@ -136,11 +136,6 @@ def test_unsupported_resume_widget_stops_before_any_submission(tmp_path, case):
             "<div>" * 10 + '<button onclick="document.querySelector',
             1,
         ).replace("Upload resume</button>", "Upload resume</button>" + "</div>" * 10, 1)
-    elif case == "selection_depth":
-        html = html.replace(
-            "label.append(input,document.createTextNode(e.target.files[0].name));",
-            "label.append(input); const name=document.createElement('span'); name.textContent=e.target.files[0].name; let root=name; for(let i=0;i<10;i++){const parent=document.createElement('div');parent.append(root);root=parent;}label.append(root);",
-        )
     else:
         html = html.replace("card.setAttribute('role','radio');", "")
     with sync_playwright() as p, p.chromium.launch(headless=True, **browser_options()) as browser:

@@ -32,6 +32,8 @@ The browser distinguishes text and typed inputs, native selects, radio groups, n
 
 For unfamiliar ordinary questions, GPT-6.1 Sol interprets the field's wording and value-free semantic HTML, including its type, enabled choices and constraints. It selects an available approved-fact mapping or verified evidence; the application derives the answer locally and validates the actual control before advancing. Application-scoped approvals retain priority. The [questionnaire interpretation design](docs/QUESTION_INTERPRETATION.md) explains data minimisation, progress reporting and review boundaries. An eight-case fictional API comparison improved correct outcomes from 2/8 to 8/8, including two deliberate review cases; this is a bounded regression sample, rather than a general accuracy claim.
 
+CV selection is proved against the current selected document card, rather than filename occurrence count. Within one application, verified uploads are reused by content hash and DOM identity. Numeric years answers are checked before submission readiness, whilst explicit provider range choices remain valid. [Operational diagnostics](docs/OPERATIONS.md#duplicate-cv-labels-and-numeric-experience-answers) explains the recovery and review boundaries.
+
 ## What the workspace does
 
 | Capability | User outcome |

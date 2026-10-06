@@ -9,7 +9,7 @@ from pydantic import Field
 
 from .location_policy import country
 from .models import Contract, Job, Profile, Question
-from .policy import TECHNOLOGIES, contains, normalise
+from .policy import TECHNOLOGIES, answer_compatible, contains, normalise
 from .question_adviser import MODEL, question_key
 
 
@@ -48,7 +48,7 @@ def routine_answer(
     if not profile.confirmed or question.sensitive:
         return None
     exact = profile.answers.get(question_key(question))
-    if exact and (not question.choices or exact in question.choices):
+    if exact and answer_compatible(question, exact):
         return RoutineAnswer(answer=exact, source="approved_answer")
     label = " ".join(question.label.casefold().split()).rstrip("?.:")
     contact = {

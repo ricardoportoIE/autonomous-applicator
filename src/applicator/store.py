@@ -351,6 +351,7 @@ class Store:
     ) -> None:
         """Approve one application answer without changing candidate facts or other CVs."""
         from .documents import fingerprint
+        from .policy import answer_compatible
         from .question_adviser import question_key
 
         with self.connect(True) as db:
@@ -378,10 +379,10 @@ class Store:
                 question.sensitive
                 or not answer.strip()
                 or len(answer) > 3000
-                or (question.choices and answer not in question.choices)
+                or not answer_compatible(question, answer)
             ):
                 raise ValueError(
-                    "Approve a non-sensitive answer that exactly matches the question choices"
+                    "Approve a non-sensitive answer that matches the choices; years of experience require a number"
                 )
             db.execute(
                 "INSERT OR REPLACE INTO approved_answers VALUES(?,?,?,?,?,?)",

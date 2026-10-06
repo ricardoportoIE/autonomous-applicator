@@ -2,6 +2,12 @@
 
 Version 0.3.0 reviewed through grounded questionnaire HTML interpretation, with final local validation on 6 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
 
+## CV selection and numeric duration readiness, 6 October 2026
+
+Private activity records distinguished a duplicate CV filename locator from a missing compatible numeric duration answer. The adapter now verifies a unique visible selected CV card and its native radio, rejects an unchanged previous selection after uploading, and reuses proven uploads within one operation by SHA-256 and DOM identity. Readiness, routine approved-answer resolution and application approval share a numeric duration check; explicit offered range choices remain valid. Neither dates nor another application's approvals are automatically promoted into new candidate facts.
+
+Added 30 fictional regression cases, replacing one older unsupported-depth case with a supported deeply nested filename case. The complete inventory is 1,070 Python cases. All **249 focused cases passed in 184.36 seconds**, including the 30 new cases; all 155 React unit cases passed with 100% in each runtime module. Ruff, formatting, strict mypy, TypeScript, ESLint, Prettier and reproducible build checks passed. Final focused/full measurements and paused rollout verification follow below once complete. The earlier partial focused run identified two fixture assumptions and the repeated-upload path; it is not an accepted final coverage result.
+
 ## Questionnaire HTML interpretation, 5 October 2026
 
 GPT-6.1 Sol now receives transient, value-free semantic HTML for unfamiliar ordinary provider questions: control type, enabled choices, required state and bounded attributes. It may map the wording to an available canonical approved fact or select verified narrative evidence. The application derives the answer locally, honours application-scoped approvals, checks source/type compatibility and retains native browser validation. Numeric, legal, consent and unknown-fact boundaries remain in review. Model requests identify the current field/question in operation progress; a failed live interpretation retains its observed question and choices, releases the pre-send reservation and records a sanitised review event. The context is excluded from saved question records and job/document fingerprints.

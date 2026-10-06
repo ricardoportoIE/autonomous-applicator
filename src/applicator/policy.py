@@ -3,7 +3,7 @@
 import re
 
 from .location_policy import location_confirmed, location_needs_review
-from .models import Evaluation, Job, Profile, Settings, State
+from .models import Evaluation, Job, Profile, Question, Settings, State
 
 ALIASES = {
     "amazon web services": "aws",
@@ -68,6 +68,15 @@ def requirements(job: Job) -> list[str]:
     return [tech for tech in TECHNOLOGIES if contains(job.description, tech)]
 
 
+def answer_compatible(question: Question, value: str) -> bool:
+    """Known duration inputs require a number; explicit offered ranges remain valid."""
+    if question.choices:
+        return value in question.choices
+    if re.match(r"how many years\b", " ".join(question.label.split()), re.I):
+        return bool(re.fullmatch(r"\d+(?:\.\d+)?", value.strip(), re.ASCII))
+    return bool(value.strip())
+
+
 def answer_questions(job: Job, profile: Profile) -> tuple[dict[str, str], list[str]]:
     answers: dict[str, str] = {}
     unresolved: list[str] = []
@@ -81,7 +90,7 @@ def answer_questions(job: Job, profile: Profile) -> tuple[dict[str, str], list[s
     for question in job.questions:
         key = question.answer_key or "question:" + " ".join(question.label.casefold().split())
         value = known.get(key, "")
-        if question.sensitive or not value or (question.choices and value not in question.choices):
+        if question.sensitive or not answer_compatible(question, value):
             if question.required:
                 unresolved.append(question.id)
         else:

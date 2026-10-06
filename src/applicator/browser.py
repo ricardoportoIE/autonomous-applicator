@@ -11,10 +11,18 @@ from pathlib import Path
 from typing import Any, TypedDict
 from urllib.parse import urlencode, urlsplit
 
-from playwright.sync_api import BrowserContext, Locator, Page, Playwright, sync_playwright
+from playwright.sync_api import (
+    BrowserContext,
+    ElementHandle,
+    JSHandle,
+    Locator,
+    Page,
+    Playwright,
+    sync_playwright,
+)
 from playwright.sync_api import Error as BrowserError
 
-from .documents import filename_stem
+from .documents import digest, filename_stem
 from .location_policy import country, normalise_location
 from .models import FormContext, Job, Profile, Question
 from .photos import save_photo
@@ -619,7 +627,9 @@ def contact_phone_answers(fields: list[dict[str, Any]], profile: Profile) -> dic
     return {country_label: choice, phone_label: digits[1 + len(prefix) :]}
 
 
-def upload_resume(page: Page, dialog: Locator, document: Path) -> set[str] | None:
+def upload_resume(
+    page: Page, dialog: Locator, document: Path, *, verified: dict[str, JSHandle] | None = None
+) -> set[str] | None:
     """Upload the verified CV through the current résumé widget and confirm selection."""
     button = dialog.get_by_role("button", name="Upload resume", exact=True).filter(visible=True)
     if not button.count():
@@ -639,26 +649,43 @@ def upload_resume(page: Page, dialog: Locator, document: Path) -> set[str] | Non
         raise ValueError("The resume upload section is unsupported; review manually")
     if dialog.locator('input[type="file"]').count() != scope.locator('input[type="file"]').count():
         raise ValueError("Additional upload fields require manual mapping")
-    with page.expect_file_chooser(timeout=10000) as chooser:
-        button.click()
-    chooser.value.set_files(str(document))
-    filename = scope.get_by_text(document.name, exact=True)
-    filename.wait_for(timeout=10000)
-    card = filename
-    for _depth in range(8):
-        card = card.locator("xpath=..")
-        if (
-            card.locator('[role="radio"]').count() == 1
-            and card.locator('input[type="radio"]').count() == 1
-        ):
-            break
-        if card.evaluate("(el, root) => el===root", scope.element_handle()):
-            raise ValueError("The uploaded resume selection is ambiguous; review manually")
-    else:
-        raise ValueError("The uploaded resume selection is unsupported; review manually")
-    card.locator('[role="radio"][aria-checked="true"]').wait_for(timeout=10000)
-    if not card.locator('input[type="radio"]').is_checked():
+    named_cards = scope.locator('[role="radio"]').filter(
+        has=page.get_by_text(document.name, exact=True).filter(visible=True)
+    )
+    selected = named_cards.locator('xpath=self::*[@aria-checked="true"]').filter(visible=True)
+    native = selected.locator('input[type="radio"]')
+    document_hash = digest(document)
+    reused = (
+        verified is not None
+        and document_hash in verified
+        and selected.count() == 1
+        and native.count() == 1
+        and native.is_checked()
+        and native.evaluate("(el, previous) => el===previous", verified[document_hash])
+    )
+    previously_selected: list[ElementHandle] = []
+    if not reused:
+        previously_selected = named_cards.locator('input[type="radio"]:checked').element_handles()
+        with page.expect_file_chooser(timeout=10000) as chooser:
+            button.click()
+        chooser.value.set_files(str(document))
+        scope.get_by_text(document.name, exact=True).filter(visible=True).first.wait_for(
+            timeout=10000
+        )
+        if not named_cards.count():
+            raise ValueError("The uploaded resume selection is unsupported; review manually")
+    selected.first.wait_for(timeout=10000)
+    if selected.count() != 1 or selected.locator('input[type="radio"]').count() != 1:
+        raise ValueError("The uploaded resume selection is ambiguous; review manually")
+    if not native.is_checked():
         raise ValueError("The uploaded resume is not selected; review manually")
+    if any(
+        native.evaluate("(el, previous) => el===previous", previous)
+        for previous in previously_selected
+    ):
+        raise ValueError(
+            "The resume upload did not replace the previous selection; review manually"
+        )
     ids = scope.locator('input[type="radio"]').evaluate_all("""inputs => {
       const documentLabel = text => !text.trim() || /\\.(?:pdf|docx?)\\b/i.test(text);
       const resumeLabel = text => !text.trim() || /^Resume\\s*\\*?$/i.test(text.trim());
@@ -680,6 +707,8 @@ def upload_resume(page: Page, dialog: Locator, document: Path) -> set[str] | Non
         != len(ids)
     ):
         raise ValueError("Resume controls overlap with questionnaire fields; review manually")
+    if verified is not None:
+        verified[document_hash] = native.evaluate_handle("el=>el")
     return set(ids)
 
 
@@ -1230,6 +1259,7 @@ class LinkedInBrowser:
             self.report("opening_application", "Opening the Easy Apply form.")
             open_easy_apply(page, self.report)
             seen_steps: set[str] = set()
+            verified_resumes: dict[str, JSHandle] = {}
             for _step in range(10):
                 ensure_linkedin(page)
                 dialog = application_dialog(page)
@@ -1242,7 +1272,7 @@ class LinkedInBrowser:
                     "uploading_documents",
                     f"Checking and uploading the verified CV: form step {_step + 1}.",
                 )
-                resume_fields = upload_resume(page, dialog, cv)
+                resume_fields = upload_resume(page, dialog, cv, verified=verified_resumes)
                 if resume_fields is not None and self.observe_fields:
                     self.observe_fields(
                         [{"label": "CV", "type": "file", "value": cv.name, "step": _step + 1}]

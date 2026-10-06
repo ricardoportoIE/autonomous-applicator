@@ -1,5 +1,10 @@
 # Source review, 2 October 2026
 
+## CV selection and duration readiness, 6 October 2026
+
+Two separate pre-send holds were diagnosed: a filename locator resolving both the uploaded-document reference and a saved CV card, and an approved narrative being treated as a valid numeric years answer. The resume adapter now verifies the unique current selected document card and actual native radio, records operation-local proof by content hash and DOM identity, and reuses it only whilst both remain valid. Approval, routine resolution and readiness share a duration-format check. Explicit provider range choices remain supported. The candidate's earlier approved number is applied locally to the affected question; no date inference or cross-application approval transfer is added.
+
+
 ## Grounded question and HTML interpretation, 5 October 2026
 
 Reviewed extraction, provider control identity, question contracts, scoped fact resolution, model prompts/structured responses, persistence preconditions and operation progress. Previously the routine model saw only a label, vacancy and evidence, and the resolver called it only for recognised narrative patterns. The new live-field context gives GPT-6.1 Sol the control's observed type, enabled choices and bounded semantic HTML. Unfamiliar ordinary wording can map to an available canonical fact or verified narrative sources.

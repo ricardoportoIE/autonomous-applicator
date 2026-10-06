@@ -1,5 +1,7 @@
 # Testing and coverage
 
+The CV/duration regression suite adds 30 cases for duplicate filename references, existing same-name CVs, nested/hidden labels, ambiguous native/ARIA states, stale selections, operation-scoped reuse, changed file hashes and React node replacement, numeric readiness and scoped approval without document regeneration. It replaces an older depth rejection with a supported deep-filename case. Chromium providers are fictional and no model calls or real submissions occur.
+
 ## Backend acceptance gate
 
 The complete Python suite must reach **100% statement and branch coverage in every module under `src/applicator`**, including API endpoints, policy, AI contracts, persistence, document rendering, browser adapters, networking, operation recovery and the command-line entry point. The runtime inventory contains **19 modules**. Statement and branch counts change with source revisions and Python versions; the JSON report and inventory-gate output record the exact counts for each run. Each interpreter must cover its complete measured inventory. The empty package initializer is included in the inventory. Historical measurements are retained in [the delivery record](STATUS.md).
