@@ -679,10 +679,13 @@ def test_manual_invitation_runs_only_selected_contact_with_live_progress(
     card = page.locator('[data-connection-id="1"]')
     button = card.get_by_role("button", name="Send queued invitation", exact=True)
     try:
-        button.click()
+        # Dispatch both activations in one browser task. Polling may remove this
+        # queued-only button after reservation; re-querying it races that update.
+        button.evaluate(
+            "el=>{el.click();el.dispatchEvent(new MouseEvent('click',{bubbles:true}));}"
+        )
         expect(card.locator(".invitation-progress")).to_contain_text("Started")
         assert started.wait(timeout=5)
-        button.dispatch_event("click")
         expect(page.locator("#workspace")).not_to_have_attribute("aria-busy", "true")
         expect(page.locator('[data-connection-id="2"] button')).to_be_disabled()
         row = app.state.network.status(1)

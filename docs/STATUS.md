@@ -10,6 +10,8 @@ All 17 new fictional regressions passed in 21.44 seconds. An initial focused run
 
 A guarded live diagnostic crossed the failing upload/navigation stages for all three affected opportunities and stopped at additional questions before final submission. Candidate revision, application records, documents, attempts, submission archives and connections were preserved; technical hints were saved locally. No paid model requests or external sends occurred. Final acceptance and paused deployment will be recorded separately.
 
+Review of the preceding documentation-only CI run identified a production-browser test race on Windows/Python 3.14: the test re-queried a queued-only invitation button after polling had removed it. The duplicate-activation check now dispatches both events within one browser task, retaining the one-request assertion and all progress/accessibility checks. Both responsive cases passed. The preliminary complete measurement and first CI run for this upgrade were superseded before accepting their results. Fresh measurements include this test correction. The local dashboard was restarted after a unique private backup, preserving both pause switches and the daily sending budget.
+
 Version 0.3.0 reviewed through single-link opportunity import on 6 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
 
 ## Single-link opportunity import, 6 October 2026
