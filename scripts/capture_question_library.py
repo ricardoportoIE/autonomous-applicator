@@ -64,7 +64,7 @@ def main() -> None:
                 library.update(
                     entry["id"],
                     InstructionUpdate(
-                        prompt="I have 3 years of professional Python experience. Use 3 for a numeric field; for text, write one short, polite sentence. Do not apply this instruction to other technologies.",
+                        prompt="I have 3 years of professional Python experience. Exclude educational and independent-project time. Apply this duration only to professional Python experience.",
                         enabled=True,
                         version=1,
                     ),

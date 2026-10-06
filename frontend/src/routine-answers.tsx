@@ -273,8 +273,8 @@ export function RoutineAnswers({ workspace }: { workspace: Workspace }) {
               </button>
               <p className="text-sm mt-2" role="status" aria-live="polite">
                 {drafting
-                  ? "Reading confirmed facts and observed field variants. Your instruction will appear in the editor."
-                  : "Generate an editable instruction for number, text, select, radio and checkbox fields. This replaces the editor text; nothing is saved until you select Save instruction."}
+                  ? "Selecting the essential facts and wording for this question. Your concise instruction will appear in the editor."
+                  : "Generate a short, direct instruction using confirmed facts. Field handling follows the agent’s existing rules. This replaces the editor text; nothing is saved until you select Save instruction."}
               </p>
               {draft && (
                 <p className="text-sm mt-2" role="status">

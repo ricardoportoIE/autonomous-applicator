@@ -35,8 +35,8 @@ const entry: QuestionInstruction = {
 };
 const draft: InstructionDraft = {
   prompt:
-    "Use approved Python duration. Use digits for numbers, short polite text, or an exact enabled choice. Review unknown facts.",
-  review_notes: "Check the facts and field rules before saving.",
+    "Use the approved professional Python duration. Exclude educational and independent-project time. Request the duration if it is unconfirmed.",
+  review_notes: "Check the professional scope before saving.",
   needs_clarification: false,
   evidence_ids: [],
   fact_keys: [],
@@ -69,6 +69,14 @@ async function open(item = entry) {
 
 it("generates an editable draft with the profile revision without saving or enabling a rule", async () => {
   const modal = await open();
+  expect(
+    modal.getByText(
+      /Generate a short, direct instruction using confirmed facts/,
+    ),
+  ).toBeVisible();
+  expect(
+    modal.getByText(/nothing is saved until you select Save instruction/),
+  ).toBeVisible();
   fireEvent.click(modal.getByRole("button", { name: button }));
   await waitFor(() =>
     expect(modal.getByLabelText("Instruction for GPT-6.1 Sol")).toHaveValue(

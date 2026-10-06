@@ -9,12 +9,12 @@ If a numerical experience question already has a legacy narrative in the profile
 1. Keep **Answer routine questions from approved facts** enabled in General settings.
 2. Pause the agent and wait for the current application operation to finish.
 3. Open Routine answers. Questions from existing records, imported opportunities and observed form pages appear automatically, including questions already answered. The open tab refreshes every 15 seconds and also has a refresh button, search and status filters.
-4. Choose **Add instruction** or **Edit instruction**. Write the facts, scope and preferred wording, or select **Generate instruction with GPT-6.1 Sol** to fill the editor with a field-aware draft. Review and edit the result. The maximum length is 4,000 characters.
+4. Choose **Add instruction** or **Edit instruction**. Write the facts, scope and preferred wording, or select **Generate instruction with GPT-6.1 Sol** to fill the editor with a short, direct draft. Review and edit the result. Manual instructions retain the 4,000-character editor limit; generated drafts also have a 120-word limit.
 5. Enable **Use this instruction automatically** and save. Enabling authorises the agent to generate an answer from that instruction when a compatible question appears. A blank or disabled instruction leaves the existing answer policy in place. Sensitive questions remain manual.
 
 For example:
 
-> I have 3 years of professional Python experience. Use 3 for a numeric field; for text, write one short, polite sentence. Do not apply this instruction to other technologies.
+> I have 3 years of professional Python experience. Exclude educational and independent-project time. Apply this duration only to professional Python experience.
 
 The prompt is an explicit instruction from the candidate, rather than text extracted from the provider. Facts or decisions stated there must be accurate. An instruction such as “make me sound experienced” supplies no missing factual evidence.
 
@@ -24,7 +24,11 @@ Saving does not start the agent. Pending applications which have encountered the
 
 The modal's generation button creates a reusable instruction, rather than an application answer. It uses confirmed global candidate facts, verified evidence and distinct available field variants for the same normalised question. The catalogue, linked opportunity questions and cached observations contribute current type, exact choices, required status and constraints. Raw form HTML, prefilled values, direct contact facts and catalogued sensitive answers are not sent. Application-specific approvals are not promoted into global instructions.
 
-The draft asks the answering model to read the live field afresh: digits and the requested units for numerical fields; a short, polite sentence for text/textarea; an exact enabled label for select/radio; and supported enabled options or an explicitly approved boolean decision for checkboxes. It includes numerical and length constraints and requests review when a truthful fact cannot fit. These instructions also cover field types not yet observed; they do not add support for an otherwise unfamiliar browser widget.
+The generator now requests **2–4 short imperative sentences**, aiming for **40–80 words**, with a hard maximum of **120 words**. The draft identifies the question-specific subject/scope, current approved fact or verified evidence, the decision or preferred wording, and any material exception. It uses direct wording when the facts settle a decision. Missing or conflicting facts still produce a specific confirmation request, rather than an invented answer. Material part-time/full-time, professional/educational and jurisdiction conditions remain essential.
+
+General field handling belongs to the answering agent and browser: digits and requested units, short text, exact enabled choices, supported checkbox decisions, native constraints and review gates. Generated instructions do not repeat these rules or paragraphs about security, saving, enabling or submission. Observed field variants remain part of the generation context so an unusual question-specific distinction is retained. An incompatible Yes/No control cannot express years merely because a duration is approved. No draft adds support for an unfamiliar widget.
+
+An oversized generated instruction is rejected without truncation, saving or a silent fallback. The editor retains its previous text and shows the existing retryable generation error. The 120-word limit applies only to new generated drafts; manually written prompts and existing saved instructions retain their current limits and contents. To replace an older verbose instruction, generate a fresh draft, review it and select **Save instruction** explicitly.
 
 Prefer references to current approved facts rather than copying fixed durations into a reusable prompt. Missing facts or exceptional decisions produce a clarification note. The result cites supplied evidence/fact identifiers, which are validated locally; schema conformance and valid references do not prove every sentence correct. The candidate still reviews the complete prompt before saving. Sensitive questions remain manual, and unconfirmed candidate profiles cannot request generation.
 
@@ -34,7 +38,7 @@ The button shows **Generating instruction…**, disables duplicate requests and 
 
 ![Current instruction modal with the field-aware generation button](assets/question-instruction.png)
 
-The updated 6 October 2026 screenshot uses fictional local records and made no model or provider request. [Focused draft validation](TESTING.md#field-aware-instruction-drafts-6-october-2026) records behavioural coverage, packaged Chromium journeys and a separate three-case real API check.
+The updated 6 October 2026 screenshot uses fictional local records and made no model or provider request. [Concise draft validation](TESTING.md#concise-question-instruction-drafts-6-october-2026) records the current focused acceptance and real-model checks. [Earlier draft validation](TESTING.md#field-aware-instruction-drafts-6-october-2026) remains a separate historical measurement.
 
 ## Matching and answer generation
 

@@ -21,9 +21,8 @@ TOKEN = "fictional-instruction-draft-token-01234567890123456789"
 LABEL = "How many years of professional Python experience do you have?"
 PROMPT = (
     "For this Python professional-duration question, look up the current approved duration. "
-    "Use digits for numeric fields, a short polite sentence for text, and the exact enabled "
-    "supported option for select, radio or checkbox fields. Request review if facts or options "
-    "do not support a truthful answer."
+    "Do not include educational or independent-project time. "
+    "Request the professional duration if it has not been confirmed."
 )
 
 
@@ -168,7 +167,7 @@ def test_model_receives_field_variants_but_no_html_contacts_or_sensitive_answers
             "private-location",
         )
     )
-    assert "digits" in request["instructions"] and "exact enabled" in request["instructions"]
+    assert "Do not repeat this general policy" in request["instructions"]
     assert "untrusted DATA" in request["instructions"]
 
 
@@ -445,3 +444,53 @@ def test_draft_contract_bounds(changes):
         result(**changes)
     with pytest.raises(ValidationError):
         InstructionDraftRequest(version=0)
+
+
+@pytest.mark.parametrize("words,accepted", [(120, True), (121, False)])
+def test_generated_instruction_length_never_truncates_a_material_condition(
+    data, profile, job, words, accepted
+):
+    _, store, _, _, rule_id = setup(data, profile, job)
+    prompt = (
+        "Use " + "approved " * (words - 7) + "facts; full-time work requires employer sponsorship."
+    )
+    assert len(prompt.split()) == words
+    draft = result(prompt=prompt)
+    ai = Mock()
+    ai.responses.parse.return_value = SimpleNamespace(model="gpt-6.1-sol", output_parsed=draft)
+    before = snapshot(store)
+    context = store.question_library.draft_context(rule_id, 1)
+    if accepted:
+        assert draft_question_instruction(ai, profile, context).prompt == prompt
+    else:
+        with pytest.raises(ValueError, match="120-word limit"):
+            draft_question_instruction(ai, profile, context)
+    assert snapshot(store) == before
+
+
+def test_oversized_generated_draft_is_private_and_keeps_the_saved_instruction(
+    data, profile, job, monkeypatch
+):
+    app, store, revision, _, rule_id = setup(data, profile, job)
+    store.question_library.update(
+        rule_id,
+        InstructionUpdate(prompt="Candidate's existing instruction", enabled=False, version=1),
+    )
+    _, model = fake_ai(monkeypatch, output=result(prompt="approved " * 121))
+    before = snapshot(store)
+    with TestClient(app, headers={"Authorization": f"Bearer {TOKEN}"}) as client:
+        response = post(client, rule_id, revision, version=2)
+    assert response.status_code == 502
+    assert "approved approved" not in response.text
+    assert snapshot(store) == before
+    assert store.question_library.entries()[0]["prompt"] == "Candidate's existing instruction"
+    assert model.responses.parse.call_count == 1
+
+
+def test_manual_candidate_instructions_keep_their_existing_editor_limit(data, profile, job):
+    _, store, _, _, rule_id = setup(data, profile, job)
+    prompt = ("Candidate condition " * 130).strip()
+    updated = store.question_library.update(
+        rule_id, InstructionUpdate(prompt=prompt, enabled=False, version=1)
+    )
+    assert updated["prompt"] == prompt and len(prompt.split()) > 120

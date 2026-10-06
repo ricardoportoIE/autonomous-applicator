@@ -1,5 +1,22 @@
 # Testing and coverage
 
+## Concise question instruction drafts, 6 October 2026
+
+Final fresh acceptance passed **104 affected backend cases in 50.95 seconds**, including **four new regressions**. The complete changed `question_library.py` measured **100% statements and branch outcomes**: **219 statements and 106 branch outcomes**, with zero missing paths. New cases verify the 120-word boundary, preservation of material conditions without truncation, private API failure with saved data intact, and the unchanged manual editor limit. Existing grounding, field-context, authentication, change-control and two packaged Chromium journeys remain green. A new fixture's trailing-space expectation was corrected to respect existing contract normalisation before the final fresh acceptance.
+
+All **29 affected React cases passed in 3.21 seconds**. `routine-answers.tsx` retained **100% statements, lines, functions and branches**: 80 statements, 74 lines, 24 functions and 74 branch outcomes. The existing generation journey now also checks the concise helper text and explicit-save guidance. Strict TypeScript/mypy, ESLint/Ruff, formatting and the production build passed. Two refreshed screenshots were visually inspected using fictional records with no model/provider requests. These are focused results, not fresh complete-system coverage measurements.
+
+Four real `gpt-6.1-sol` requests with fictional facts produced **41–50-word instructions**, taking **12.59–18.35 seconds**. Approved sponsorship retained material part-time/full-time conditions; approved professional duration produced a direct scoped instruction; unknown salary requested confirmation. A duration question with incompatible Yes/No variants requested interpretation review whilst retaining the approved number. The initial sample assertion incorrectly expected no review for that incompatible control; a distinct follow-up with actual numerical/select choices confirmed acceptance without a new fact. This bounded sample checks current prompt behaviour, not general semantic accuracy or a latency guarantee. It made no provider application or invitation and sent no private candidate record.
+
+Reproduce focused acceptance:
+
+```powershell
+uv run pytest tests/test_instruction_draft.py tests/test_question_library.py --override-ini addopts= --cov=applicator.question_library --cov-branch --cov-fail-under=100 --cov-report=term-missing -q
+npx vitest run tests/frontend/routine-answers.test.tsx tests/frontend/instruction-draft.test.tsx --coverage --coverage.include=src/routine-answers.tsx
+```
+
+[Instruction design](QUESTION_INSTRUCTIONS.md#generate-an-instruction-draft) records the generation-only limit and shared field policy. [Delivery](STATUS.md#concise-question-instruction-drafts-6-october-2026) records activation and local version control.
+
 ## Vacancy scoring audit, 6 October 2026
 
 Final fresh acceptance passed **401 affected-path cases in 42.98 seconds**, including **62 new cases** in `tests/test_scoring_audit.py`. Both complete affected runtime modules measured **100% statements and branch outcomes**: `policy.py` covers **194 statements and 98 branch outcomes**, and `discovery.py` covers **24 statements and 12 branch outcomes**, with zero missing paths. These are focused measurements, not a new complete-backend or frontend coverage result.
