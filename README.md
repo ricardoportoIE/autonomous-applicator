@@ -146,7 +146,7 @@ Browser recovery remembers verified native, label or ARIA interactions in local 
 
 ## Quality and verification
 
-The frontend review expanded measurement from three helpers to **all ten authored runtime TypeScript/TSX files**, including the bootstrap. **155 Vitest tests achieve 100% lines, statements, functions and branches**, enforced **per file** in CI. Only type-only contracts and declaration files are excluded. Libraries, generated bundles and test code are outside this measurement.
+The frontend review expanded measurement from three helpers to **all ten authored runtime TypeScript/TSX files**, including the bootstrap. **161 Vitest tests achieve 100% lines, statements, functions and branches**, enforced **per file** in CI. Only type-only contracts and declaration files are excluded. Libraries, generated bundles and test code are outside this measurement.
 
 | Verification layer | What it checks |
 | --- | --- |
@@ -162,7 +162,7 @@ The backend requires **100% statement and branch coverage in every one of its 19
 
 Verification results, measured coverage and any outstanding checks are recorded in [delivery status](docs/STATUS.md). [Review findings](docs/CODE_REVIEW.md) explain corrected faults and their regressions. Coverage establishes execution, not compatibility with every live provider layout; behaviour assertions and isolated provider fixtures provide additional evidence.
 
-The security review added **53 cases** to an 865-case baseline. Bounded form recovery added **66 cases** and two dialogue variants, followed by **43 provider-audit regressions**, bringing the Python inventory to **976**, with both 100% runtime coverage gates enforced. The latest regressions cover phone aliases, city/country selection, numeric text answers, provider validation, closed-job boundaries, CV selection and persistent upgrade budgets. The [threat model](docs/SECURITY.md) defines protection against hostile web pages, malformed requests and untrusted provider content, together with the limits of a local single-user application. Tests isolate runtime credentials and prevent CLI fixtures from loading the operator's `.env`. The [offline benchmark](docs/PERFORMANCE.md) records a 1,000-opportunity API list median of **11.95 ms** and p95 of **15.61 ms** on Windows/Python 3.14.2; these are in-process read measurements, excluding browser rendering, document generation and model/provider latency.
+The current Python inventory contains **1,097 passing cases**, including security, bounded form recovery, questionnaire interpretation, CV selection, application-scoped approval and single-link imports. The fresh Windows/Python 3.14.2 run covered **2,973/2,973 statements and 1,048/1,048 branch outcomes**, with 100% in all 19 runtime modules. Production Chromium coverage is reported separately: **98.68% statements/lines, 92.31% branches and 97.54% functions**. The [threat model](docs/SECURITY.md) defines protection against hostile pages, malformed requests and untrusted provider content. Tests isolate credentials and prevent CLI fixtures from loading the operator's `.env`. The [offline benchmark](docs/PERFORMANCE.md) records bounded in-process read measurements, excluding browser rendering, document generation and model/provider latency.
 
 ## Run locally
 
@@ -213,7 +213,7 @@ uv run python scripts/check_repository_hygiene.py
 
 Run browser coverage after the Python suite, which captures production V8 coverage. Reports go to ignored `test-results/unit-coverage` and `test-results/frontend-report`. Commit frontend sources with rebuilt `src/applicator/static` output; CI rejects asset drift.
 
-Reproduce the public screenshots with `uv run python scripts/capture_screenshots.py` after building. The script uses a disposable database, a fictional candidate and a loopback provider fixture. It blocks external browser requests and makes no OpenAI calls. Public assets never come from the live workspace.
+Reproduce the main screenshot gallery with `uv run python scripts/capture_screenshots.py` after building. The script uses a disposable database, a fictional candidate and a loopback provider fixture. It blocks external browser requests and makes no OpenAI calls. Public assets never come from the live workspace.
 
 ## Delivery and ownership
 
