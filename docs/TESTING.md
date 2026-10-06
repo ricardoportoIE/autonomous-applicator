@@ -4,7 +4,9 @@ The resume/navigation learning regressions add 17 fictional cases for accessible
 
 The CV/duration regression suite adds 30 cases for duplicate filename references, existing same-name CVs, nested/hidden labels, ambiguous native/ARIA states, stale selections, operation-scoped reuse, changed file hashes and React node replacement, numeric readiness and scoped approval without document regeneration. It replaces an older depth rejection with a supported deep-filename case. Chromium providers are fictional and no model calls or real submissions occur.
 
-The latest fresh Windows/Python 3.14.2 run passed **1,151 cases in 1,612.89 seconds**, covering **3,083/3,083 statements and 1,088/1,088 branch outcomes across all 19 backend modules**. The independent inventory gate confirmed 100% in every module. All **162 React cases** passed with 100% in each of the ten runtime modules: 837 statements, 758 lines, 299 functions and 888 branch outcomes. The separate production-browser report measured **98.69% statements/lines, 92.37% branches and 97.54% functions**. [Delivery record](STATUS.md#questionnaire-collection-6-october-2026) distinguishes the accepted complete measurement from superseded runs, the paused rollout and actual provider reads. Ordinary tests use fictional providers and no paid model calls or real submissions.
+The latest complete Windows/Python 3.14.2 baseline passed **1,151 cases in 1,612.89 seconds**, covering **3,083/3,083 statements and 1,088/1,088 branch outcomes across all 19 backend modules**. The independent inventory gate confirmed 100% in every module. All **162 React cases** passed with 100% in each of the ten runtime modules: 837 statements, 758 lines, 299 functions and 888 branch outcomes. The separate production-browser report measured **98.69% statements/lines, 92.37% branches and 97.54% functions**. [Delivery record](STATUS.md#questionnaire-collection-6-october-2026) distinguishes the accepted complete measurement from superseded runs, the paused rollout and actual provider reads. Ordinary tests use fictional providers and no paid model calls or real submissions.
+
+After that baseline, the large-choice contract correction passed **12 additional focused cases in 10.22 seconds**. They preserve 249-option telephone-country lists, verify exact approved contact selection and unknown-fact persistence, exercise authenticated API intake, and reject 501 choices while retaining the question-count and HTML bounds. The complete suite and frontend checks were not rerun for this backend-only bounded change. These focused results are not a fresh full coverage measurement. [The correction record](STATUS.md#large-dialling-code-lists-6-october-2026) also records paused deployment and existing-hold re-evaluation.
 
 ## Backend acceptance gate
 
@@ -64,6 +66,7 @@ The full pytest command starts a fresh measurement; it does not append previous 
 For focused development checks, select tests without claiming a full coverage result:
 
 ```powershell
+uv run pytest tests/test_large_choice_lists.py --override-ini addopts= --no-cov
 uv run pytest tests/test_backend_integrity.py tests/test_browser_boundaries.py --no-cov
 uv run pytest tests/test_backend_coverage_gate.py --no-cov
 ```
@@ -84,7 +87,7 @@ The initial recovery pass added 66 cases and two variants to an existing stalled
 uv run python -m pytest tests/test_ai_form_interpretation.py tests/test_form_benchmark.py --no-cov -o 'addopts=--strict-markers'
 ```
 
-The enhancement adds 65 cases to the previous 976-case inventory: 54 grounded interpretation/HTML cases and 11 opt-in benchmark contract checks. Seven of the interpretation cases run real Chromium against fictional forms. They verify contact type compatibility, choices, semantic attributes, value omission, escaping, review guards, application-scoped precedence, cached persistence, progress details and rejection before filling or advancing. Model contracts check the requested and returned model, valid sources and mappings. They do not call the paid API. The separate eight-call fictional comparison is recorded in [the AI benchmark](AI_BENCHMARK.md#questionnaire-html-comparison-5-october-2026). The complete suite and inventory gate remain required for delivery; focused measurements are not full coverage claims.
+The enhancement adds 65 cases to the previous 976-case inventory: 54 grounded interpretation/HTML cases and 11 opt-in benchmark contract checks. Seven of the interpretation cases run real Chromium against fictional forms. They verify contact type compatibility, choices, semantic attributes, value omission, escaping, review guards, application-scoped precedence, cached persistence, progress details and rejection before filling or advancing. Model contracts check the requested and returned model, valid sources and mappings. They do not call the paid API. The separate eight-call fictional comparison is recorded in [the AI benchmark](AI_BENCHMARK.md#questionnaire-html-comparison-5-october-2026). Complete coverage measurements require the complete suite and inventory gate; focused measurements are not full coverage claims.
 
 ## Security and performance reproduction
 

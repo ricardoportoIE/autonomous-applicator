@@ -1,5 +1,15 @@
 # Delivery and validation record
 
+## Large dialling-code lists, 6 October 2026
+
+An observed phone-country dropdown contained 249 enabled options. The `Question.choices` contract allowed only 100, so collection raised a validation error before the approved telephone details could be filled. The contract now permits up to 500 choices and retains the complete list. The 100-question application bound, 12,000-character semantic HTML bound and existing request limits remain enforced. Exact choice matching and approved-fact checks still govern answers; the change neither truncates options nor adopts provider defaults.
+
+All **12 focused regressions passed in 10.22 seconds**. They cover 100/249/500-option serialisation, authenticated API intake, rejection of 501 options, unchanged question/HTML bounds, direct filling and collection using approved Irish/UK telephone prefixes beyond option 100, and durable review of all 249 choices when telephone facts are unknown. The last option can be explicitly approved after reload. Fictional Chromium fixtures verify that no Submit click or model request occurs. Ruff, formatting, strict mypy and repository hygiene passed. The complete suite was not rerun for this bounded contract change; the 1,151-case full coverage measurement below is the preceding baseline, not a new measurement of this revision.
+
+After a unique private SQLite backup, the paused dashboard was restarted with the corrected contract. Ten core tables matched the backup, and all **52 document hashes** were verified. Eight applications still held by this specific validation error were re-evaluated using existing materials and approved facts; all eight returned to **ready**. Unaffected applications and seven protected tables, including settings, attempts, submission archives, answers and connections, remained unchanged. Candidate revision **13** and both pause switches were retained. No documents were regenerated, paid model calls made or provider applications/invitations sent.
+
+This change is committed locally only. Remote publication awaits the user's explicit push instruction. New or corrected functionality receives focused tests; the complete suite is rerun when the scope or unresolved failures require it. Existing CI coverage gates remain unchanged.
+
 ## Questionnaire collection, 6 October 2026
 
 The Easy Apply adapter now gathers unresolved questions from every safely reachable page or dialogue before requesting review. It completes independent approved fields, groups radio options, reads exact enabled choices and rereads approved conditional changes and controls revealed by navigation validation. Rejected model interpretation no longer hides later fields on the same page. Unknown prefills prevent further navigation, and any pending batch stops before the final sending gate and Submit. Required validation can conceal later pages; the summary records the stopping step and reason rather than promising complete access.

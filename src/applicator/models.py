@@ -56,7 +56,8 @@ class Question(Contract):
     label: str = Field(min_length=1, max_length=500)
     answer_key: str = Field(default="", max_length=1000)
     required: bool = True
-    choices: list[str] = Field(default_factory=list, max_length=100)
+    # Country and dialling-code dropdowns routinely contain more than 100 options.
+    choices: list[str] = Field(default_factory=list, max_length=500)
     sensitive: bool = False
     # Provider presentation must not change opportunity/document fingerprints.
     form_context: FormContext | None = Field(default=None, exclude=True)
