@@ -2,6 +2,14 @@
 
 The provider adapter reads the current application dialogue and resolves known exact answers first. When an ordinary question is unfamiliar, GPT-6.1 Sol can interpret its wording and the observed control structure before the adapter fills it. This reduces unnecessary review holds caused by different labels for the same candidate fact or technical experience.
 
+## Legacy duration answers
+
+When a live resolver is available, the browser's exact-answer shortcut checks `answer_compatible` before bypassing it. The service applies the same check before returning a cached value. A legacy narrative for “How many years of work experience do you have with Python (Programming Language)?” cannot suppress live resolution merely because the label matches and the text field has no native numeric attributes. Without a resolver, the existing field validation still rejects incompatible values explicitly. Compatible numeric approvals remain authoritative. Provider-offered duration ranges remain exact choices.
+
+If a stored narrative is incompatible, the normal deterministic resolver may use a complete, unqualified, verified numeric work-experience statement. It cannot derive years from dates, reuse another application's scoped approval, count independent projects as employment or ask the model to invent a missing duration. Missing answers remain in the collected review batch; prefills are not adopted and other answerable fields are still completed.
+
+An operator may reuse an already explicitly confirmed number by approving it for the affected application. This keeps candidate revision and unrelated documents intact. Refresh readiness after approval: if newly discovered questions changed document provenance, prepare that application's documents again with the configured GPT-6.1 Sol integration. A local ready state does not bypass the final live-provider checks.
+
 ## What the model receives
 
 Each live unresolved question carries transient `form_context`: the observed control type, enabled choices, required state and bounded attributes such as `type`, `role`, `inputmode`, `min`, `max`, `step`, `pattern` and length limits. The adapter reconstructs a small semantic HTML fragment from these allowlisted properties and the question label. It does not send the original page or a control's filled value, identifier, handler, token, hidden input or script. Attributes and text are escaped. A fragment exceeding 12,000 characters is rejected before a model request.

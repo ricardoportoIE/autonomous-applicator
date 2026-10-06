@@ -17,7 +17,7 @@ from .browser import (
 from .documents import fingerprint, generate, validate_generation, validate_manifest
 from .models import Advice, Job, Preflight, Profile, Question, State, SubmissionCheck
 from .operations import Operation, Operations
-from .policy import answer_questions, evaluate, select_evidence
+from .policy import answer_compatible, answer_questions, evaluate, select_evidence
 from .question_adviser import question_key
 from .routine_answers import RoutineSelection, Selector, routine_answer
 from .store import Store
@@ -594,7 +594,7 @@ class Service:
             raise ValueError("Candidate or opportunity changed before resolving a routine question")
         effective = self.store.effective_profile(app_id, profile, job)
         cached = effective.answers.get(question_key(question))
-        if cached and (not question.choices or cached in question.choices):
+        if cached and answer_compatible(question, cached):
             return cached
         selector = self.question_selector
         if selector is not None:

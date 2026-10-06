@@ -28,6 +28,7 @@ from .documents import digest, filename_stem
 from .location_policy import country, normalise_location
 from .models import FormContext, Job, Profile, Question
 from .photos import save_photo
+from .policy import answer_compatible
 from .question_adviser import question_key
 from .submission_records import capture_confirmation
 
@@ -1048,7 +1049,7 @@ def _fill_question_fields(
         if observe_question:
             observe_question(question)
         approved = approved_answer(label, profile)
-        if resolver is None or (approved and (not choices or approved in choices)):
+        if resolver is None or (approved and answer_compatible(question, approved)):
             return approved
         key = (label, tuple(choices), context.html)
         if key not in resolved:
