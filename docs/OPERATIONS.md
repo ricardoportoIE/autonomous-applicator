@@ -8,6 +8,8 @@ The modal shows an importing status and disables repeated submissions. The durab
 
 An existing source identifier returns the existing application without replacing saved job details, documents or answers. Failed reads save no opportunity and retain the entered link for an explicit retry. Authentication redirects provide dedicated-session sign-in instructions; unsupported layouts stop visibly. The importer opens no Easy Apply form and clicks no submission or networking control. Questions, cover-letter requirements and sponsorship conditions that are not stated in the retrieved details are not invented.
 
+Import journalling is a global read operation. Its completed detail identifies the saved application, but it does not claim application-preparation ownership. Restart recovery therefore retains an existing prepared application's state and documents if the import was interrupted. The earlier import-result labels remain readable in historical entries.
+
 Only exact supported LinkedIn job links are automatically opened. Other origins, embedded credentials, explicit ports and non-job paths are rejected before launching the browser. For another website, select **Enter details manually**; the complete existing form remains available. Public Greenhouse boards retain their separate fixed-origin importer. Editing an existing opportunity still opens its complete details form.
 
 ## Diagnosing a questionnaire hold

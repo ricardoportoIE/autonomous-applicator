@@ -494,12 +494,11 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
             app_id, created = store.add_job(job)
             operation.progress(
                 "opportunity_saved",
-                "Opportunity added to the queue."
-                if created
-                else "Opportunity already in the queue.",
-                app_id,
+                f"Opportunity #{app_id}: "
+                + ("added to the queue." if created else "already in the queue."),
             )
-            operation.result("imported" if created else "already_imported")
+            # Import is a read operation. A later interruption must not hold an
+            # existing ready application or invalidate its prepared documents.
         return {"id": app_id, "created": created}
 
     @app.post("/api/applications/{app_id}/location-review", dependencies=auth)

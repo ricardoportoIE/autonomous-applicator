@@ -81,8 +81,9 @@ def test_import_saves_once_preserves_existing_records_and_reports_stages(data, j
     status = app.state.service.operations.status()
     assert status["run"]["status"] == "completed"
     assert status["run"]["stage"] == "opportunity_saved"
-    assert status["run"]["application_id"] == app_id
-    assert status["results"][0]["outcome"] == "already_imported"
+    assert status["run"]["application_id"] is None
+    assert f"#{app_id}" in status["run"]["detail"]
+    assert status["results"] == []
     assert store.daily_usage().used == 0
     assert store.settings().automation_enabled is False
 
@@ -145,6 +146,25 @@ def test_import_continues_after_confirmed_sending_capacity_is_full(data, profile
     assert response.status_code == 200 and response.json()["created"] is True
     assert len(store.applications()) == 2
     assert store.daily_usage().used == 1 and store.daily_usage().held == 0
+
+
+def test_interrupted_import_journal_preserves_prepared_application(data, profile, job):
+    app, _ = client(data)
+    store = app.state.store
+    store.save_profile(profile)
+    app_id, _ = store.add_job(job)
+    app.state.service.prepare(app_id)
+    before = store.application(app_id)
+    assert before["manifest"]["files"]
+    results = app.state.service.operations.status()["results"]
+    with app.state.service.operations.run("import_opportunity") as operation:
+        operation.progress("opportunity_saved", f"Opportunity #{app_id}: already in the queue.")
+        assert store.recover() == 0
+        assert store.recover() == 0
+    assert store.application(app_id) == before
+    assert app.state.service.operations.status()["run"]["status"] == "interrupted"
+    assert app.state.service.operations.status()["results"] == results
+    assert store.daily_usage().used == 0
 
 
 @pytest.mark.browser

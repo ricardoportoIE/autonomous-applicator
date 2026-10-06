@@ -10,6 +10,8 @@ export const stateLabels = Object.freeze({
   sending: "Sending",
   sent: "Sent",
   failed: "Failed",
+  imported: "Opportunity imported",
+  already_imported: "Already in the queue",
 });
 
 export function stateLabel(value: unknown) {

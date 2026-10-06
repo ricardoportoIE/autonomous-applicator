@@ -10,7 +10,9 @@ import {
   stateLabels,
 } from "../../frontend/src/ui";
 
-test("every application and networking status has a readable label", () => {
+test("every application, networking and import status has a readable label", () => {
+  assert.equal(stateLabel("imported"), "Opportunity imported");
+  assert.equal(stateLabel("already_imported"), "Already in the queue");
   for (const [value, expected] of Object.entries(stateLabels))
     assert.equal(stateLabel(value), expected);
   for (const value of ["toString", "__proto__", "invented", null])
