@@ -1,5 +1,15 @@
 # Delivery and validation record
 
+## Accessible CV selection and navigation learning, 6 October 2026
+
+Private diagnostics reproduced a layout where the resume radio contains no filename text but carries the exact filename as its accessible name. The contained-text locator stopped after upload. Both contracts are now supported, with unique native/ARIA selection verification, rejection of pre-existing same-name controls and bounded rendering waits. Next/Review allows ten seconds and checks the semantic step after a timeout before another reversible action.
+
+Only proved resume methods and navigation outcomes enter the private allowlisted memory. Version 3 permits two qualifying technical resumptions whilst preserving earlier budgets. Unknown facts, authentication, changed readiness and uncertain or confirmed sends retain their safeguards.
+
+All 17 new fictional regressions passed in 21.44 seconds. An initial focused run exposed a scoping mistake in the new accessible-name fixture; it was corrected and the new cases rerun. The fresh complete inventory contains 1,114 cases; its full measurement is running. All 161 React cases passed with 100% across the ten runtime modules. Ruff, formatting, strict mypy, TypeScript, ESLint and Prettier passed.
+
+A guarded live diagnostic crossed the failing upload/navigation stages for all three affected opportunities and stopped at additional questions before final submission. Candidate revision, application records, documents, attempts, submission archives and connections were preserved; technical hints were saved locally. No paid model requests or external sends occurred. Final acceptance and paused deployment will be recorded separately.
+
 Version 0.3.0 reviewed through single-link opportunity import on 6 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
 
 ## Single-link opportunity import, 6 October 2026

@@ -20,6 +20,8 @@ The phone adapter recognises `Phone`, `Phone number` and `Mobile phone number`, 
 
 The phone/city adapter upgrade introduced recovery-budget version 2. A previously exhausted version 1 technical hold can receive at most two new resumptions if all current readiness checks pass. Both budgets remain local and persistent; restarting does not reset them. This excludes unknown answers, closed opportunities, authentication holds and any uncertain or confirmed send. Existing valid documents are reused; a changed job/question fingerprint queues new preparation instead.
 
+The resume/navigation upgrade uses version 3, preserving both earlier budgets. It recognises exact accessible CV radio names even when the filename is outside the radio element, waits for delayed cards and rejects pre-existing same-name selections unless already proved within the current operation. It observes the current step after a Next/Review timeout before deciding whether to retry. Verified methods and transition outcomes are remembered locally; experience figures and preferences are not learned from a failed control. See [bounded recovery](APPLICATION_QUEUE.md#bounded-form-recovery-and-local-learning).
+
 After diagnostic maintenance, leave automation paused until the operator starts the agent. New tests use fictional provider fixtures, not the live account. Raw diagnostic HTML, candidate answers and browser state must remain in ignored private directories and must never be attached to a public issue or commit.
 
 ## Duplicate CV labels and numeric experience answers

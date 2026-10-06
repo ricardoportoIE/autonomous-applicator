@@ -157,8 +157,14 @@ class Store:
 
     def recovery_strategy(self, shape: str, strategy: str | None = None) -> str | None:
         """Remember a verified interaction method, never an answer or site instruction."""
-        methods = {"native", "label", "aria"}
-        if not re.fullmatch(r"(?:checkbox|radio)-[01]{3}", shape):
+        methods = (
+            {"label", "aria"}
+            if shape == "resume-widget"
+            else {"settled", "timeout-transition"}
+            if shape == "advance-step"
+            else {"native", "label", "aria"}
+        )
+        if not re.fullmatch(r"(?:checkbox|radio)-[01]{3}|resume-widget|advance-step", shape):
             raise ValueError("Unsupported recovery shape")
         if strategy is not None and strategy not in methods:
             raise ValueError("Unsupported recovery strategy")
@@ -202,13 +208,14 @@ class Store:
                     "Form control identity",
                     "Ambiguous form control",
                     "Easy Apply control",
+                    "The uploaded resume selection is unsupported; review manually",
                     "Approved answer does not match available choices: Will you now or in the future require sponsorship for employment visa status?",
                 )
             )
             if not technical or re.search(r"authwall|checkpoint|challenge|login", detail, re.I):
                 return False
             # A tested adapter upgrade gets a fresh bounded budget; restart does not.
-            key = f"form_recovery:v2:{app_id}"
+            key = f"form_recovery:v3:{app_id}"
             saved = db.execute("SELECT value FROM config WHERE key=?", (key,)).fetchone()
             value = saved[0] if saved else "0"
             if value not in {"0", "1"}:

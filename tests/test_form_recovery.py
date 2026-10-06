@@ -146,11 +146,13 @@ def test_tested_adapter_upgrade_preserves_old_budget_and_caps_new_budget(data, p
     store, _, _, ident = recovery_service(data, profile, job)
     with store.connect() as db:
         db.execute("INSERT INTO config VALUES (?,?)", (f"form_recovery:v1:{ident}", "2"))
+        db.execute("INSERT INTO config VALUES (?,?)", (f"form_recovery:v2:{ident}", "2"))
     assert store.form_recovery_available(ident, claim=True)
     assert Store(store.path).form_recovery_available(ident, claim=True)
     assert not Store(store.path).form_recovery_available(ident, claim=True)
     assert store.get_config(f"form_recovery:v1:{ident}") == "2"
     assert store.get_config(f"form_recovery:v2:{ident}") == "2"
+    assert store.get_config(f"form_recovery:v3:{ident}") == "2"
 
 
 def test_provider_blocker_is_retained_once_with_unchanged_materials(data, profile, job):
@@ -212,7 +214,7 @@ def test_only_proven_released_technical_holds_can_recover(data, profile, job, ca
                 ),
             )
         elif case == "corrupt":
-            db.execute("INSERT INTO config VALUES (?,?)", (f"form_recovery:v2:{ident}", "-1"))
+            db.execute("INSERT INTO config VALUES (?,?)", (f"form_recovery:v3:{ident}", "-1"))
     assert not store.form_recovery_available(999 if case == "absent" else ident, claim=True)
 
 

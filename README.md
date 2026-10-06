@@ -144,6 +144,8 @@ For questionnaires, **Suggest with GPT-6.1 Sol** returns a separate draft with s
 
 Browser recovery remembers verified native, label or ARIA interactions in local SQLite, keyed by control shape rather than a person's answer. Every reuse checks the current question, choices and resulting state. Reversible controls and unchanged Next/Review steps have three recovery passes; a proven pre-submission technical hold can resume at most twice when readiness still passes. Documents are reused, and a sending or uncertain attempt is never replayed. This is bounded operational learning; the system does not retrain itself, change qualifications or alter submission permissions automatically. [Live AI comparisons](docs/AI_BENCHMARK.md) and the [vacancy-specific CV audit](docs/CV_PREPARATION.md) document separately authorised experiments; ordinary tests use fixtures and incur no model charges.
 
+Resume recovery recognises contained filenames and exact accessible radio names, verifies fresh selection and preserves document hash checks. Navigation observes the actual form step after a click timeout before another reversible action. Verified resume strategies and navigation outcomes survive restart as allowlisted local hints. Unknown experience figures and work preferences remain deliberate review decisions.
+
 ## Quality and verification
 
 The frontend review expanded measurement from three helpers to **all ten authored runtime TypeScript/TSX files**, including the bootstrap. **161 Vitest tests achieve 100% lines, statements, functions and branches**, enforced **per file** in CI. Only type-only contracts and declaration files are excluded. Libraries, generated bundles and test code are outside this measurement.

@@ -540,12 +540,23 @@ def advance_application(
         next_button = dialog.get_by_role("button", name=re.compile(r"^(Next|Review)$"))
         if next_button.count() != 1:
             raise ValueError("Unsupported Easy Apply step; review manually")
-        next_button.click(timeout=2000)
-        for _poll in range(10):
+        timed_out = False
+        try:
+            next_button.click(timeout=10000)
+        except BrowserError:
+            # A click can reach LinkedIn before Playwright times out. Re-read the
+            # step before considering another reversible action; never replay Submit.
+            timed_out = True
+            progress(
+                "recovering_form", "Checking whether Next/Review completed after a browser timeout."
+            )
+        strategy = memory("advance-step", None)
+        for _poll in range(50 if timed_out or strategy == "timeout-transition" else 10):
             page.wait_for_timeout(200)
             ensure_linkedin(page)
             dialog = application_dialog(page)
             if application_step(dialog) != original:
+                memory("advance-step", "timeout-transition" if timed_out else "settled")
                 return
         invalid = dialog.evaluate("""dialog => [...dialog.querySelectorAll('input,select,textarea,[aria-invalid="true"]')]
           .filter(el=>el.checkVisibility() && (el.getAttribute('aria-invalid')==='true' || el.checkValidity && !el.checkValidity()))
@@ -628,7 +639,12 @@ def contact_phone_answers(fields: list[dict[str, Any]], profile: Profile) -> dic
 
 
 def upload_resume(
-    page: Page, dialog: Locator, document: Path, *, verified: dict[str, JSHandle] | None = None
+    page: Page,
+    dialog: Locator,
+    document: Path,
+    *,
+    verified: dict[str, JSHandle] | None = None,
+    memory: Callable[[str, str | None], str | None] | None = None,
 ) -> set[str] | None:
     """Upload the verified CV through the current résumé widget and confirm selection."""
     button = dialog.get_by_role("button", name="Upload resume", exact=True).filter(visible=True)
@@ -649,8 +665,17 @@ def upload_resume(
         raise ValueError("The resume upload section is unsupported; review manually")
     if dialog.locator('input[type="file"]').count() != scope.locator('input[type="file"]').count():
         raise ValueError("Additional upload fields require manual mapping")
-    named_cards = scope.locator('[role="radio"]').filter(
+    labelled_cards = scope.get_by_role("radio", name=document.name, exact=True).filter(
+        has=page.locator('input[type="radio"]')
+    )
+    contained_cards = scope.locator('[role="radio"]').filter(
         has=page.get_by_text(document.name, exact=True).filter(visible=True)
+    )
+    strategy = memory("resume-widget", None) if memory else None
+    named_cards = (
+        labelled_cards.or_(contained_cards)
+        if strategy == "aria"
+        else contained_cards.or_(labelled_cards)
     )
     selected = named_cards.locator('xpath=self::*[@aria-checked="true"]').filter(visible=True)
     native = selected.locator('input[type="radio"]')
@@ -665,7 +690,9 @@ def upload_resume(
     )
     previously_selected: list[ElementHandle] = []
     if not reused:
-        previously_selected = named_cards.locator('input[type="radio"]:checked').element_handles()
+        # Every pre-existing same-name card is stale until a fresh upload is proved,
+        # including an old card that was not selected before this operation.
+        previously_selected = named_cards.locator('input[type="radio"]').element_handles()
         with page.expect_file_chooser(timeout=10000) as chooser:
             button.click()
         chooser.value.set_files(str(document))
@@ -673,7 +700,12 @@ def upload_resume(
             timeout=10000
         )
         if not named_cards.count():
-            raise ValueError("The uploaded resume selection is unsupported; review manually")
+            try:
+                named_cards.first.wait_for(timeout=10000)
+            except BrowserError as exc:
+                raise ValueError(
+                    "The uploaded resume selection is unsupported; review manually"
+                ) from exc
     selected.first.wait_for(timeout=10000)
     if selected.count() != 1 or selected.locator('input[type="radio"]').count() != 1:
         raise ValueError("The uploaded resume selection is ambiguous; review manually")
@@ -709,6 +741,11 @@ def upload_resume(
         raise ValueError("Resume controls overlap with questionnaire fields; review manually")
     if verified is not None:
         verified[document_hash] = native.evaluate_handle("el=>el")
+    if memory:
+        memory(
+            "resume-widget",
+            "aria" if selected.get_attribute("aria-label") == document.name else "label",
+        )
     return set(ids)
 
 
@@ -1289,7 +1326,9 @@ class LinkedInBrowser:
                     "uploading_documents",
                     f"Checking and uploading the verified CV: form step {_step + 1}.",
                 )
-                resume_fields = upload_resume(page, dialog, cv, verified=verified_resumes)
+                resume_fields = upload_resume(
+                    page, dialog, cv, verified=verified_resumes, memory=recovery.recovery_strategy
+                )
                 if resume_fields is not None and self.observe_fields:
                     self.observe_fields(
                         [{"label": "CV", "type": "file", "value": cv.name, "step": _step + 1}]
