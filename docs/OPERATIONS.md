@@ -14,6 +14,8 @@ Only exact supported LinkedIn job links are automatically opened. Other origins,
 
 ## Diagnosing a questionnaire hold
 
+Previously implemented technical corrections apply to all new opportunities through the common adapter and resolver. Verified interaction methods persist in SQLite across workspace restarts. Each future vacancy still receives its own document and answer verification; one application's approval is not a new global candidate fact. [Reusable recovery](REUSABLE_RECOVERY.md) explains which information is shared and the cross-application regression evidence. No action is needed to enable the existing technical repairs in another opportunity.
+
 Read the application's last stage, activity journal and submission record before retrying. `ReviewRequired` is a pre-send hold; a missing approved fact differs from a provider-control failure. A numeric experience field needs an exact numeric answer even when the approved profile contains a longer description. Do not convert dates automatically. Save the candidate's confirmed answer against the pending application and recheck readiness.
 
 The phone adapter recognises `Phone`, `Phone number` and `Mobile phone number`, and splits an international number only against a unique offered country code. City typeaheads must match the supported labelled provider pattern, current confirmed city and country, a uniquely offered enabled suggestion and a verified resulting selection. An unfamiliar pattern remains outside that mapping. Provider inline validation names the affected field without logging its rejected answer. A primary `No longer accepting applications` message identifies a closed vacancy rather than a transient opening failure.

@@ -1,5 +1,13 @@
 # Delivery and validation record
 
+## Cross-application reuse, 6 October 2026
+
+Audit confirmed that the implemented city, contact, duration, upload and form corrections reside in the common adapter/resolver, with no exceptions for the originally affected application or vacancy identifiers. Verified interaction methods use shared, allowlisted SQLite keys; factual approvals, CVs, diagnostic files and recovery budgets remain appropriately scoped.
+
+All **14 new cross-application cases passed in 13.60 seconds**. Distinct newly added opportunities exercise the same contracts after Store restart. Real Chromium verifies 249/500-choice contact forms, portal cities, React replacement, grounded duration resolution, learned ARIA applied to an opposite approved answer, actual per-vacancy CV bytes, post-timeout navigation, independent budgets and two-page diagnostic isolation. Scoped duration, salary, eligibility and relocation answers cannot become unapproved facts for the next opportunity. Initial fixture quoting and the geometry of an empty ARIA card were corrected before the accepted run; application sources did not require a change.
+
+The [reuse guide](REUSABLE_RECOVERY.md) distinguishes shared technical solutions, confirmed global facts and application-scoped approvals, and gives the workflow for the next general repair. Existing CI automatically discovers these regressions. Runtime sources, the dashboard process, private operator records and coverage gates remain unchanged. Checks use temporary stores, fictional data and fully intercepted provider requests; no paid model request or real send occurred. Full-suite and frontend coverage reports were not regenerated. Delivery is a local commit only, awaiting explicit instruction before remote publication.
+
 ## City portals and four review holds, 6 October 2026
 
 Private diagnostics distinguished two city-widget failures, a legacy Python-duration answer and three genuinely unapproved screening answers. LinkedIn rendered correctly linked city suggestions outside the field row; the adapter's ancestor-scoped search could not find them. It now resolves the single visible list whose `aria-labelledby` tokens reference the current input, including portals outside the dialogue. It retains exact city/country matching, enabled choices and final selection/validity checks. Identifier escaping, React replacement and unrelated-list isolation preserve control identity. Missing/ambiguous mapped suggestions become a controlled review error, allowing other current-page questions to be collected instead of aborting on a raw timeout.
