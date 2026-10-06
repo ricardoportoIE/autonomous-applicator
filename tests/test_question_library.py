@@ -501,9 +501,12 @@ def test_service_precedence_and_fail_closed_paths(data, profile, job, mode):
             profile.answers[question_key(item)] = "Explanation only"
             revision = store.save_profile(profile)
         assert service.resolve_question(app_id, profile, revision, job, item) == (
-            "2" if mode == "approval" else None
+            "2" if mode == "approval" else "3"
         )
-        generator.assert_not_called()
+        if mode == "approval":
+            generator.assert_not_called()
+        else:
+            generator.assert_called_once()
         return
     if mode == "disabled":
         store.set_settings(Settings(routine_answers_enabled=False))

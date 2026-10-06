@@ -1,5 +1,15 @@
 # Delivery and validation record
 
+## Resolved duration review holds, 6 October 2026
+
+Diagnosed a pre-send hold on the third form page: the vacancy-specific CV uploaded successfully, but two required plain-text years fields had no compatible numeric answers. A previous application-specific approval was not a global fact; the profile entry remained a narrative. Project evidence for another technology did not establish a professional duration. Private sanitised HTML showed empty controls and provider validation messages.
+
+Corrected the shared resolution path so an exact enabled owner instruction can supply an explicitly confirmed missing duration without a legacy narrative blocking it. Preparation/readiness retain the resolved number; reuse and restart preserve evidence or rule provenance. Compatible approvals and constrained explicit numbers retain precedence. Instruction failures require review, generated answers do not become confirmed facts, and changing/disabling a rule removes its derived answers.
+
+All **418 affected-path cases passed in 138.28 seconds**, including **14 new regressions**. Changed executable lines and branches were covered; Ruff, formatting and strict mypy passed. This is focused acceptance for two runtime modules, not a new full-suite or complete 100% coverage measurement. The previous complete baseline below applies to commit `f0119b6`. No frontend source changed.
+
+A backed-up private correction saved an already user-confirmed number through the existing application-scoped approval endpoint and regenerated that vacancy's documents through the normal API. Generation recorded `gpt-6.1-sol`; hashes, candidate revision and vacancy provenance validated. A reusable exact owner instruction was saved locally without changing existing profile facts, approvals or document files. The independent missing duration remains pending. Both queues stayed paused and no application or invitation was sent. The existing server still serves imported older source; manual restart is required to activate the updated library and correction. Delivery is local-only.
+
 ## Full-system validation and remote delivery, 6 October 2026
 
 The operator authorised publication of the accumulated local changes and this validation record. Runtime sources remain at the question-library implementation `9be8b61`; this follow-up corrects legacy test expectations/simulators and updates documentation and a fictional benchmark report.

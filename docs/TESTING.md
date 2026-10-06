@@ -1,5 +1,21 @@
 # Testing and coverage
 
+## Resolved duration review holds, 6 October 2026
+
+The shared correction passed **418 affected-path cases in 138.28 seconds**, including **14 new cases** in `tests/test_missing_duration_review.py`. The existing exact-instruction precedence regression now expects an explicitly supplied duration to resolve a legacy narrative; compatible approvals still bypass generation.
+
+New checks cover preparation/readiness, cache provenance after reuse/restart, rule disablement, retained documents, verified numeric work evidence, rejected constrained numbers, unrelated/differently worded rules, exceptional non-duration fields, and integration/review/invalid-output failures. Real Chromium forms independently complete one known technology whilst collecting another missing professional duration; zero is filled only when explicitly approved. Assertions verify the unchanged profile/revision, no submission clicks and unchanged sending capacity. Model responses and provider forms use controlled fictional fixtures.
+
+Focused coverage recorded zero missing changed executable lines and zero missing branches originating from changed lines in `service.py` and `store.py`. It is **not** a new 100% measurement of either complete module or the full backend. Ruff, formatting and strict mypy passed. The full-suite figures below describe the previous source baseline at `f0119b6`; the complete suite and frontend suite were not rerun for this correction.
+
+A separate authorised local recovery used the normal API to save an existing confirmed answer and prepare a real vacancy-specific CV with `gpt-6.1-sol`. Document integrity and generation provenance validated against the unchanged candidate revision and current opportunity. The independent unresolved duration stayed in review; no LinkedIn submission or invitation was requested. This operational check is separate from the fictional test count.
+
+Reproduce focused acceptance:
+
+```powershell
+uv run pytest tests/test_missing_duration_review.py tests/test_question_library.py tests/test_legacy_duration_resolution.py tests/test_answer_style_policy.py tests/test_scoped_answers.py tests/test_store_service.py tests/test_routine_answers.py tests/test_routine_browser.py tests/test_routine_api.py tests/test_sending_capacity.py tests/test_question_collection.py tests/test_question_collection_edges.py tests/test_resume_duration_regressions.py --override-ini addopts= --no-cov -q
+```
+
 ## Full-system validation, 6 October 2026
 
 The complete local execution on **Windows/Python 3.14.2 and Node.js 24.20.0** collected **1,436 Python cases**. It finished with **1,430 passes and six stale-test failures in 2,253.00 seconds**. The failures were two expectations for verbatim experience paragraphs superseded by the candidate's concise-answer policy, two discovery simulators without the new excluded-opportunity argument, and two desktop/mobile record journeys which searched the active queue after a confirmed application moved to Archive. The final corrected four-file recheck passed **all 51 cases in 135.44 seconds**. Production application sources remained unchanged; assertions now also verify evidence provenance and the empty active queue before opening archived records. No timeout, retry, assertion boundary or coverage gate was relaxed.

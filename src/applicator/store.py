@@ -535,8 +535,10 @@ class Store:
     def effective_profile(
         self, app_id: int, profile: Profile, job: Job, db: sqlite3.Connection | None = None
     ) -> Profile:
+        from .answer_style import experience_target, format_known_answer, numeric_field
         from .documents import fingerprint
         from .location_policy import normalise_location
+        from .policy import answer_compatible
 
         if db is None:
             with self.connect() as connection:
@@ -544,22 +546,30 @@ class Store:
         settings = Settings.model_validate_json(
             db.execute("SELECT value FROM config WHERE key='settings'").fetchone()[0]
         )
-        answers = (
-            {item["answer_key"]: item["answer"] for item in self._routine_answers(db, app_id, job)}
-            if settings.routine_answers_enabled
-            else {}
-        )
+        routine = self._routine_answers(db, app_id, job) if settings.routine_answers_enabled else []
+        answers = {item["answer_key"]: item["answer"] for item in routine}
+        confirmed = {**profile.answers, **self._approved_answers(db, app_id, job)}
+        for item in routine:
+            question = Question.model_validate(item["question"])
+            previous = confirmed.get(item["answer_key"])
+            if (
+                previous
+                and not question.sensitive
+                and numeric_field(question)
+                and experience_target(question) is not None
+                and format_known_answer(question, previous) is None
+                and answer_compatible(question, item["answer"])
+            ):
+                # A resolved duration must survive readiness checks, whilst the
+                # original narrative remains in the candidate's private profile.
+                confirmed[item["answer_key"]] = item["answer"]
         revision = int(db.execute("SELECT value FROM config WHERE key='revision'").fetchone()[0])
         if db.execute(
             "SELECT 1 FROM location_reviews WHERE application_id=? AND revision=? AND job_fingerprint=?",
             (app_id, revision, fingerprint(job)),
         ).fetchone():
             answers["condition:location:" + normalise_location(job.location)] = "Confirmed"
-        return profile.model_copy(
-            update={
-                "answers": {**answers, **profile.answers, **self._approved_answers(db, app_id, job)}
-            }
-        )
+        return profile.model_copy(update={"answers": {**answers, **confirmed}})
 
     def save_routine_answer(
         self,

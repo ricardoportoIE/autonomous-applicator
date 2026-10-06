@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
-from .answer_style import format_known_answer
+from .answer_style import experience_target, format_known_answer, numeric_field
 from .browser import (
     FixtureBrowser,
     LinkedInBrowser,
@@ -623,13 +623,28 @@ class Service:
                 return formatted
             # Retain established deterministic contact/sponsorship mappings without
             # asking the model to reinterpret an incompatible approval.
-            known = routine_answer(effective, job, question)
+            grounded = profile.model_copy(
+                update={"answers": {**profile.answers, **row["approved_answers"]}}
+            )
+            known = routine_answer(grounded, job, question)
             if known is not None:
                 self.store.save_routine_answer(
                     app_id, question, known.answer, known.source, known.evidence_ids, revision, job
                 )
                 return known.answer
-            return None
+            # An exact owner instruction can supply a previously missing duration.
+            # Do not reinterpret an explicit number rejected by current constraints,
+            # a different question's instruction or an exceptional personal fact.
+            if (
+                formatted is not None
+                or not numeric_field(question)
+                or experience_target(question) is None
+                or not any(
+                    rule["label_key"] == label_key(question.label)
+                    for rule in self.store.question_library.candidates(question)
+                )
+            ):
+                return None
         rules = self.store.question_library.candidates(question)
         if rules and profile.confirmed and not question.sensitive:
             cached_rule = next(

@@ -4,6 +4,8 @@ The **Agent settings → Routine answers** tab is a private library of observed 
 
 ## Configure an instruction
 
+If a numerical experience question already has a legacy narrative in the profile, an exact enabled instruction can supply the explicitly confirmed duration. The generated answer retains its rule version through readiness checks and subsequent reuse; it does not overwrite the narrative or become an approval. A valid existing number, including one rejected by new field constraints, cannot be replaced through this exception. [Legacy duration handling](QUESTION_INTERPRETATION.md#legacy-duration-answers) records the precedence and failure boundaries. Restart a server that was started before the feature or correction was installed before expecting it to use these instructions.
+
 1. Keep **Answer routine questions from approved facts** enabled in General settings.
 2. Pause the agent and wait for the current application operation to finish.
 3. Open Routine answers. Questions from existing records, imported opportunities and observed form pages appear automatically, including questions already answered. The open tab refreshes every 15 seconds and also has a refresh button, search and status filters.
