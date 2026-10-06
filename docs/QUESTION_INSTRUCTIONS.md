@@ -9,7 +9,7 @@ If a numerical experience question already has a legacy narrative in the profile
 1. Keep **Answer routine questions from approved facts** enabled in General settings.
 2. Pause the agent and wait for the current application operation to finish.
 3. Open Routine answers. Questions from existing records, imported opportunities and observed form pages appear automatically, including questions already answered. The open tab refreshes every 15 seconds and also has a refresh button, search and status filters.
-4. Choose **Add instruction** or **Edit instruction**. State the facts, their scope and the preferred wording in the modal's prompt field. The maximum length is 4,000 characters.
+4. Choose **Add instruction** or **Edit instruction**. Write the facts, scope and preferred wording, or select **Generate instruction with GPT-6.1 Sol** to fill the editor with a field-aware draft. Review and edit the result. The maximum length is 4,000 characters.
 5. Enable **Use this instruction automatically** and save. Enabling authorises the agent to generate an answer from that instruction when a compatible question appears. A blank or disabled instruction leaves the existing answer policy in place. Sensitive questions remain manual.
 
 For example:
@@ -19,6 +19,22 @@ For example:
 The prompt is an explicit instruction from the candidate, rather than text extracted from the provider. Facts or decisions stated there must be accurate. An instruction such as “make me sound experienced” supplies no missing factual evidence.
 
 Saving does not start the agent. Pending applications which have encountered the question or used the previous instruction are queued for re-preparation. Their existing document files and manifests remain available until preparation replaces them. Use **Prepare documents** for an individual application, or start the agent when ready to process the queue. Submitted and uncertain records, confirmed answers, candidate revision and sending history remain unchanged.
+
+## Generate an instruction draft
+
+The modal's generation button creates a reusable instruction, rather than an application answer. It uses confirmed global candidate facts, verified evidence and distinct available field variants for the same normalised question. The catalogue, linked opportunity questions and cached observations contribute current type, exact choices, required status and constraints. Raw form HTML, prefilled values, direct contact facts and catalogued sensitive answers are not sent. Application-specific approvals are not promoted into global instructions.
+
+The draft asks the answering model to read the live field afresh: digits and the requested units for numerical fields; a short, polite sentence for text/textarea; an exact enabled label for select/radio; and supported enabled options or an explicitly approved boolean decision for checkboxes. It includes numerical and length constraints and requests review when a truthful fact cannot fit. These instructions also cover field types not yet observed; they do not add support for an otherwise unfamiliar browser widget.
+
+Prefer references to current approved facts rather than copying fixed durations into a reusable prompt. Missing facts or exceptional decisions produce a clarification note. The result cites supplied evidence/fact identifiers, which are validated locally; schema conformance and valid references do not prove every sentence correct. The candidate still reviews the complete prompt before saving. Sensitive questions remain manual, and unconfirmed candidate profiles cannot request generation.
+
+The button shows **Generating instruction…**, disables duplicate requests and temporarily prevents edits/saves. A successful draft replaces only the editor text; it does not save, enable, approve, reprepare or resume anything. Closing the modal or locking the session discards a late result. API failure preserves the editor's existing text and displays a retryable error. Saving uses the existing versioned instruction endpoint and change-control rules.
+
+`POST /api/question-instructions/{rule_id}/draft` requires local authentication, the instruction's expected version and the candidate revision in `If-Match`. The request uses `gpt-6.1-sol`, high reasoning, structured parsing, `store=False`, a 180-second timeout and no provider retries. A model mismatch, unusable output or unapproved source reference fails without a saved change. Candidate, instruction or available field-context changes during generation require a fresh draft. The [official model reference](https://developers.openai.com/api/docs/models/gpt-6.1-sol) and [structured outputs guide](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses) document the API capabilities; application validation and explicit saving remain separate gates.
+
+![Current instruction modal with the field-aware generation button](assets/question-instruction.png)
+
+The updated 6 October 2026 screenshot uses fictional local records and made no model or provider request. [Focused draft validation](TESTING.md#field-aware-instruction-drafts-6-october-2026) records behavioural coverage, packaged Chromium journeys and a separate three-case real API check.
 
 ## Matching and answer generation
 

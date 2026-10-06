@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { RefreshCw, Search, Sparkles, MessageSquareText } from "lucide-react";
 import { Badge, Modal, Panel } from "./components";
-import type { QuestionInstruction } from "./contracts";
+import type { InstructionDraft, QuestionInstruction } from "./contracts";
 import type { Workspace } from "./workspace";
 
 export function RoutineAnswers({ workspace }: { workspace: Workspace }) {
@@ -17,6 +17,9 @@ export function RoutineAnswers({ workspace }: { workspace: Workspace }) {
   const [editing, setEditing] = useState<QuestionInstruction | null>(null);
   const [prompt, setPrompt] = useState("");
   const [enabled, setEnabled] = useState(true);
+  const [drafting, setDrafting] = useState(false);
+  const [draft, setDraft] = useState<InstructionDraft | null>(null);
+  const draftGeneration = useRef(0);
   const generation = useRef(0);
 
   async function refresh() {
@@ -42,6 +45,7 @@ export function RoutineAnswers({ workspace }: { workspace: Workspace }) {
     return () => {
       clearInterval(timer);
       generation.current++;
+      draftGeneration.current++;
     };
     // The library is mounted only in an unlocked Settings tab.
   }, [workspace]);
@@ -56,12 +60,51 @@ export function RoutineAnswers({ workspace }: { workspace: Workspace }) {
   );
 
   function edit(item: QuestionInstruction) {
+    draftGeneration.current++;
+    setDrafting(false);
+    setDraft(null);
     workspace.message("");
     setEditing(item);
     setPrompt(item.prompt);
     setEnabled(
       item.question.sensitive ? false : item.prompt ? item.enabled : true,
     );
+  }
+
+  function closeEditor() {
+    draftGeneration.current++;
+    setDrafting(false);
+    setDraft(null);
+    setEditing(null);
+  }
+
+  async function generateDraft(item: QuestionInstruction) {
+    const request = ++draftGeneration.current;
+    const session = workspace.api.session();
+    setDrafting(true);
+    setDraft(null);
+    workspace.message("");
+    await workspace.action(async () => {
+      try {
+        const result = await workspace.api.json<InstructionDraft>(
+          `/question-instructions/${item.id}/draft`,
+          "POST",
+          { version: item.version },
+          state.revision,
+        );
+        if (
+          request === draftGeneration.current &&
+          workspace.api.isCurrent(session)
+        ) {
+          setPrompt(result.prompt);
+          setDraft(result);
+        }
+      } catch (error) {
+        if (request === draftGeneration.current) throw error;
+      } finally {
+        if (request === draftGeneration.current) setDrafting(false);
+      }
+    });
   }
 
   return (
@@ -186,7 +229,7 @@ export function RoutineAnswers({ workspace }: { workspace: Workspace }) {
       {editing && (
         <Modal
           title="Question instruction"
-          onClose={() => setEditing(null)}
+          onClose={closeEditor}
           busy={state.pending}
           notice={state.notice}
           error={state.error}
@@ -203,7 +246,7 @@ export function RoutineAnswers({ workspace }: { workspace: Workspace }) {
                 setEntries((rows) =>
                   rows.map((item) => (item.id === updated.id ? updated : item)),
                 );
-                setEditing(null);
+                closeEditor();
                 await workspace.refresh();
                 workspace.message(
                   "Question instruction saved. Affected applications are queued for re-preparation.",
@@ -212,6 +255,36 @@ export function RoutineAnswers({ workspace }: { workspace: Workspace }) {
             }}
           >
             <p className="font-semibold mb-3">{editing.question.label}</p>
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 mb-4">
+              <button
+                type="button"
+                className="secondary"
+                disabled={
+                  state.pending ||
+                  editing.question.sensitive ||
+                  !state.profile?.confirmed
+                }
+                onClick={() => void generateDraft(editing)}
+              >
+                <Sparkles size={16} aria-hidden="true" />
+                {drafting
+                  ? "Generating instruction…"
+                  : "Generate instruction with GPT-6.1 Sol"}
+              </button>
+              <p className="text-sm mt-2" role="status" aria-live="polite">
+                {drafting
+                  ? "Reading confirmed facts and observed field variants. Your instruction will appear in the editor."
+                  : "Generate an editable instruction for number, text, select, radio and checkbox fields. This replaces the editor text; nothing is saved until you select Save instruction."}
+              </p>
+              {draft && (
+                <p className="text-sm mt-2" role="status">
+                  {draft.needs_clarification
+                    ? "Candidate confirmation needed: "
+                    : "Draft ready for review: "}
+                  {draft.review_notes}
+                </p>
+              )}
+            </div>
             {editing.question.choices.length > 0 && (
               <details className="mb-4">
                 <summary>
@@ -262,13 +335,11 @@ export function RoutineAnswers({ workspace }: { workspace: Workspace }) {
                   enabled && (!prompt.trim() || editing.question.sensitive)
                 }
               >
-                {state.pending ? "Saving instruction…" : "Save instruction"}
+                {state.pending && !drafting
+                  ? "Saving instruction…"
+                  : "Save instruction"}
               </button>
-              <button
-                className="secondary"
-                type="button"
-                onClick={() => setEditing(null)}
-              >
+              <button className="secondary" type="button" onClick={closeEditor}>
                 Cancel
               </button>
             </div>

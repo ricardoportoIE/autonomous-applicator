@@ -8,6 +8,10 @@ Application queue uses keyboard-accessible **Active** and **Archive** tabs. Only
 
 The complete React acceptance on 6 October 2026 passed **181 cases across 17 files in 26.59 seconds**, with **100% in all 11 runtime modules**: 907 statements, 824 lines, 327 functions and 962 branch outcomes. This includes archive/discovery, routine question instructions and the previous migration regressions. Earlier measurements below refer to their own source revisions. Production Chromium tests separately exercise the actual background Start/Pause flow with fictional records. [Delivery status](STATUS.md) identifies the measured revisions.
 
+## Instruction draft controls
+
+Routine answers' instruction modal includes **Generate instruction with GPT-6.1 Sol**, with visible generation progress and a separately editable, unsaved result. It considers number, text, select, radio and checkbox variants and preserves existing text on API failure. Closing, unmounting or locking prevents stale results from populating another editor/session; sensitive questions and unconfirmed profiles cannot request generation. [Instruction drafts](QUESTION_INSTRUCTIONS.md#generate-an-instruction-draft) explains the distinction between generating and explicitly saving. The affected component passed 29 focused React cases with 100% statements, lines, functions and branches; this is a current component measurement, separate from the historical complete React baseline above.
+
 ## Feature parity
 
 **Add opportunity** now defaults to a URL-only LinkedIn importer with a visible importing state, disabled duplicate submissions and retained input on failure. **Enter details manually** preserves every previous field and existing-opportunity editing keeps its complete form. Import completion is bound to the opening session both before and after refreshing the queue; a late response cannot close or populate a replacement session. The backend operation journal records each read/save stage. Unsupported websites retain manual entry and the separate Greenhouse board route. See [single-link operations](OPERATIONS.md#import-one-opportunity-from-its-link).

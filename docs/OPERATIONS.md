@@ -1,5 +1,11 @@
 # Operating guide
 
+## Draft a reusable question instruction
+
+Open **Agent settings → Routine answers → Add instruction** (or Edit instruction) and select **Generate instruction with GPT-6.1 Sol**. Confirm the candidate profile first and configure the local OpenAI key/model. Generation shows progress and fills only the editor; inspect the clarification note, amend the prompt and explicitly select **Save instruction** when ready. The draft replaces editor text, so retain any unsaved wording before requesting a replacement. A failed request keeps the previous text. Unknown factual decisions must be confirmed rather than inferred from the generated instruction.
+
+The model considers observed field types, choices and constraints whilst keeping instructions adaptable to the next live field. It does not browse an employer, submit an answer, enable a rule or resume the queue. Saving retains the existing requirement to pause and finish any active application operation. [The instruction guide](QUESTION_INSTRUCTIONS.md#generate-an-instruction-draft) describes grounding, source references and stale revision checks.
+
 ## Review recovery and closed opportunities
 
 Distinguish unresolved controls from genuine vacancy requirements before retrying. Inspect the latest activity, current profile revision, questionnaire answers, preparation manifest and readiness checks. Approved answers and intact model-generated documents can all pass whilst policy still requires review for insufficient professional experience. The [requirement guide](REQUIREMENT_INTERPRETATION.md) describes optional clauses, cloud alternatives and concrete minimum checks. Do not replace truthful durations merely to clear a hold.

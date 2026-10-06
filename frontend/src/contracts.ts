@@ -250,3 +250,15 @@ export interface QuestionInstruction {
   last_seen: string;
   application_count: number;
 }
+
+export interface InstructionDraft {
+  prompt: string;
+  review_notes: string;
+  needs_clarification: boolean;
+  evidence_ids: string[];
+  fact_keys: string[];
+  model: string;
+  profile_revision: number;
+  instruction_version: number;
+  field_variant_count: number;
+}

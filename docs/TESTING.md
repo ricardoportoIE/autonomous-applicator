@@ -1,5 +1,24 @@
 # Testing and coverage
 
+## Field-aware instruction drafts, 6 October 2026
+
+The final affected-library run passed **100 backend cases in 62.06 seconds**, including **36 new cases** in `tests/test_instruction_draft.py`. The complete changed library measured **100% statements and branch outcomes**: **217/217 statements and 104/104 branch outcomes**, with zero missing paths. The new authenticated API route's executable paths were exercised, whilst the broader API module was only partially measured by this focused run. No new complete-backend coverage claim is made.
+
+Checks cover read-only draft generation, current candidate/instruction revision provenance, distinct field variants from multiple opportunities and cached observations, duplicate/unrelated variants, sensitive historic controls, data minimisation, all seven tested control labels, verified source references, missing facts, Pydantic bounds, authentication/configuration/provider failures and changes during a model request. The two new packaged Chromium journeys verify visible progress, disabled duplicate/edit/save actions, unsaved database integrity, clarification guidance, deliberate editing/saving, mobile overflow and zero browser errors. Controlled model fixtures make no paid calls or external submissions.
+
+All **29 affected React cases passed in 2.58 seconds**, including **15 new cases**. `routine-answers.tsx` measured **100% statements, lines, functions and branches**: **80 statements, 74 lines, 24 functions and 74 branch outcomes**. UI cases verify the revision-bearing request, explicit save, field variants, disabled sensitive/unconfirmed generation, error/retry preservation, progress and late-result rejection after closing or locking. This is a focused component result, not a fresh complete React measurement. Strict TypeScript/mypy, ESLint/Ruff, formatting and the production build passed. Existing complete coverage baselines remain historical.
+
+A separate real `gpt-6.1-sol` check used three fictional scenarios. Approved professional Python duration produced a fact-referencing instruction covering numerical/text/choice fields; unknown salary and marketing consent both requested candidate clarification. All expected outcomes passed, with calls taking **22.27–26.75 seconds**. These are bounded draft checks, not a general quality or performance guarantee. No private candidate record or provider action was involved. Two refreshed screenshots use fictional local records without model requests.
+
+Reproduce focused acceptance:
+
+```powershell
+uv run pytest tests/test_instruction_draft.py tests/test_question_library.py --override-ini addopts= --cov=applicator.question_library --cov-branch --cov-fail-under=100 --cov-report=term-missing -q
+npx vitest run tests/frontend/routine-answers.test.tsx tests/frontend/instruction-draft.test.tsx --coverage --coverage.include=src/routine-answers.tsx
+```
+
+[Draft design](QUESTION_INSTRUCTIONS.md#generate-an-instruction-draft) explains explicit saving and factual limits. [Delivery](STATUS.md#field-aware-instruction-drafts-6-october-2026) records paused activation and local-only version control.
+
 ## Requirement interpretation and review recovery, 6 October 2026
 
 Final acceptance passed **268 cases in 53.13 seconds**, including **51 new cases** in `tests/test_requirement_interpretation.py`. The complete changed policy module measured **100% statements and branch outcomes**: **168/168 statements and 86/86 branch outcomes**, with zero missing paths. Closure handling in the store was exercised by both the exact closed-opportunity and ambiguous-action cases, including capacity release and retained document files.

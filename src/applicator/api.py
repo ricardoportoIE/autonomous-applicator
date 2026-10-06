@@ -38,7 +38,13 @@ from .networking import Networking
 from .photos import stored_photo
 from .question_adviser import MODEL as QUESTION_MODEL
 from .question_adviser import suggest_answer
-from .question_library import InstructionAnswer, InstructionUpdate, generate_instruction_answer
+from .question_library import (
+    InstructionAnswer,
+    InstructionDraftRequest,
+    InstructionUpdate,
+    draft_question_instruction,
+    generate_instruction_answer,
+)
 from .routine_answers import RoutineSelection, select_routine_sources
 from .service import PreparationError, Service
 from .store import Store
@@ -402,6 +408,45 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
     @app.put("/api/question-instructions/{rule_id}", dependencies=auth)
     def put_question_instruction(rule_id: str, instruction: InstructionUpdate) -> dict[str, Any]:
         return store.question_library.update(rule_id, instruction)
+
+    @app.post("/api/question-instructions/{rule_id}/draft", dependencies=auth)
+    def instruction_draft(
+        rule_id: str, request: InstructionDraftRequest, if_match: Annotated[int, Header(ge=1)]
+    ) -> dict[str, Any]:
+        context = store.question_library.draft_context(rule_id, request.version)
+        profile, revision = store.profile()
+        if revision != if_match:
+            raise HTTPException(
+                409, "Candidate facts changed. Refresh before generating an instruction"
+            )
+        if not profile.confirmed:
+            raise ValueError("Confirm candidate facts before generating an instruction")
+        if not os.getenv("OPENAI_API_KEY"):
+            raise HTTPException(503, "Set OPENAI_API_KEY locally to generate an instruction")
+        if os.getenv("OPENAI_MODEL", QUESTION_MODEL) != QUESTION_MODEL:
+            raise HTTPException(503, "Set OPENAI_MODEL=gpt-6.1-sol to generate an instruction")
+        try:
+            with OpenAI(timeout=180, max_retries=0) as ai_client:
+                result = draft_question_instruction(ai_client, profile, context)
+        except Exception as exc:
+            raise HTTPException(
+                502,
+                "The AI instruction could not be generated. Your saved instruction has not changed.",
+            ) from exc
+        if (
+            store.profile()[1] != revision
+            or store.question_library.draft_context(rule_id, request.version) != context
+        ):
+            raise HTTPException(
+                409, "Candidate facts or the question changed. Generate a fresh instruction"
+            )
+        return {
+            **result.model_dump(),
+            "model": QUESTION_MODEL,
+            "profile_revision": revision,
+            "instruction_version": request.version,
+            "field_variant_count": len(context["field_variants"]),
+        }
 
     @app.get("/api/applications", dependencies=auth)
     def applications() -> list[dict[str, Any]]:
