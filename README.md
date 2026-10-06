@@ -28,6 +28,8 @@ Discovery diagnostics identify each read stage, the current vacancy's position a
 
 Question approval is scoped to one application. It rechecks readiness, preserves current verified CVs and leaves other applications intact. The worker resumes eligible saved opportunities before searching again, completes each vacancy in FIFO order and continues preparation when daily sending capacity is exhausted. Unknown provider questions retain their exact choices for deliberate review.
 
+**Application queue** separates **Active** work from an **Archive** of confirmed submissions. Archived rows retain their full records, documents, receipts and original links; uncertain and review records stay active. Automatic discovery assesses the full vacancy description against confirmed candidate evidence before intake. Scores below **50/100** create a private exclusion-log entry rather than an application; later LinkedIn searches skip those identifiers before opening their detail pages. LinkedIn, Greenhouse and background discovery share this rule. Explicit manual/URL imports and existing applications remain available. [Queue and discovery design](docs/APPLICATION_QUEUE.md#discovery-screening-and-exclusion-memory) records the limits and separate authenticated log.
+
 Questionnaire collection gathers unresolved questions across every safely reachable form page or dialogue before requesting review. It also checks conditional fields revealed by approved answers and fields exposed by provider validation. The Questions tab displays the collection summary so the candidate can review the batch together. Required answers can block access to later pages: the agent records that limit, keeps unknown fields unanswered and never sends an application with pending questions.
 
 Questions preserve up to 500 exact choices, including observed 249-option telephone-country dropdowns. Approved international telephone prefixes select the matching enabled country locally; missing contact facts retain the complete list for review. The application question count and semantic HTML limits remain bounded.
@@ -154,7 +156,7 @@ Resume recovery recognises contained filenames and exact accessible radio names,
 
 ## Quality and verification
 
-The frontend review expanded measurement from three helpers to **all ten authored runtime TypeScript/TSX files**, including the bootstrap. **162 Vitest tests achieve 100% lines, statements, functions and branches**, enforced **per file** in CI. Only type-only contracts and declaration files are excluded. Libraries, generated bundles and test code are outside this measurement.
+The frontend review expanded measurement from three helpers to **all ten authored runtime TypeScript/TSX files**, including the bootstrap. The latest complete baseline passed **162 Vitest tests with 100% lines, statements, functions and branches**, enforced **per file** in CI. Subsequent archive/discovery changes received focused acceptance checks recorded in [delivery status](docs/STATUS.md); full coverage was not remeasured for those changes. Only type-only contracts and declaration files are excluded. Libraries, generated bundles and test code are outside this measurement.
 
 | Verification layer | What it checks |
 | --- | --- |

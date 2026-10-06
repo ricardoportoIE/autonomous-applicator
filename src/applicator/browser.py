@@ -1396,7 +1396,9 @@ class LinkedInBrowser:
             **browser_options(),
         )
 
-    def search(self, keywords: str, location: str, limit: int = 10) -> list[Job]:
+    def search(
+        self, keywords: str, location: str, limit: int = 10, *, excluded_ids: set[str] | None = None
+    ) -> list[Job]:
         if not 1 <= limit <= 10:
             raise ValueError("Job discovery limit must be between 1 and 10")
         jobs: list[Job] = []
@@ -1443,6 +1445,7 @@ class LinkedInBrowser:
                 raise ReviewRequired(
                     "LinkedIn search has no supported job links; review the search manually"
                 )
+            ids = [job_id for job_id in ids if job_id not in (excluded_ids or set())]
             for index, job_id in enumerate(ids[:limit], start=1):
                 url = f"https://www.linkedin.com/jobs/view/{job_id}/"
                 identity = f"Opportunity {index}/{min(len(ids), limit)}: {url}"

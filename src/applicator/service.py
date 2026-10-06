@@ -56,6 +56,24 @@ class Service:
         self.operations = Operations(store)
         self.records = SubmissionRecords(store, data)
 
+    def screen_discovery(
+        self, jobs: list[Job], progress: Callable[[str, str], None] | None = None
+    ) -> dict[str, int]:
+        profile, revision = self.store.profile()
+        if not profile.confirmed:
+            raise ValueError("Confirm candidate facts before screening discoveries")
+        settings = self.store.settings()
+        assessed = []
+        for job in jobs:
+            evaluation = evaluate(job, profile, settings)
+            if progress:
+                progress(
+                    "screening_discovered_job",
+                    f"{job.title} at {job.company}: fit {evaluation.score}/100. Discovery minimum: 50.",
+                )
+            assessed.append((job, evaluation))
+        return self.store.screen_discovery(assessed, revision, settings)
+
     def preflight(self, app_id: int, sources: set[str] | None = None) -> Preflight:
         """Inspect current local gates without reserving, browsing or generating documents.
 

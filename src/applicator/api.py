@@ -175,10 +175,11 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
                     discovery_browser = LinkedInBrowser(data, profile)
                     discovery_browser.progress = operation.progress
                     jobs = discovery_browser.search(
-                        settings.search_keywords, settings.search_location
+                        settings.search_keywords,
+                        settings.search_location,
+                        excluded_ids=store.discarded_job_ids("linkedin"),
                     )
-                    for job in jobs:
-                        store.add_job(job)
+                    service.screen_discovery(jobs, operation.progress)
             result = service.tick(operation, stopping=stop.is_set)
             settings = store.settings()
             if (
@@ -523,7 +524,7 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
                 jobs = greenhouse(board.board, client)
         except httpx.HTTPError as exc:
             raise HTTPException(502, "Job discovery failed; no applications were sent") from exc
-        return {"imported": sum(store.add_job(job)[1] for job in jobs)}
+        return service.screen_discovery(jobs)
 
     @app.post("/api/discover/linkedin", dependencies=auth)
     def discover_linkedin() -> dict[str, int]:
@@ -534,7 +535,9 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
         with browser_lock:
             try:
                 jobs = LinkedInBrowser(data, profile).search(
-                    settings.search_keywords, settings.search_location
+                    settings.search_keywords,
+                    settings.search_location,
+                    excluded_ids=store.discarded_job_ids("linkedin"),
                 )
             except BrowserError as exc:
                 raise HTTPException(
@@ -542,7 +545,14 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
                     "The browser could not read the LinkedIn job search. Check the dedicated "
                     "browser session and try again. No opportunities were imported or applications sent.",
                 ) from exc
-        return {"imported": sum(store.add_job(job)[1] for job in jobs)}
+        return service.screen_discovery(jobs)
+
+    @app.get("/api/discovery/discards", dependencies=auth)
+    def discovery_discards(
+        limit: Annotated[int, Query(ge=1, le=200)] = 100,
+        before: Annotated[int | None, Query(ge=1)] = None,
+    ) -> list[dict[str, Any]]:
+        return store.discovery_discards(limit, before)
 
     @app.post("/api/applications/{app_id}/prepare", dependencies=auth)
     def prepare(app_id: int, preparation: Preparation) -> dict[str, Any]:

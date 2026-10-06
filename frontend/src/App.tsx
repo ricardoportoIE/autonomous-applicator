@@ -19,6 +19,7 @@ import {
   Events,
   Modal,
   Panel,
+  Tabs,
   WorkerMonitor,
 } from "./components";
 import { ApplicationDetails } from "./application-detail";
@@ -60,6 +61,7 @@ export function App({ workspace }: { workspace: Workspace }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const [sort, setSort] = useState("recent");
+  const [queueTab, setQueueTab] = useState("active");
   const current = navigation.find(
     (item) =>
       item.id === (state.view === "record" ? "applications" : state.view),
@@ -87,13 +89,22 @@ export function App({ workspace }: { workspace: Workspace }) {
       setQuery("");
       setFilter("all");
       setSort("recent");
+      setQueueTab("active");
     }
   }, [state.unlocked]);
   const open = (value: Dialogue) => {
     workspace.message("");
     setModal(value);
   };
-  const rows = filterApplications(state.applications, {
+  const activeApplications = state.applications.filter(
+    (row) => row.state !== "submitted",
+  );
+  const archivedApplications = state.applications.filter(
+    (row) => row.state === "submitted",
+  );
+  const queueApplications =
+    queueTab === "active" ? activeApplications : archivedApplications;
+  const rows = filterApplications(queueApplications, {
     query,
     state: filter,
     sort,
@@ -562,85 +573,126 @@ export function App({ workspace }: { workspace: Workspace }) {
               title="Application queue"
               eyebrow="An organised path forward"
             >
-              <div className="queue-tools">
-                <label>
-                  Search opportunities
-                  <input
-                    id="queue-search"
-                    type="search"
-                    maxLength={200}
-                    placeholder="Role, company or location"
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                  />
-                </label>
-                <label>
-                  Application status
-                  <select
-                    id="queue-state"
-                    aria-label="Application status"
-                    value={filter}
-                    onChange={(event) => setFilter(event.target.value)}
-                  >
-                    {[
-                      ["all", "All statuses"],
-                      ["ready", "Ready"],
-                      ["review", "For review"],
-                      ["skipped", "Not prioritised"],
-                      ["submitting", "Submitting"],
-                      ["submitted", "Submitted"],
-                      ["uncertain", "Needs reconciliation"],
-                    ].map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Sort opportunities
-                  <select
-                    id="queue-sort"
-                    aria-label="Sort opportunities"
-                    value={sort}
-                    onChange={(event) => setSort(event.target.value)}
-                  >
-                    <option value="recent">Newest first</option>
-                    <option value="fit">Highest fit first</option>
-                    <option value="company">Company A–Z</option>
-                  </select>
-                </label>
-                <button
-                  id="queue-clear"
-                  type="button"
-                  className="secondary"
-                  onClick={() => {
-                    setQuery("");
-                    setFilter("all");
-                    setSort("recent");
-                  }}
-                >
-                  Clear filters
-                </button>
-              </div>
-              <p id="queue-count" role="status">
-                {state.unlocked
-                  ? `${rows.length} of ${state.applications.length} opportunities shown`
-                  : ""}
-              </p>
-              <div id="application-list">
-                {state.unlocked && (
-                  <ApplicationTable
-                    rows={rows}
-                    onOpen={openDetail}
-                    empty={
-                      state.applications.length
-                        ? "No opportunities match these filters. Try another search or clear the filters."
-                        : undefined
-                    }
-                  />
-                )}
-              </div>
+              <Tabs
+                label="Application queue"
+                prefix="applications"
+                selected={queueTab}
+                onSelect={(tab) => {
+                  setQueueTab(tab);
+                  setFilter("all");
+                }}
+                items={[
+                  {
+                    id: "active",
+                    label: `Active (${activeApplications.length})`,
+                  },
+                  {
+                    id: "archived",
+                    label: `Archive (${archivedApplications.length})`,
+                  },
+                ]}
+              >
+                {(section) =>
+                  section === queueTab ? (
+                    <>
+                      {section === "archived" && (
+                        <p>
+                          Confirmed submissions are kept here with their full
+                          records, documents and receipts. Applications needing
+                          review or reconciliation stay in Active.
+                        </p>
+                      )}
+                      <div className="queue-tools">
+                        <label>
+                          Search opportunities
+                          <input
+                            id="queue-search"
+                            type="search"
+                            maxLength={200}
+                            placeholder="Role, company or location"
+                            value={query}
+                            onChange={(event) => setQuery(event.target.value)}
+                          />
+                        </label>
+                        <label>
+                          Application status
+                          <select
+                            id="queue-state"
+                            aria-label="Application status"
+                            value={filter}
+                            onChange={(event) => setFilter(event.target.value)}
+                          >
+                            {[
+                              ["all", "All statuses"],
+                              ["ready", "Ready"],
+                              ["review", "For review"],
+                              ["skipped", "Not prioritised"],
+                              ["submitting", "Submitting"],
+                              ["submitted", "Submitted"],
+                              ["uncertain", "Needs reconciliation"],
+                            ]
+                              .filter(([value]) =>
+                                section === "active"
+                                  ? value !== "submitted"
+                                  : value === "all" || value === "submitted",
+                              )
+                              .map(([value, label]) => (
+                                <option key={value} value={value}>
+                                  {label}
+                                </option>
+                              ))}
+                          </select>
+                        </label>
+                        <label>
+                          Sort opportunities
+                          <select
+                            id="queue-sort"
+                            aria-label="Sort opportunities"
+                            value={sort}
+                            onChange={(event) => setSort(event.target.value)}
+                          >
+                            <option value="recent">Newest first</option>
+                            <option value="fit">Highest fit first</option>
+                            <option value="company">Company A–Z</option>
+                          </select>
+                        </label>
+                        <button
+                          id="queue-clear"
+                          type="button"
+                          className="secondary"
+                          onClick={() => {
+                            setQuery("");
+                            setFilter("all");
+                            setSort("recent");
+                          }}
+                        >
+                          Clear filters
+                        </button>
+                      </div>
+                      <p id="queue-count" role="status">
+                        {state.unlocked
+                          ? `${rows.length} of ${queueApplications.length} opportunities shown`
+                          : ""}
+                      </p>
+                      <div id="application-list">
+                        {state.unlocked && (
+                          <ApplicationTable
+                            rows={rows}
+                            onOpen={openDetail}
+                            empty={
+                              queueApplications.length
+                                ? "No opportunities match these filters. Try another search or clear the filters."
+                                : section === "archived"
+                                  ? "No completed applications yet. Confirmed submissions appear here automatically."
+                                  : "No active opportunities. Discover or add a job to start."
+                            }
+                          />
+                        )}
+                      </div>
+                    </>
+                  ) : null
+                }
+              </Tabs>
             </Panel>
             {state.detail ? (
               <ApplicationDetails

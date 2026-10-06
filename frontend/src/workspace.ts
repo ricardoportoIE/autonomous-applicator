@@ -476,14 +476,20 @@ export class Workspace {
         const result = await this.api.json<{
           imported?: number;
           reviewed?: number;
+          discarded?: number;
         }>("/discover/" + (jobs ? "linkedin" : "contacts"), "POST");
         await this.refresh();
         if (!this.api.isCurrent(session)) return;
         if (jobs) {
+          const summary = result.imported
+            ? `Search complete. ${result.imported} new opportunities imported.`
+            : "Search complete. No new opportunities to import; results may already be in your queue or excluded by discovery screening.";
           this.update({
-            searchJobs: result.imported
-              ? `Search complete. ${result.imported} new opportunities imported.`
-              : "Search complete. No new opportunities to import; results may already be in your queue.",
+            searchJobs:
+              summary +
+              (result.discarded
+                ? ` ${result.discarded} below-fit opportunities discarded (under 50/100).`
+                : ""),
           });
           this.message(`Imported ${result.imported} LinkedIn opportunities.`);
         } else {

@@ -12,7 +12,7 @@ from typing import Any
 from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
-from .models import DailyUsage, Evidence, Job, Profile, Question, Settings, State
+from .models import DailyUsage, Evaluation, Evidence, Job, Profile, Question, Settings, State
 
 
 def day_key(now: datetime | None = None) -> str:
@@ -40,6 +40,12 @@ class Store:
                     detail TEXT NOT NULL, created TEXT NOT NULL);
                 CREATE INDEX IF NOT EXISTS events_application ON events(application_id, id DESC);
                 CREATE INDEX IF NOT EXISTS attempts_day ON attempts(day);
+                CREATE TABLE IF NOT EXISTS discovery_discards (
+                    id INTEGER PRIMARY KEY, source TEXT NOT NULL, source_id TEXT NOT NULL,
+                    url TEXT NOT NULL, url_key TEXT NOT NULL UNIQUE, title TEXT NOT NULL,
+                    company TEXT NOT NULL, location TEXT NOT NULL, score INTEGER NOT NULL CHECK(score<50),
+                    evaluation TEXT NOT NULL, profile_revision INTEGER NOT NULL, created TEXT NOT NULL,
+                    UNIQUE(source,source_id));
                 CREATE TABLE IF NOT EXISTS submission_records (
                     attempt_id INTEGER PRIMARY KEY,application_id INTEGER NOT NULL,
                     created TEXT NOT NULL,sent_at TEXT,confirmed_at TEXT,
@@ -305,25 +311,118 @@ class Store:
 
     def add_job(self, job: Job) -> tuple[int, bool]:
         with self.connect(True) as db:
-            row = db.execute(
-                "SELECT id FROM applications WHERE source=? AND source_id=?",
-                (job.source, job.source_id),
-            ).fetchone()
-            if row:
-                return int(row[0]), False
-            parsed = urlsplit(job.url)
-            canonical = (parsed.hostname, parsed.path.rstrip("/"))
-            for existing in db.execute("SELECT id,job FROM applications"):
-                old = urlsplit(json.loads(existing["job"])["url"])
-                if (old.hostname, old.path.rstrip("/")) == canonical:
-                    return int(existing["id"]), False
-            cursor = db.execute(
-                "INSERT INTO applications(source,source_id,job,state) VALUES(?,?,?,?)",
-                (job.source, job.source_id, job.model_dump_json(), State.REVIEW),
+            return self._add_job(db, job)
+
+    def _add_job(self, db: sqlite3.Connection, job: Job) -> tuple[int, bool]:
+        row = db.execute(
+            "SELECT id FROM applications WHERE source=? AND source_id=?",
+            (job.source, job.source_id),
+        ).fetchone()
+        if row:
+            return int(row[0]), False
+        parsed = urlsplit(job.url)
+        canonical = (parsed.hostname, parsed.path.rstrip("/"))
+        for existing in db.execute("SELECT id,job FROM applications"):
+            old = urlsplit(json.loads(existing["job"])["url"])
+            if (old.hostname, old.path.rstrip("/")) == canonical:
+                return int(existing["id"]), False
+        cursor = db.execute(
+            "INSERT INTO applications(source,source_id,job,state) VALUES(?,?,?,?)",
+            (job.source, job.source_id, job.model_dump_json(), State.REVIEW),
+        )
+        app_id = int(cursor.lastrowid or 0)
+        self.event(db, "job_added", f"Imported {job.source} job.", app_id)
+        return app_id, True
+
+    @staticmethod
+    def discovery_url_key(url: str) -> str:
+        parsed = urlsplit(url)
+        return str(parsed.hostname) + parsed.path.rstrip("/")
+
+    def discarded_job_ids(self, source: str) -> set[str]:
+        with self.connect() as db:
+            return {
+                str(row[0])
+                for row in db.execute(
+                    "SELECT source_id FROM discovery_discards WHERE source=?", (source,)
+                )
+            }
+
+    def screen_discovery(
+        self, jobs: list[tuple[Job, Evaluation]], revision: int, settings: Settings
+    ) -> dict[str, int]:
+        """Commit a whole assessed batch without creating low-fit application records."""
+        counts = {"imported": 0, "discarded": 0, "excluded": 0, "duplicates": 0}
+        with self.connect(True) as db:
+            current_revision = int(
+                db.execute("SELECT value FROM config WHERE key='revision'").fetchone()[0]
             )
-            app_id = int(cursor.lastrowid or 0)
-            self.event(db, "job_added", f"Imported {job.source} job.", app_id)
-            return app_id, True
+            current_settings = Settings.model_validate_json(
+                db.execute("SELECT value FROM config WHERE key='settings'").fetchone()[0]
+            )
+            if current_revision != revision or current_settings != settings:
+                raise ValueError(
+                    "Candidate or settings changed during discovery; repeat the search"
+                )
+            for job, evaluation in jobs:
+                key = self.discovery_url_key(job.url)
+                if db.execute(
+                    "SELECT 1 FROM discovery_discards WHERE (source=? AND source_id=?) OR url_key=?",
+                    (job.source, job.source_id, key),
+                ).fetchone():
+                    counts["excluded"] += 1
+                    continue
+                # Preserve an explicit import or previous application regardless of its new score.
+                existing = db.execute(
+                    "SELECT 1 FROM applications WHERE source=? AND source_id=?",
+                    (job.source, job.source_id),
+                ).fetchone()
+                known_url = any(
+                    self.discovery_url_key(json.loads(row[0])["url"]) == key
+                    for row in db.execute("SELECT job FROM applications")
+                )
+                if existing or known_url:
+                    counts["duplicates"] += 1
+                    continue
+                if evaluation.score < 50:
+                    db.execute(
+                        "INSERT INTO discovery_discards(source,source_id,url,url_key,title,company,location,score,evaluation,profile_revision,created) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                        (
+                            job.source,
+                            job.source_id,
+                            job.url,
+                            key,
+                            job.title,
+                            job.company,
+                            job.location,
+                            evaluation.score,
+                            evaluation.model_dump_json(),
+                            revision,
+                            datetime.now(UTC).isoformat(),
+                        ),
+                    )
+                    self.event(
+                        db,
+                        "discovery_discarded",
+                        f"{job.title} at {job.company}: fit {evaluation.score}/100, below 50. Excluded from future automatic discovery.",
+                    )
+                    counts["discarded"] += 1
+                else:
+                    counts["imported"] += int(self._add_job(db, job)[1])
+            self.event(db, "discovery_screened", json.dumps(counts))
+        return counts
+
+    def discovery_discards(
+        self, limit: int = 100, before: int | None = None
+    ) -> list[dict[str, Any]]:
+        if not 1 <= limit <= 200 or (before is not None and before < 1):
+            raise ValueError("Invalid discarded discovery page")
+        with self.connect() as db:
+            rows = db.execute(
+                "SELECT * FROM discovery_discards WHERE (? IS NULL OR id<?) ORDER BY id DESC LIMIT ?",
+                (before, before, limit),
+            ).fetchall()
+            return [{**dict(row), "evaluation": json.loads(row["evaluation"])} for row in rows]
 
     def application(self, app_id: int) -> dict[str, Any]:
         with self.connect() as db:

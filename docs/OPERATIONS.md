@@ -58,6 +58,8 @@ The module commands avoid unsigned console launchers sometimes blocked by Window
 
 ## Full application records
 
+In **Application queue**, use **Active** for unresolved work and **Archive** for confirmed submissions. Archive keeps full-record links, documents and receipts available. Its counter/search/status controls apply only to that section. Uncertain submissions remain active for reconciliation. The partition updates after refresh and does not delete or rewrite application records.
+
 In **Applications**, choose **Full record** beside an opportunity, or **View full application record** from its management view. Each record has its own local address, `/#/applications/{id}`, which can be bookmarked. Unlocking the workspace is still required. Reload to read subsequent attempt or outcome changes; the shared processing monitor remains live. **Manage this application** returns to the existing preparation, question and outcome controls.
 
 The page shows the original opportunity URL, imported/prepared/submitted dates, current decision, provider receipts and every recorded attempt. Times use Europe/London. Submission dates represent the locally recorded confirmation event, including manual receipts; they are not a reconstructed historical provider sending time. The application journal loads 200 entries at a time; **Load older activity** reads the remaining entries without starting any browser action.
@@ -71,6 +73,8 @@ Snapshots, archived documents and screenshots stay in ignored local storage unde
 Historical attempts may have no archived materials, form observations, exact sending time or screenshot. The page explicitly marks absent evidence; it never reconstructs sent information from today's profile. A manual receipt confirms the outcome but cannot manufacture a provider screenshot.
 
 ## Candidate setup
+
+Automatic discovery requires confirmed candidate facts and assesses complete supported vacancy descriptions before saving to the queue. New scores below 50/100 enter a separate private exclusion log, with no application record, generated document or sending attempt. Known LinkedIn exclusions are skipped before their detail pages are opened. Newly discarded counts appear in the search summary; Activity log retains discard/batch events. Read the full separate log through authenticated `GET /api/discovery/discards?limit=100`, then use `before=<oldest-id>` to page backwards. Manual/URL imports remain deliberate exceptions. Existing historical applications are retained, and profile edits do not silently erase exclusion memory. See [discovery screening](APPLICATION_QUEUE.md#discovery-screening-and-exclusion-memory).
 
 Review the Candidate profile tab. The private working copy has a profile translated from the supplied documents in `data/ricardo-profile.json`, imported into local SQLite. This file is excluded from Git and is not supplied to repository visitors. A fresh clone starts without a candidate profile.
 

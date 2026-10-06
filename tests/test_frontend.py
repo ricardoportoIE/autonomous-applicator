@@ -1136,7 +1136,7 @@ def test_empty_queue_and_activity_states_are_explained(dashboard):
     page.reload()
     expect(page.locator("#workspace")).to_be_visible()
     page.get_by_role("button", name="Applications", exact=True).click()
-    expect(page.locator("#application-list")).to_contain_text("No opportunities yet.")
+    expect(page.locator("#application-list")).to_contain_text("No active opportunities.")
     expect(page.locator("#queue-count")).to_have_text("0 of 0 opportunities shown")
     page.get_by_role("button", name="Activity log", exact=True).click()
     expect(page.locator("#events")).to_contain_text("No activity recorded yet.")

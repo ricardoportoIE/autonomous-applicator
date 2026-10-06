@@ -20,6 +20,8 @@ No runtime module is omitted and no coverage-ignore directives are permitted. Co
 
 ## Behaviour verified
 
+The archive/discovery follow-up passed **22 focused backend cases in 17.00 seconds**, **seven React cases** and **three production-Chromium cases in 7.03 seconds**. New cases cover the exact 49/50 boundary, full-description scoring, unconfirmed/stale candidate refusal, separate durable logs, canonical duplicate memory, batch rollback/concurrency, all three discovery entry points, authenticated pagination, and skipping excluded links before navigation without consuming the result limit. UI checks cover all unresolved states, confirmed-only archive partitioning, counts, filters, keyboard access, automatic refresh, lock reset, full-record links, no duplicate controls, and production desktop/mobile records with zero mutations/external requests. Ordinary tests make no paid model requests or real sends. This is focused acceptance, not a new complete coverage measurement.
+
 | Boundary | Representative assertions |
 | --- | --- |
 | Single-link import | Authenticated, bounded intake rejects unsupported origins before browser access; declared scope is required. Paused imports save once without candidate facts or sending capacity. Duplicate identifiers preserve existing records; failures retain the durable stage without a partial save. Intercepted Chromium verifies canonical navigation, primary details, identity/authentication redirects and zero application clicks. React and production-browser cases verify URL-only entry, visible loading, duplicate-click suppression, explicit retry, manual-entry parity and stale completion after locking. |
@@ -68,6 +70,8 @@ The full pytest command starts a fresh measurement; it does not append previous 
 For focused development checks, select tests without claiming a full coverage result:
 
 ```powershell
+uv run pytest tests/test_discovery_screening.py tests/test_application_archive_browser.py --override-ini addopts= --no-cov
+npx vitest run tests/frontend/application-archive.test.tsx --coverage.enabled=false
 uv run pytest tests/test_form_diagnostics_upload.py tests/test_application_dialog.py::test_native_dialog_full_submission_against_an_intercepted_provider --override-ini addopts= --no-cov
 uv run pytest tests/test_large_choice_lists.py --override-ini addopts= --no-cov
 uv run pytest tests/test_backend_integrity.py tests/test_browser_boundaries.py --no-cov
