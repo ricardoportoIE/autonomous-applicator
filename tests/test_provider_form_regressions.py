@@ -4,7 +4,6 @@ import json
 from unittest.mock import Mock
 
 import pytest
-from playwright.sync_api import TimeoutError as BrowserTimeout
 from playwright.sync_api import sync_playwright
 
 from applicator.browser import (
@@ -139,7 +138,7 @@ def test_city_requires_verified_pattern_unique_country_and_selection(local_brows
             assert page.locator("input").input_value() == "Dublin, County Dublin, Ireland"
             assert not page.get_by_role("listbox").is_visible()
         elif case == "missing":
-            with pytest.raises(BrowserTimeout):
+            with pytest.raises(ValueError, match="Mapped city suggestions"):
                 fill_questions(page, profile)
         elif case == "conflict":
             assert field["type"] == "text"

@@ -43,6 +43,8 @@ During an actual model request the operation detail identifies GPT-6.1 Sol, the 
 
 ## Collecting questions for one review
 
+Mapped city-typeahead lists are resolved through their explicit input identifier relationship, including portals outside the field row/dialogue. This remains deterministic browser handling, rather than a model-generated selector or relocation decision. A missing/ambiguous mapped list produces a controlled validation error so collection can retain the location question and inspect other current-page fields. Native selection, confirmed city/country and unknown-prefill boundaries remain in force.
+
 The adapter inspects every current field rather than stopping at the first missing fact. It fills independently supported answers, retains exact enabled choices and groups radio options into one question. A rejected interpretation leaves that question pending whilst other fields are inspected. Optional empty fields retain their existing skip behaviour. Unlabelled or unsupported controls require review without being guessed.
 
 Approved selections can reveal conditional questions. Collection rereads the same page, with at most three structural passes, and also rereads controls when Next/Review validation prevents advancement. Next/Review remains reversible and bounded; collection never uses placeholder answers or bypasses provider validation. New dialogues are inspected only when there is one visible application dialogue.

@@ -972,11 +972,21 @@ def fill_location_typeahead(page: Page, field: dict[str, Any], profile: Profile)
     field_locator(dialog, current_field(page, field)).fill(city)
     # React may replace the input and its generated identifier after typing.
     locator = field_locator(dialog, current_field(page, field))
-    root = locator.locator('xpath=ancestor::*[starts-with(@componentkey,"easyApplyFieldFocus")][1]')
-    listbox = root.locator('[role="listbox"][data-testid="typeahead-results-container"]')
-    listbox.wait_for(state="visible", timeout=10000)
-    if listbox.get_attribute("aria-labelledby") != locator.get_attribute("id"):
+    # LinkedIn can render suggestions in a portal outside the field row/dialogue.
+    # Match its explicit input relationship rather than a containing DOM ancestor.
+    field_id = locator.get_attribute("id")
+    if not field_id:
         raise ValueError("Unmapped city suggestions require manual review")
+    selector = locator.evaluate(
+        "el => '[role=\"listbox\"][aria-labelledby~=\"' + CSS.escape(el.id) + '\"]'"
+    )
+    listbox = page.locator(selector).filter(visible=True)
+    if listbox.count() > 1:
+        raise ValueError("City suggestions do not uniquely map to the approved location field")
+    try:
+        listbox.wait_for(state="visible", timeout=10000)
+    except BrowserError as exc:
+        raise ValueError("Mapped city suggestions did not become uniquely available") from exc
     options = (
         listbox.get_by_role("option")
         .filter(visible=True)
