@@ -18,6 +18,8 @@ The final fresh Windows/Python 3.14.2 suite passed **1,114 cases in 1,513.92 sec
 
 The [initial functional CI run](https://github.com/ricardoportoIE/autonomous-applicator/actions/runs/37427933392) passed both Linux jobs and Windows/Python 3.14. Windows/Python 3.12 reached 100% coverage but timed out awaiting the completion of three document sets after the concurrency checks had already passed. The test's post-release completion budget is now 60 seconds, preserving status readability, competing-request rejection and exact FIFO assertions; it is not a rendering-throughput benchmark. All 23 queue cases passed after this harness-only adjustment in 8.63 seconds. Application sources and the measured coverage inventory remain unchanged. A renewed complete CI matrix validates the final harness separately.
 
+The [final CI matrix](https://github.com/ricardoportoIE/autonomous-applicator/actions/runs/37432798280) passed all four Windows/Linux and Python 3.12/3.14 jobs, including complete pytest, independent per-module coverage inventory, frontend checks, production-browser reporting, the offline benchmark and dependency audits. This accepts commit `6fcc33f` with the corrected harness. Application sources remain identical to runtime commit `2d80b05`; the final delivery-record commit changes documentation only. Both local automated queues remain paused.
+
 Version 0.3.0 reviewed through resume and navigation recovery on 6 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
 
 ## Single-link opportunity import, 6 October 2026
