@@ -1,5 +1,17 @@
 # Delivery and validation record
 
+## Questionnaire collection, 6 October 2026
+
+The Easy Apply adapter now gathers unresolved questions from every safely reachable page or dialogue before requesting review. It completes independent approved fields, groups radio options, reads exact enabled choices and rereads approved conditional changes and controls revealed by navigation validation. Rejected model interpretation no longer hides later fields on the same page. Unknown prefills prevent further navigation, and any pending batch stops before the final sending gate and Submit. Required validation can conceal later pages; the summary records the stopping step and reason rather than promising complete access.
+
+The service persists the complete batch and releases its pre-send reservation atomically. Existing question identifiers and sensitive flags are retained. Unrelated current approvals, routine facts and location decisions survive the question-fingerprint change; changed choices invalidate the affected approval and stale candidate revisions remain stale. Oversized-batch tests verify complete rollback, including held reservations. Questions displays the last collection summary and explains the reachability limit.
+
+Added **37 Python regressions** for multiple field types, independent answers, radio deduplication, conditional rendering, custom choices, replacement dialogues, validation-exposed questions, required/prefilled blockers, bounded cycles/steps and transactional persistence. The complete fresh Windows/Python 3.14.2 suite passed **1,151 cases in 1,612.89 seconds**, covering **3,083/3,083 statements and 1,088/1,088 branch outcomes across all 19 backend modules**. The independent inventory gate confirmed 100% in every module. An existing progress assertion was updated to include the new collection stage; its unchanged contact/upload/receipt assertions passed against the final runtime.
+
+All **162 React cases** passed with 100% in each of the ten runtime files: **837 statements, 758 lines, 299 functions and 888 branch outcomes**. The independent production-Chromium report measured **98.69% statements/lines, 92.37% branches and 97.54% functions**. Ruff, formatting, strict mypy, TypeScript, ESLint, Prettier, repository hygiene and reproducible production assets passed. The offline benchmark used disposable fictional workspaces; these checks made no paid model calls or real submissions/invitations.
+
+The dashboard was restarted after a unique private SQLite backup, with both automation switches off. Ten core tables matched that backup after restart, including profile/configuration, applications, attempts, submission records, scoped answers, location decisions, connections and operation records. Candidate revision **13** and all **50 document hashes** were retained. The tested runtime is loaded locally and the agent remains paused. Remote CI validates the published commit separately from this completed local measurement.
+
 ## Accessible CV selection and navigation learning, 6 October 2026
 
 Private diagnostics reproduced a layout where the resume radio contains no filename text but carries the exact filename as its accessible name. The contained-text locator stopped after upload. Both contracts are now supported, with unique native/ARIA selection verification, rejection of pre-existing same-name controls and bounded rendering waits. Next/Review allows ten seconds and checks the semantic step after a timeout before another reversible action.

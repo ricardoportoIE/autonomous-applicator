@@ -874,6 +874,7 @@ class Store:
         *,
         attempt: int | None = None,
         question: Question | None = None,
+        questions: list[Question] | None = None,
     ) -> None:
         with self.connect(True) as db:
             row = db.execute(
@@ -895,7 +896,53 @@ class Store:
                 )
             job = Job.model_validate_json(row[0])
             prefix = "Approve an exact answer for: "
-            if detail.startswith(prefix):
+            if questions:
+                from .documents import fingerprint
+                from .question_adviser import question_key
+
+                previous_fingerprint = fingerprint(job)
+                changed_keys: set[str] = set()
+                for observed in questions:
+                    key = question_key(observed)
+                    existing = next(
+                        (item for item in job.questions if question_key(item) == key), None
+                    )
+                    if existing:
+                        observed = observed.model_copy(
+                            update={
+                                "id": existing.id,
+                                "sensitive": existing.sensitive or observed.sensitive,
+                            }
+                        )
+                    if existing is None or existing.model_dump() != observed.model_dump():
+                        changed_keys.add(key)
+                    job.questions = [item for item in job.questions if question_key(item) != key]
+                    job.questions.append(observed)
+                # Validate the complete batch before committing either the hold or its reservation.
+                job = Job.model_validate(job.model_dump())
+                for key in changed_keys:
+                    db.execute(
+                        "DELETE FROM approved_answers WHERE application_id=? AND job_fingerprint=? AND answer_key=?",
+                        (app_id, previous_fingerprint, key),
+                    )
+                for observed in questions:
+                    db.execute(
+                        "DELETE FROM routine_answers WHERE application_id=? AND job_fingerprint=? AND answer_key=?",
+                        (app_id, previous_fingerprint, question_key(observed)),
+                    )
+                db.execute(
+                    "UPDATE routine_answers SET job_fingerprint=? WHERE application_id=? AND job_fingerprint=?",
+                    (fingerprint(job), app_id, previous_fingerprint),
+                )
+                db.execute(
+                    "UPDATE location_reviews SET job_fingerprint=? WHERE application_id=? AND job_fingerprint=?",
+                    (fingerprint(job), app_id, previous_fingerprint),
+                )
+                db.execute(
+                    "UPDATE approved_answers SET job_fingerprint=? WHERE application_id=? AND job_fingerprint=?",
+                    (fingerprint(job), app_id, previous_fingerprint),
+                )
+            elif detail.startswith(prefix):
                 from .documents import fingerprint
                 from .question_adviser import question_key
 

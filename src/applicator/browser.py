@@ -26,6 +26,7 @@ from .documents import digest, filename_stem
 from .location_policy import country, normalise_location
 from .models import FormContext, Job, Profile, Question
 from .photos import save_photo
+from .question_adviser import question_key
 from .submission_records import capture_confirmation
 
 
@@ -35,6 +36,23 @@ class BrowserOptions(TypedDict, total=False):
 
 class ReviewRequired(ValueError):
     """A provider stopped before attempting an irreversible submission."""
+
+
+class QuestionnaireReview(ReviewRequired):
+    """All unresolved questions observed before a safe pre-submission stop."""
+
+    def __init__(self, questions: list[Question], step: int, reason: str):
+        self.questions = questions
+        super().__init__(
+            f"Questionnaire review: {len(questions)} pending question(s) collected through "
+            f"form step {step}. {reason}"
+        )
+
+
+class SubmissionProgress(TypedDict):
+    submitted: bool
+    pending: dict[str, Question]
+    step: int
 
 
 PENDING_INVITATION_NAME = re.compile(r"^(?:Pending|Invitation pending)(?:$|[,\s])")
@@ -922,26 +940,47 @@ def fill_questions(
 ) -> None:
     fields = form_questions(page)
     phone_answers = contact_phone_answers(fields, profile)
+    _fill_question_fields(
+        page,
+        profile,
+        fields,
+        phone_answers,
+        resume_field_ids=resume_field_ids,
+        resolver=resolver,
+        progress=progress,
+        memory=memory,
+    )
+
+
+def _fill_question_fields(
+    page: Page,
+    profile: Profile,
+    fields: list[dict[str, Any]],
+    phone_answers: dict[str, str],
+    *,
+    resume_field_ids: set[str] | None,
+    resolver: Callable[[Question], str | None] | None,
+    progress: Callable[[str, str], None] | None,
+    memory: Callable[[str, str | None], str | None] | None,
+    observe_question: Callable[[Question], None] | None = None,
+) -> None:
     dialog = page.get_by_role("dialog").filter(visible=True)
     resolved: dict[tuple[str, tuple[str, ...], str], str | None] = {}
 
     def answer(label: str, choices: list[str], required: bool) -> str | None:
+        context = question_context({**field, "required": required}, label, choices)
+        question_id = "q_" + hashlib.sha256(label.casefold().encode()).hexdigest()[:16]
+        question = Question(
+            id=question_id, label=label, choices=choices, required=required, form_context=context
+        )
+        if observe_question:
+            observe_question(question)
         approved = approved_answer(label, profile)
         if resolver is None or (approved and (not choices or approved in choices)):
             return approved
-        context = question_context(field, label, choices)
         key = (label, tuple(choices), context.html)
         if key not in resolved:
-            question_id = "q_" + hashlib.sha256(label.casefold().encode()).hexdigest()[:16]
-            resolved[key] = resolver(
-                Question(
-                    id=question_id,
-                    label=label,
-                    choices=choices,
-                    required=required,
-                    form_context=context,
-                )
-            )
+            resolved[key] = resolver(question)
         return resolved[key]
 
     for field in fields:
@@ -973,7 +1012,11 @@ def fill_questions(
             group = field["group"]
             if not group or not field["group_choices"]:
                 raise ValueError("Unlabelled radio group requires manual review")
-            value = answer(group, field["group_choices"], field["required"])
+            value = answer(
+                group,
+                field["group_choices"],
+                any(item["required"] for item in fields if item.get("group") == group),
+            )
             if not value or not value.strip():
                 raise ValueError(f"Approve an exact answer for: {group}")
             if value not in field["group_choices"]:
@@ -1095,6 +1138,128 @@ def fill_questions(
             locator.fill(value)
         if not locator.evaluate("el => el.checkValidity()"):
             raise ValueError(f"Approved answer does not satisfy field constraints: {label}")
+
+
+def collect_questions(
+    page: Page,
+    profile: Profile,
+    pending: dict[str, Question],
+    *,
+    resume_field_ids: set[str] | None,
+    resolver: Callable[[Question], str | None] | None,
+    progress: Callable[[str, str], None],
+    memory: Callable[[str, str | None], str | None],
+) -> bool:
+    """Complete independent fields, retaining every reachable gap without guessing."""
+    seen: set[str] = set()
+
+    def resolve(question: Question) -> str | None:
+        try:
+            return resolver(question) if resolver else None
+        except ValueError:
+            # Missing facts or a rejected model mapping must not hide other questions.
+            return None
+
+    for _pass in range(3):
+        fields = form_questions(page)
+        phone_error = False
+        try:
+            phones = contact_phone_answers(fields, profile)
+        except ValueError:
+            phones, phone_error = {}, True
+        for field in fields:
+            if resume_field_ids and field["id"] in resume_field_ids:
+                continue
+            label = str(field.get("group") or field["label"]).strip()
+            if not label:
+                # Inspect the other controls before holding an unidentifiable field.
+                label = "Unlabelled form control"
+            choices = (
+                field["group_choices"]
+                if field["type"] == "radio"
+                else ["Yes", "No"]
+                if field["type"] == "checkbox"
+                else field["choices"]
+            )
+            question = Question(
+                id="q_" + hashlib.sha256(label.casefold().encode()).hexdigest()[:16],
+                label=label,
+                choices=choices,
+                required=field["required"],
+                form_context=question_context(field, label, choices),
+            )
+            signature = json.dumps(question.prompt_payload(), sort_keys=True)
+            grouped_fields = [field]
+            if field["type"] == "radio":
+                grouped_fields = [
+                    item
+                    for item in fields
+                    if item["type"] == "radio"
+                    and item["group"] == field["group"]
+                    and item["group_choices"] == choices
+                ]
+                question.required = any(item["required"] for item in grouped_fields)
+                signature = "radio:" + question_key(question) + json.dumps(choices)
+            if signature in seen:
+                continue
+            seen.add(signature)
+            observed: list[Question] = []
+            try:
+                if phone_error and label.casefold() in {
+                    "phone country code",
+                    "phone",
+                    "phone number",
+                    "mobile phone number",
+                }:
+                    raise ValueError("Phone components require review")
+                _fill_question_fields(
+                    page,
+                    profile,
+                    grouped_fields,
+                    phones,
+                    resume_field_ids=resume_field_ids,
+                    resolver=resolve,
+                    progress=progress,
+                    memory=memory,
+                    observe_question=observed.append,
+                )
+            except ValueError:
+                question = observed[-1] if observed else question
+                pending[question_key(question)] = question
+                if field["type"] == "combobox":
+                    # Dismiss only the dropdown; do not dismiss the application dialogue.
+                    field_locator(application_dialog(page), current_field(page, field)).press(
+                        "Escape"
+                    )
+            else:
+                pending.pop(question_key(question), None)
+        # Approved choices can reveal more conditional controls in the same page.
+        page.wait_for_timeout(200)
+        fresh = form_questions(page)
+        if [{k: v for k, v in item.items() if k not in {"value", "checked"}} for item in fresh] == [
+            {k: v for k, v in item.items() if k not in {"value", "checked"}} for item in fields
+        ]:
+            break
+    else:
+        raise ValueError("Conditional form controls did not settle after three collection passes")
+    progress(
+        "collecting_questions",
+        f"Collected {len(pending)} pending question(s); checking the next safe step.",
+    )
+    # Unapproved prefills must not become claims merely to reach a later page.
+    return not any(
+        "question:"
+        + " ".join(
+            str(field.get("group") or field["label"] or "Unlabelled form control")
+            .casefold()
+            .split()
+        )
+        in pending
+        and (
+            field.get("checked") or (field["type"] not in {"radio", "checkbox"} and field["value"])
+        )
+        for field in fresh
+    )
 
 
 class LinkedInBrowser:
@@ -1272,16 +1437,20 @@ class LinkedInBrowser:
         return contacts
 
     def submit(self, job: Job, answers: dict[str, str], folder: Path) -> str:
-        progress = {"submitted": False}
+        progress: SubmissionProgress = {"submitted": False, "pending": {}, "step": 0}
         try:
             return self._submit(job, answers, folder, progress)
         except Exception as exc:
             if not progress["submitted"]:
+                if progress["pending"]:
+                    raise QuestionnaireReview(
+                        list(progress["pending"].values()), progress["step"], str(exc)[:1200]
+                    ) from exc
                 raise ReviewRequired(str(exc)[:2000]) from exc
             raise
 
     def _submit(
-        self, job: Job, answers: dict[str, str], folder: Path, progress: dict[str, bool]
+        self, job: Job, answers: dict[str, str], folder: Path, progress: SubmissionProgress
     ) -> str:
         if self.profile is None:
             raise ReviewRequired("Configure a candidate profile before submitting applications")
@@ -1315,6 +1484,7 @@ class LinkedInBrowser:
             seen_steps: set[str] = set()
             verified_resumes: dict[str, JSHandle] = {}
             for _step in range(10):
+                progress["step"] = _step + 1
                 ensure_linkedin(page)
                 dialog = application_dialog(page)
                 if application_step(dialog) in seen_steps:
@@ -1337,9 +1507,10 @@ class LinkedInBrowser:
                     "answering_questions",
                     f"Completing form step {_step + 1} using approved answers only.",
                 )
-                fill_questions(
+                can_advance = collect_questions(
                     page,
                     self.profile,
+                    progress["pending"],
                     resume_field_ids=resume_fields,
                     resolver=self.question_resolver,
                     progress=self.report,
@@ -1384,6 +1555,10 @@ class LinkedInBrowser:
                         [{**field, "step": _step + 1} for field in form_questions(page)]
                     )
                 if submit.count():
+                    if progress["pending"]:
+                        raise ValueError(
+                            "Reached the final review. No application was sent; approve the collected answers together."
+                        )
                     # Do not follow companies as an implicit side effect of submission.
                     for field in form_questions(page):
                         if field["type"] == "checkbox" and re.fullmatch(
@@ -1418,15 +1593,37 @@ class LinkedInBrowser:
                     )
                     return f"linkedin:{job.source_id}:confirmed"
                 seen_steps.add(application_step(dialog))
+                if not can_advance:
+                    raise ValueError(
+                        "Unapproved prefilled selections prevent further safe collection. Later pages may contain additional questions."
+                    )
                 self.report("advancing_form", f"Validating and advancing form step {_step + 1}.")
-                advance_application(
-                    page,
-                    self.profile,
-                    resume_field_ids=resume_fields,
-                    resolver=self.question_resolver,
-                    progress=self.report,
-                    memory=recovery.recovery_strategy,
-                )
+                try:
+                    advance_application(
+                        page,
+                        self.profile,
+                        resume_field_ids=resume_fields,
+                        resolver=self.question_resolver,
+                        progress=self.report,
+                        memory=recovery.recovery_strategy,
+                    )
+                except ValueError:
+                    ensure_linkedin(page)
+                    # Validation can reveal controls after the previous page snapshot.
+                    collect_questions(
+                        page,
+                        self.profile,
+                        progress["pending"],
+                        resume_field_ids=resume_fields,
+                        resolver=self.question_resolver,
+                        progress=self.report,
+                        memory=recovery.recovery_strategy,
+                    )
+                    self.report(
+                        "advancing_form",
+                        "Provider validation stopped further questionnaire collection. Later pages may contain additional questions.",
+                    )
+                    raise
             raise ValueError("Easy Apply exceeded the ten-step limit")
 
 

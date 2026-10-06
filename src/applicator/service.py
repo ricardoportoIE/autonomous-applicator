@@ -5,7 +5,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
-from .browser import FixtureBrowser, LinkedInBrowser, ReviewRequired, linkedin_job_id
+from .browser import (
+    FixtureBrowser,
+    LinkedInBrowser,
+    QuestionnaireReview,
+    ReviewRequired,
+    linkedin_job_id,
+)
 from .documents import fingerprint, generate, validate_generation, validate_manifest
 from .models import Advice, Job, Preflight, Profile, Question, State, SubmissionCheck
 from .operations import Operation, Operations
@@ -507,7 +513,13 @@ class Service:
             )
             self.store.finish(app_id, attempt, receipt)
         except ReviewRequired as exc:
-            self.store.hold(app_id, str(exc), attempt=attempt, question=pending_question)
+            self.store.hold(
+                app_id,
+                str(exc),
+                attempt=attempt,
+                question=pending_question,
+                questions=exc.questions if isinstance(exc, QuestionnaireReview) else None,
+            )
             raise
         except Exception:
             self.store.finish(app_id, attempt, None)

@@ -54,6 +54,31 @@ function show(overrides: Partial<ApplicationDetail> = {}) {
   return { detail, edit, view };
 }
 
+it("shows the collected questionnaire review and its reachable-page boundary", () => {
+  const detail = show({
+    events: [
+      {
+        id: 2,
+        kind: "documents_prepared",
+        detail: "Unrelated event",
+        created: "2026-10-06T10:01:00Z",
+      },
+      {
+        id: 1,
+        kind: "provider_review_required",
+        detail:
+          "Questionnaire review: 3 pending question(s) collected through form step 2. Provider validation blocked the next page.",
+        created: "2026-10-06T10:00:00Z",
+      },
+    ],
+  }).detail;
+  fireEvent.click(screen.getByRole("tab", { name: /^Questions/ }));
+  expect(screen.getByRole("status")).toHaveTextContent(detail.events[1].detail);
+  expect(
+    screen.getByText(/Review the collected questions together/),
+  ).toHaveTextContent(/provider requires an answer/);
+});
+
 it("rechecks readiness, edits details, prepares by both routes and submits only once", async () => {
   const { edit } = show();
   const mutate = vi.spyOn(h.workspace, "mutate").mockResolvedValue();

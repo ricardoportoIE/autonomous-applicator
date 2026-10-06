@@ -296,6 +296,11 @@ export function ApplicationDetails({
   edit: (row: Application) => void;
 }) {
   const { row, report, events } = detail;
+  const collection = events.find(
+    (event) =>
+      event.kind === "provider_review_required" &&
+      event.detail.startsWith("Questionnaire review:"),
+  );
   const routine = row.routine_answers ?? [];
   const keyFor = (question: Question) =>
     question.answer_key ||
@@ -612,11 +617,22 @@ export function ApplicationDetails({
           ) : section === "questions" ? (
             <>
               <h3>Approved questionnaire answers</h3>
+              {collection && (
+                <p className="review-note" role="status">
+                  {collection.detail}
+                </p>
+              )}
               <p>
                 Unknown or sensitive answers hold the application for review. A
                 prefilled provider field does not approve an answer. Routine
                 questions can be answered from your approved facts and verified
                 evidence.
+              </p>
+              <p>
+                Review the collected questions together before restarting. The
+                agent checks every reachable page without inventing answers. If
+                the provider requires an answer to open the next page, further
+                questions may only become visible after that answer is approved.
               </p>
               {questions.length ? (
                 questions.map((question) => (

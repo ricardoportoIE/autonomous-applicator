@@ -31,6 +31,8 @@ flowchart LR
 
 The service checks current policy, provider capability, scope, target identity, document hashes, a required cover PDF and known questionnaire answers before requesting a reservation. An immediate SQLite transaction then rechecks automation, scope, profile revision, current policy, manifest presence and the daily limit. The attempt is committed before external activity. Success needs a provider receipt. A known pre-submission stop becomes review and records unknown question labels; failure after attempting the irreversible action becomes uncertain. A separate confirmed manual outcome can reconcile the attempt.
 
+Live questionnaire discovery retains an accumulated batch across safely reachable pages and dialogues. Independent approved fields are completed while unresolved questions remain blank; unapproved prefills prevent advancement. Conditional fields and controls exposed by navigation validation are reread within explicit bounds. Pending questions always block the irreversible submission boundary. The service atomically stores the batch and releases its pre-send reservation, retaining unrelated current approvals against the final question fingerprint. The summary identifies the stopping step and reason; provider-required answers can keep later questions inaccessible. See [questionnaire collection](QUESTION_INTERPRETATION.md#collecting-questions-for-one-review).
+
 The worker checks the kill switch before each attempt. It cannot undo a submission already in flight. One application per canonical source identifier prevents duplicates. Editing evidence changes the revision and requires regenerating materials. Settings changes do not manufacture eligibility.
 
 ## Inspection and queue navigation

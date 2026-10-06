@@ -1,5 +1,13 @@
 # Source review, 2 October 2026
 
+## Questionnaire collection, 6 October 2026
+
+Reviewed the browser's per-control resolution, radio grouping, conditional rereads, reversible navigation, final sending gate, service exception handling, SQLite hold transaction and Questions tab. Previously an unresolved field raised immediately and the service retained only its latest resolver question. A structured pre-send review now carries the complete pending batch across reachable steps. Independent answers are still grounded and validated; a missing fact or rejected interpretation does not hide later fields on the same page.
+
+Radio options are filled as a group with their combined required state. Unknown checked/default values cannot be used to reach another page. Approved conditional choices trigger bounded structural rereads; provider navigation validation triggers another read before the hold. An accumulated pending batch blocks the final gate and Submit even if the provider exposes its last page. Required validation, layout/authentication failures and the existing ten-step bound remain genuine reachability limits.
+
+Batch persistence preserves existing identifiers and sensitive flags and validates the complete job before committing. Changed choices expire their own scoped approval; unrelated matching approvals, routine facts and location decisions are migrated once to the final question fingerprint. Old candidate revisions remain stale. Oversized-batch fault tests prove transactional rollback, including a previously held reservation. Transient HTML is excluded from persistence. The UI presents the last collection and explains that a mandatory answer can conceal later pages; it does not claim that hidden questions were inspected.
+
 ## CV selection and duration readiness, 6 October 2026
 
 Two separate pre-send holds were diagnosed: a filename locator resolving both the uploaded-document reference and a saved CV card, and an approved narrative being treated as a valid numeric years answer. The resume adapter now verifies the unique current selected document card and actual native radio, records operation-local proof by content hash and DOM identity, and reuses it only whilst both remain valid. Approval, routine resolution and readiness share a duration-format check. Explicit provider range choices remain supported. The candidate's earlier approved number is applied locally to the affected question; no date inference or cross-application approval transfer is added.
