@@ -4,8 +4,10 @@ import hashlib
 import json
 import os
 import re
+import uuid
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from datetime import UTC, datetime
 from html import escape
 from pathlib import Path
 from typing import Any, TypedDict
@@ -53,6 +55,77 @@ class SubmissionProgress(TypedDict):
     submitted: bool
     pending: dict[str, Question]
     step: int
+
+
+def capture_form_diagnostic(
+    page: Page, data: Path, source_id: str, step: int, stage: str
+) -> dict[str, Any]:
+    """Retain bounded, inert dialogue HTML locally without filled values or raw errors."""
+    evidence: dict[str, Any] = {"source_id": source_id, "step": step, "stage": stage}
+    try:
+        dialog = page.get_by_role("dialog").filter(visible=True)
+        if dialog.count() != 1:
+            raise ValueError("Expected one visible application dialogue")
+        html = dialog.evaluate(r"""dialog => {
+          if (dialog.querySelectorAll('*').length>5000) throw new Error('Oversized dialogue');
+          const copy=dialog.cloneNode(true);
+          copy.querySelectorAll('script,style,iframe,object,embed,link,meta,base,img,svg,math,audio,video,template').forEach(el=>el.remove());
+          const comments=document.createTreeWalker(copy,NodeFilter.SHOW_COMMENT), remove=[];
+          while(comments.nextNode()) remove.push(comments.currentNode);
+          remove.forEach(node=>node.remove());
+          const nodes=[copy,...copy.querySelectorAll('*')];
+          const ids=new Map(nodes.filter(el=>el.id).map((el,i)=>[el.id,'field-'+i]));
+          const allowed=new Set(['class','role','type','required','disabled','hidden','open','multiple','accept',
+            'min','max','step','minlength','maxlength','pattern','inputmode','aria-label',
+            'aria-required','aria-invalid','aria-expanded','aria-autocomplete']);
+          for (const el of nodes) {
+            const editable=el.hasAttribute('contenteditable');
+            for (const attr of [...el.attributes]) {
+              if (attr.name==='id' || attr.name==='for') {
+                const replacement=ids.get(attr.value);
+                if(replacement) el.setAttribute(attr.name,replacement); else el.removeAttribute(attr.name);
+              } else if (['aria-labelledby','aria-describedby'].includes(attr.name)) {
+                const refs=attr.value.split(/\s+/).map(id=>ids.get(id)).filter(Boolean).join(' ');
+                if(refs) el.setAttribute(attr.name,refs); else el.removeAttribute(attr.name);
+              } else if (!allowed.has(attr.name)) el.removeAttribute(attr.name);
+              else el.setAttribute(attr.name,attr.value.slice(0,500));
+            }
+            if (el.tagName==='TEXTAREA' || editable || el.matches('[role="combobox"]:not(input):not(select)')) el.textContent='';
+          }
+          return copy.outerHTML;
+        }""")
+        content = (
+            '<!doctype html><meta charset="utf-8">'
+            "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; style-src 'none'\">"
+            + html
+        ).encode("utf-8")
+        if len(content) > 256_000:
+            raise ValueError("Oversized dialogue HTML")
+        folder = data / "questionnaire-diagnostics"
+        target = folder / (uuid.uuid4().hex + ".html")
+        if folder.is_symlink() or not target.resolve().is_relative_to(data.resolve()):
+            raise ValueError("Unsupported diagnostic path")
+        folder.mkdir(parents=True, exist_ok=True)
+        with target.open("xb") as stream:
+            stream.write(content)
+        return {
+            **evidence,
+            "path": target.relative_to(data).as_posix(),
+            "sha256": hashlib.sha256(content).hexdigest(),
+            "captured_at": datetime.now(UTC).isoformat(),
+        }
+    except Exception as exc:
+        return {**evidence, "capture_error": type(exc).__name__}
+
+
+def validate_upload_document(document: Path) -> None:
+    """The provider requires DOC/DOCX/PDF strictly below the conservative 2 MB bound."""
+    if not document.is_file():
+        raise ValueError("Expected the verified document for this job and candidate")
+    if document.suffix.casefold() not in {".doc", ".docx", ".pdf"}:
+        raise ValueError("Resume uploads require DOC, DOCX or PDF format")
+    if not 0 < document.stat().st_size < 2_000_000:
+        raise ValueError("The application document must be non-empty and less than 2 MB")
 
 
 PENDING_INVITATION_NAME = re.compile(r"^(?:Pending|Invitation pending)(?:$|[,\s])")
@@ -670,8 +743,7 @@ def upload_resume(
         return None
     if button.count() != 1:
         raise ValueError("Ambiguous resume upload controls require manual review")
-    if not document.is_file():
-        raise ValueError("Expected the verified document for this job and candidate")
+    validate_upload_document(document)
     scope = button
     for _depth in range(8):
         scope = scope.locator("xpath=..")
@@ -1273,10 +1345,33 @@ class LinkedInBrowser:
         self.observe_fields: Callable[[list[dict[str, Any]]], None] | None = None
         self.confirmation_folder: Path | None = None
         self.confirmation_evidence: dict[str, Any] = {}
+        self.form_diagnostic: dict[str, Any] = {}
+        self.form_diagnostics_evidence: list[dict[str, Any]] = []
+        self.form_stage = "opening_opportunity"
 
     def report(self, stage: str, detail: str) -> None:
+        self.form_stage = stage
         if self.progress:
             self.progress(stage, detail)
+
+    @contextmanager
+    def form_diagnostics(
+        self, page: Page, job: Job, progress: SubmissionProgress
+    ) -> Iterator[None]:
+        try:
+            yield
+        except Exception:
+            if progress["step"] and not progress["submitted"]:
+                self.remember_form_diagnostic(page, job, progress, self.form_stage)
+            raise
+
+    def remember_form_diagnostic(
+        self, page: Page, job: Job, progress: SubmissionProgress, stage: str
+    ) -> None:
+        self.form_diagnostic = capture_form_diagnostic(
+            page, self.data, job.source_id, progress["step"], stage
+        )
+        self.form_diagnostics_evidence.append(self.form_diagnostic)
 
     @contextmanager
     def discovery_step(self, stage: str, detail: str) -> Iterator[None]:
@@ -1437,6 +1532,8 @@ class LinkedInBrowser:
         return contacts
 
     def submit(self, job: Job, answers: dict[str, str], folder: Path) -> str:
+        self.form_diagnostic = {}
+        self.form_diagnostics_evidence = []
         progress: SubmissionProgress = {"submitted": False, "pending": {}, "step": 0}
         try:
             return self._submit(job, answers, folder, progress)
@@ -1463,6 +1560,7 @@ class LinkedInBrowser:
             sync_playwright() as playwright,
             self.context(playwright) as context,
             linkedin_page(context) as page,
+            self.form_diagnostics(page, job, progress),
         ):
             self.report("opening_opportunity", "Opening the reviewed LinkedIn opportunity.")
             page.goto(job.url, wait_until="domcontentloaded")
@@ -1516,6 +1614,9 @@ class LinkedInBrowser:
                     progress=self.report,
                     memory=recovery.recovery_strategy,
                 )
+                if progress["pending"]:
+                    # Retain this page before advancing: a later hold must not erase its HTML.
+                    self.remember_form_diagnostic(page, job, progress, "answering_questions")
                 self.report(
                     "uploading_documents",
                     f"Checking remaining document fields: form step {_step + 1}.",
@@ -1533,10 +1634,7 @@ class LinkedInBrowser:
                     is_cover = "cover" in label.casefold()
                     suffix = "_Cover_Letter.pdf" if is_cover else "_CV.pdf"
                     candidate = folder / (filename_stem(self.profile, job) + suffix)
-                    if not candidate.is_file():
-                        raise ValueError(
-                            "Expected the verified document for this job and candidate"
-                        )
+                    validate_upload_document(candidate)
                     upload.set_input_files(str(candidate))
                     if self.observe_fields:
                         self.observe_fields(
@@ -1556,6 +1654,10 @@ class LinkedInBrowser:
                     )
                 if submit.count():
                     if progress["pending"]:
+                        self.report(
+                            "answering_questions",
+                            "Final review still contains unanswered questions; no application was sent.",
+                        )
                         raise ValueError(
                             "Reached the final review. No application was sent; approve the collected answers together."
                         )
@@ -1594,6 +1696,10 @@ class LinkedInBrowser:
                     return f"linkedin:{job.source_id}:confirmed"
                 seen_steps.add(application_step(dialog))
                 if not can_advance:
+                    self.report(
+                        "answering_questions",
+                        "Unapproved prefilled answers stopped further questionnaire collection.",
+                    )
                     raise ValueError(
                         "Unapproved prefilled selections prevent further safe collection. Later pages may contain additional questions."
                     )

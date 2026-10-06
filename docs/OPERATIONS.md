@@ -148,6 +148,18 @@ For an uncertain application, check the provider history first. Record a confirm
 
 ## Browser session
 
+### Private form diagnostics and resume uploads
+
+The agent retains sanitised HTML from the single visible Easy Apply dialogue before leaving each page with pending questions and when an opened form fails before the sending click. This preserves earlier question layouts even if a later page stops collection. The existing ten-step bound permits at most eleven captures per adapter attempt, including its final failure snapshot. A `form_diagnostic` activity event records the vacancy identifier, step, stage, capture time, relative path and SHA-256 hash. Files live under ignored `data/questionnaire-diagnostics/`; they are local diagnostic evidence rather than CV inputs or instructions for the model. Read the event and open its local HTML file to inspect labels, options, nesting, control constraints and validation text.
+
+Captures omit filled input/textarea/editable values, selected states, scripts, handlers, comments, resource URLs and non-allowlisted attributes. Original identifiers become synthetic references. Each capture is bounded to 5,000 descendant elements and 256,000 UTF-8 bytes, written under a unique name without replacing existing evidence, and carries a restrictive CSP. Visible question, option, filename and validation text can still contain personal context, so these files remain private. Missing/ambiguous dialogues, path refusal and capture errors are recorded by exception class without replacing the original form outcome. Capture does not retry or click Submit. Question holds at final review or because of unapproved prefills retain the `answering_questions` stage.
+
+The `Resume*` chooser receives the PDF whose filename is derived from the current candidate and vacancy. Normal submission uses the immutable archived copy after manifest and current-generation checks. Before uploading, documents must be non-empty DOC, DOCX or PDF files strictly below **2,000,000 bytes**; this conservative bound satisfies the displayed “less than 2MB” requirement. An oversized CV remains in review; it is not silently compressed or replaced with a generic CV. The adapter proves that the fresh native radio and its document card are selected, supporting both visible filenames and accessible-name cards. It reuses an upload only within the current attempt when the document hash and selected DOM element still match. A filename elsewhere on the page does not prove selection.
+
+The 6 October guarded live check proved selection of the pending vacancy's existing **77,831-byte PDF**, with its current manifest hash, one file chooser use and no final send. It stopped at later questions and retained their diagnostic HTML. The seven protected application/answer/attempt/submission/connection tables, candidate revision and pause settings were unchanged. This proves the observed chooser contract, rather than all future provider layouts.
+
+### Manual sign-in
+
 ```powershell
 uv run python -m applicator.cli browser-login
 ```

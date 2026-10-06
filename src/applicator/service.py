@@ -1,5 +1,7 @@
 """Orchestration that keeps irreversible actions behind deterministic gates."""
 
+import json
+import logging
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -525,6 +527,18 @@ class Service:
             self.store.finish(app_id, attempt, None)
             raise
         finally:
+            if isinstance(adapter, LinkedInBrowser) and adapter.form_diagnostic:
+                try:
+                    with self.store.connect() as db:
+                        for evidence in adapter.form_diagnostics_evidence or [
+                            adapter.form_diagnostic
+                        ]:
+                            self.store.event(db, "form_diagnostic", json.dumps(evidence), app_id)
+                except Exception as exc:
+                    # Diagnostic storage must not replace the original provider outcome.
+                    logging.getLogger(__name__).warning(
+                        "Form diagnostic journal unavailable: %s", type(exc).__name__
+                    )
             if isinstance(adapter, (LinkedInBrowser, FixtureBrowser)):
                 if self.store.application(app_id)["state"] == State.SUBMITTED:
                     try:

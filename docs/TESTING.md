@@ -10,6 +10,8 @@ After that baseline, the large-choice contract correction passed **12 additional
 
 ## Backend acceptance gate
 
+The form-diagnostic/upload enhancement passed **30 focused cases in 38.09 seconds**: 29 new regressions plus the existing intercepted successful submission flow. New checks cover inert/value-free HTML, multi-page retention, missing/ambiguous/oversized dialogues, unsafe paths and disk errors, the pre-send capture boundary, durable activity events and non-disruptive journal failure. Upload checks verify actual browser `File` bytes for two vacancy-specific PDFs, visible/accessibility-name selection, within-attempt reuse and strict format/size boundaries, including refusal before opening the chooser. Fixtures send no real applications or paid model requests. The complete coverage baseline above predates these changes; no new full-suite or frontend coverage claim is made.
+
 The complete Python suite must reach **100% statement and branch coverage in every module under `src/applicator`**, including API endpoints, policy, AI contracts, persistence, document rendering, browser adapters, networking, operation recovery and the command-line entry point. The runtime inventory contains **19 modules**. Statement and branch counts change with source revisions and Python versions; the JSON report and inventory-gate output record the exact counts for each run. Each interpreter must cover its complete measured inventory. The empty package initializer is included in the inventory. Historical measurements are retained in [the delivery record](STATUS.md).
 
 Pytest measures branches as well as statements and fails below 100%. A second gate checks the JSON report against every authored Python application file, rejects missing or unexpected modules, requires zero missing statements and branches in each module and validates the counters. CI runs both checks independently on Windows and Linux with Python 3.12 and 3.14. A percentage rounded to 100% cannot satisfy these checks while a missing path remains.
@@ -66,6 +68,7 @@ The full pytest command starts a fresh measurement; it does not append previous 
 For focused development checks, select tests without claiming a full coverage result:
 
 ```powershell
+uv run pytest tests/test_form_diagnostics_upload.py tests/test_application_dialog.py::test_native_dialog_full_submission_against_an_intercepted_provider --override-ini addopts= --no-cov
 uv run pytest tests/test_large_choice_lists.py --override-ini addopts= --no-cov
 uv run pytest tests/test_backend_integrity.py tests/test_browser_boundaries.py --no-cov
 uv run pytest tests/test_backend_coverage_gate.py --no-cov

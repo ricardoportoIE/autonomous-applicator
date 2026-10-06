@@ -18,6 +18,12 @@ When default AI preparation is enabled, the local preflight and actual submissio
 
 Missing credentials, a different configured/returned model, refused or invalid results, API failures and invalid AI-selected documents leave the record in review with no usable submission manifest. No local fallback is used after an AI failure, no submission attempt is reserved, and the worker does not automatically repeat the failed preparation each cycle. Reprepare deliberately after resolving the issue. Exact approved questionnaire answers, including legal work authorisation, remain independent of model selections and fit scores.
 
+## Upload verification, 6 October 2026
+
+The browser uploads the current vacancy's PDF from the immutable attempt archive after document and generation checks. Before either a resume chooser or a legacy file input receives a document, it validates a non-empty DOC/DOCX/PDF file strictly below 2,000,000 bytes. It then proves selection of the fresh native resume radio and corresponding document card using visible or accessible filenames. Within-attempt reuse also requires the same hash and DOM element; existing same-name cards cannot establish fresh upload proof.
+
+Fictional Chromium tests upload two separately prepared vacancy PDFs and compare their actual browser `File` bytes with the respective source hashes, verify the selected radio, and show that a proved unchanged upload is not repeated. Oversized files fail before opening the chooser. These checks prove document routing and selection, not improved tailoring quality. A guarded live check selected the actual pending vacancy's 77,831-byte prepared CV once, verified its manifest hash, then stopped at later questions without sending. See [private diagnostics and upload checks](OPERATIONS.md#private-form-diagnostics-and-resume-uploads).
+
 ## Live verification, 3 October 2026
 
 A read-only audit found one prepared local CV and no recorded model provenance. Therefore, historical AI use could not be established. Code inspection confirmed that the former ordinary and worker preparations used local rules; only the explicit AI button called the model.

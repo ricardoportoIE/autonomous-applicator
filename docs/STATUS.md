@@ -1,5 +1,17 @@
 # Delivery and validation record
 
+## Private form diagnostics and CV upload, 6 October 2026
+
+The LinkedIn adapter now retains sanitised HTML from each page with pending questions before advancing, plus the current dialogue when an opened form fails before sending. Each private capture has activity metadata identifying the vacancy, step, stage, timestamp, relative path and SHA-256 hash. HTML preserves labels, choices, nesting and validation attributes while removing filled values, selection states, scripts, handlers, comments and resource URLs. Original IDs become synthetic references. At most eleven snapshots follow the existing ten-step bound; each snapshot is limited to 5,000 descendants and 256,000 bytes, written exclusively below ignored `data/questionnaire-diagnostics/` with a restrictive CSP. Capture/journal failure retains the original review outcome, and no snapshot is sent to the model or used as executable learning. Pending-question stops now report the correct `answering_questions` stage.
+
+Resume and legacy file uploads now reject missing, empty, unsupported or oversized documents before the upload action. The conservative “less than 2MB” bound is strictly below 2,000,000 bytes. Existing archived-document provenance, fresh radio/card selection, accessible-name support and hash/DOM-verified within-attempt reuse remain enforced.
+
+All **30 focused cases passed in 38.09 seconds**, comprising 29 new regressions and one existing intercepted successful submission flow. They verify HTML sanitisation, bounds and path refusal; earlier-page retention; pre-send-only capture; durable events and journal failure; file-format/size boundaries; two vacancy-specific PDFs' actual browser bytes and selected cards; and verified upload reuse. Ruff, formatting, strict mypy and repository hygiene passed. The complete suite and frontend checks were not rerun for this focused backend change. The 1,151-case complete coverage result below remains the preceding baseline.
+
+A guarded live check proved one upload and selection of the pending vacancy's **77,831-byte PDF**, with its current manifest hash. It then stopped at later questions and saved private HTML before closing the browser. Seven protected tables covering applications, attempts, submission archives, approved/routine answers, location decisions and connections were unchanged, along with the candidate revision and pause settings. No provider application/invitation was sent and no paid model request or document regeneration occurred. Technical method hints and diagnostic events remain local. Delivery uses a local commit only; remote push awaits the user's explicit instruction.
+
+The final runtime was loaded through a guarded paused restart after a new private SQLite backup. All ten core tables matched the backup, all **52 document hashes** remained valid, and candidate revision **13** and both pause switches were preserved.
+
 ## Large dialling-code lists, 6 October 2026
 
 An observed phone-country dropdown contained 249 enabled options. The `Question.choices` contract allowed only 100, so collection raised a validation error before the approved telephone details could be filled. The contract now permits up to 500 choices and retains the complete list. The 100-question application bound, 12,000-character semantic HTML bound and existing request limits remain enforced. Exact choice matching and approved-fact checks still govern answers; the change neither truncates options nor adopts provider defaults.
