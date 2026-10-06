@@ -1157,6 +1157,23 @@ class LinkedInBrowser:
                     jobs.append(job_details(page, job_id, timeout=30000))
         return jobs
 
+    def read_opportunity(self, url: str) -> Job:
+        """Import one verified job without opening an application form."""
+        job_id = linkedin_job_id(url)
+        with (
+            sync_playwright() as playwright,
+            self.context(playwright, headless=False) as context,
+            linkedin_page(context) as page,
+        ):
+            with self.discovery_step("opening_opportunity", "Opening the LinkedIn opportunity."):
+                page.goto(
+                    f"https://www.linkedin.com/jobs/view/{job_id}/",
+                    wait_until="domcontentloaded",
+                    timeout=60000,
+                )
+            with self.discovery_step("extracting_opportunity", "Reading the job details."):
+                return job_details(page, job_id, timeout=30000)
+
     def contacts(
         self, location: str, limit: int = 3, *, exclude_urls: set[str] | None = None
     ) -> list[dict[str, str]]:

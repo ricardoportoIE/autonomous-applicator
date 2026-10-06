@@ -105,6 +105,7 @@ def test_dashboard_full_journey(data, profile, tmp_path):
         page.get_by_text("Evidence saved.").wait_for()
         page.get_by_role("button", name="Applications", exact=True).click()
         page.get_by_role("button", name="Add opportunity", exact=True).click()
+        page.get_by_role("button", name="Enter details manually", exact=True).click()
         for label, value in (
             ("Job title", "Backend Engineer"),
             ("Company", "Example Employer"),

@@ -38,7 +38,7 @@ CV selection is proved against the current selected document card, rather than f
 
 | Capability | User outcome |
 | --- | --- |
-| Discovery and import | Search configured LinkedIn opportunities, import a public Greenhouse board or add a vacancy manually. Search, filter and sort the queue. |
+| Discovery and import | Paste a LinkedIn job link to read and queue the vacancy, search configured opportunities, import a public Greenhouse board or enter details manually. Search, filter and sort the queue. |
 | Explainable fit | Inspect matched technologies, evidence gaps, location considerations and explicit blockers before acting. |
 | Tailored documents | Generate A4 PDF/DOCX CVs and a required cover letter from approved evidence, with hashes and preparation provenance. |
 | Questionnaire assistance | Resolve routine questions from approved facts; request a separate GPT-6.1 Sol draft and explicitly review, edit and approve it. |
@@ -48,6 +48,10 @@ CV selection is proved against the current selected document card, rather than f
 | Candidate and policy management | Maintain qualifications, source evidence, exact answers, eligibility facts, search preferences and independent daily limits. |
 
 ### Queue and review
+
+![URL-only opportunity import with a separate manual entry option](docs/assets/opportunity-import.png)
+
+**Add opportunity** defaults to pasting a LinkedIn job link. The agent reads verified primary job details in the dedicated browser and saves the vacancy to the preparation queue. Importing shows visible progress, preserves duplicate records and retains failed drafts for an explicit retry. The modal capture above was updated on 6 October 2026 using a disposable fictional candidate; no provider account or model call was used. See [single-link operations](docs/OPERATIONS.md#import-one-opportunity-from-its-link) for supported links and review boundaries.
 
 ![Application queue with search, status filters, fit scores and dedicated record links](docs/assets/application-queue.png)
 

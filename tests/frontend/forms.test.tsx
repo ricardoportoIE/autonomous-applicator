@@ -28,6 +28,103 @@ function submit(button: string) {
 }
 
 it.each([true, false])(
+  "imports a URL-only opportunity and reports created=%s",
+  async (created) => {
+    h.responses.set("/api/jobs/from-url", { id: 4, created });
+    const done = vi.fn();
+    render(<JobForm application={null} workspace={h.workspace} done={done} />);
+    expect(screen.queryByLabelText("Job title")).not.toBeInTheDocument();
+    fill("Job URL", "https://www.linkedin.com/jobs/view/123/");
+    submit("Save opportunity");
+    await waitFor(() => expect(done).toHaveBeenCalledOnce());
+    expect(h.fetch).toHaveBeenCalledWith(
+      "/api/jobs/from-url",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          url: "https://www.linkedin.com/jobs/view/123/",
+        }),
+      }),
+    );
+    expect(h.workspace.getSnapshot().notice).toContain(
+      created ? "preparation queue" : "already in your queue",
+    );
+  },
+);
+
+it("shows loading, prevents duplicate imports and retains the link on failure for an explicit retry", async () => {
+  const held = deferred<Response>();
+  h.fetch.mockImplementationOnce(() => held.promise);
+  const done = vi.fn();
+  render(<JobForm application={null} workspace={h.workspace} done={done} />);
+  fill("Job URL", "https://www.linkedin.com/jobs/view/123/");
+  submit("Save opportunity");
+  expect(screen.getByRole("button", { name: "Importing…" })).toBeDisabled();
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "Opening the opportunity",
+  );
+  submit("Importing…");
+  held.resolve(
+    Response.json({ detail: "Complete browser-login first" }, { status: 409 }),
+  );
+  await waitFor(() => expect(h.workspace.getSnapshot().error).toBe(true));
+  expect(h.workspace.getSnapshot().notice).toBe("Complete browser-login first");
+  expect(screen.getByLabelText("Job URL")).toHaveValue(
+    "https://www.linkedin.com/jobs/view/123/",
+  );
+  expect(done).not.toHaveBeenCalled();
+  expect(
+    h.fetch.mock.calls.filter(([url]) => url === "/api/jobs/from-url"),
+  ).toHaveLength(1);
+  h.responses.set("/api/jobs/from-url", { id: 4, created: true });
+  submit("Save opportunity");
+  await waitFor(() => expect(done).toHaveBeenCalledOnce());
+});
+
+it.each(["response", "refresh"])(
+  "ignores import completion if locked during %s",
+  async (phase) => {
+    const response = deferred<{ id: number; created: boolean }>();
+    const refresh = deferred<void>();
+    const action = vi.spyOn(h.workspace, "action");
+    vi.spyOn(h.workspace.api, "json").mockReturnValueOnce(response.promise);
+    const refreshCall = vi
+      .spyOn(h.workspace, "refresh")
+      .mockReturnValueOnce(refresh.promise);
+    const done = vi.fn();
+    render(<JobForm application={null} workspace={h.workspace} done={done} />);
+    fill("Job URL", "https://www.linkedin.com/jobs/view/123/");
+    submit("Save opportunity");
+    if (phase === "refresh") {
+      response.resolve({ id: 4, created: true });
+      await waitFor(() => expect(refreshCall).toHaveBeenCalledOnce());
+    }
+    h.workspace.lock();
+    response.resolve({ id: 4, created: true });
+    refresh.resolve();
+    await action.mock.results[0].value;
+    expect(done).not.toHaveBeenCalled();
+    expect(h.workspace.getSnapshot().notice).toBe("");
+  },
+);
+
+it("switches entry modes and cancels a link import without saving", () => {
+  const done = vi.fn();
+  render(<JobForm application={null} workspace={h.workspace} done={done} />);
+  fireEvent.click(
+    screen.getByRole("button", { name: "Enter details manually" }),
+  );
+  expect(screen.getByLabelText("Job title")).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Import from link" }));
+  expect(screen.queryByLabelText("Job title")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(done).toHaveBeenCalledOnce();
+  expect(
+    h.fetch.mock.calls.filter(([url]) => url === "/api/jobs/from-url"),
+  ).toHaveLength(0);
+});
+
+it.each([true, false])(
   "saves all candidate facts with the opening revision; existing=%s",
   async (existing) => {
     const mutate = vi.spyOn(h.workspace, "mutate").mockResolvedValue();
@@ -136,6 +233,9 @@ it.each([
   const mutate = vi.spyOn(h.workspace, "mutate").mockResolvedValue();
   const done = vi.fn();
   render(<JobForm application={null} workspace={h.workspace} done={done} />);
+  fireEvent.click(
+    screen.getByRole("button", { name: "Enter details manually" }),
+  );
   fill("Job title", "Backend Engineer");
   fill("Company", "Example Employer");
   fill("Location", "Dublin, Ireland");
@@ -182,6 +282,9 @@ it("does not import a manual opportunity if the session locks during identity ca
   const mutate = vi.spyOn(h.workspace, "mutate");
   const done = vi.fn();
   render(<JobForm application={null} workspace={h.workspace} done={done} />);
+  fireEvent.click(
+    screen.getByRole("button", { name: "Enter details manually" }),
+  );
   fill("Job URL", "https://example.test/new");
   submit("Save opportunity");
   h.workspace.lock();

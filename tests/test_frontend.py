@@ -451,6 +451,7 @@ def test_job_edit_can_be_cancelled_and_paused_submission_is_disabled(dashboard):
     page.get_by_role("button", name="Cancel editing", exact=True).click()
     expect(page.get_by_role("dialog")).to_have_count(0)
     page.get_by_role("button", name="Add opportunity", exact=True).click()
+    page.get_by_role("button", name="Enter details manually", exact=True).click()
     expect(page.locator('#job-form input[name="title"]')).to_have_value("")
     expect(page.get_by_role("button", name="Save opportunity", exact=True)).to_be_visible()
     assert app.state.store.applications()[0]["job"]["title"] == "Backend Engineer"

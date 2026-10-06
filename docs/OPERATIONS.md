@@ -1,5 +1,15 @@
 # Operating guide
 
+## Import one opportunity from its link
+
+In **Applications → Add opportunity**, **Import from link** is the default entry method. Paste an exact `https://www.linkedin.com/jobs/view/<numeric-id>/` link and select **Save opportunity**. Tracking query parameters and fragments are discarded before navigation. The agent opens a visible window using the dedicated LinkedIn session, reads the primary title, company, location and full description, verifies the job identifier, and saves the opportunity to the normal preparation queue. No candidate profile is needed to read a vacancy. Declared LinkedIn authorisation and a signed-in dedicated browser session are required.
+
+The modal shows an importing status and disables repeated submissions. The durable run journal records `opening_opportunity`, `extracting_opportunity`, `saving_opportunity` and `opportunity_saved`; failure retains its last stage. The same operation lease and browser lock used by application processing prevent concurrent imports from interrupting the queue. Importing is allowed whilst automation is paused or daily sending capacity is exhausted and does not reserve a sending slot. Documents, questionnaire completion and submission follow the existing queue policy afterwards.
+
+An existing source identifier returns the existing application without replacing saved job details, documents or answers. Failed reads save no opportunity and retain the entered link for an explicit retry. Authentication redirects provide dedicated-session sign-in instructions; unsupported layouts stop visibly. The importer opens no Easy Apply form and clicks no submission or networking control. Questions, cover-letter requirements and sponsorship conditions that are not stated in the retrieved details are not invented.
+
+Only exact supported LinkedIn job links are automatically opened. Other origins, embedded credentials, explicit ports and non-job paths are rejected before launching the browser. For another website, select **Enter details manually**; the complete existing form remains available. Public Greenhouse boards retain their separate fixed-origin importer. Editing an existing opportunity still opens its complete details form.
+
 ## Diagnosing a questionnaire hold
 
 Read the application's last stage, activity journal and submission record before retrying. `ReviewRequired` is a pre-send hold; a missing approved fact differs from a provider-control failure. A numeric experience field needs an exact numeric answer even when the approved profile contains a longer description. Do not convert dates automatically. Save the candidate's confirmed answer against the pending application and recheck readiness.

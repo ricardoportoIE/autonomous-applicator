@@ -16,6 +16,7 @@ No runtime module is omitted and no coverage-ignore directives are permitted. Co
 
 | Boundary | Representative assertions |
 | --- | --- |
+| Single-link import | Authenticated, bounded intake rejects unsupported origins before browser access; declared scope is required. Paused imports save once without candidate facts or sending capacity. Duplicate identifiers preserve existing records; failures retain the durable stage without a partial save. Intercepted Chromium verifies canonical navigation, primary details, identity/authentication redirects and zero application clicks. React and production-browser cases verify URL-only entry, visible loading, duplicate-click suppression, explicit retry, manual-entry parity and stale completion after locking. |
 | Candidate facts and questions | Unknown eligibility is never inferred; ambiguous durations and capability modifiers remain in review; stale, sensitive, invalid and oversized routine answers cannot be stored. |
 | Documents | Real PDF/DOCX generation preserves approved text, identity and page constraints; extraction failures and an oversized cover letter reject preparation; optional font registration is portable and idempotent. |
 | Submission records | Hash checks detect changes between validation and archiving; existing archives cannot be overwritten; unreserved attempts and escaping archive/download paths are rejected. |

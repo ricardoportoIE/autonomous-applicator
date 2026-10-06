@@ -1,6 +1,12 @@
 # Delivery and validation record
 
-Version 0.3.0 reviewed through CV selection and numeric questionnaire readiness on 6 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+Version 0.3.0 reviewed through single-link opportunity import on 6 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
+
+## Single-link opportunity import, 6 October 2026
+
+**Add opportunity** defaults to entering a LinkedIn job URL. The authenticated endpoint validates the exact provider origin and numeric opportunity path before browser access, opens a visible dedicated session, reads verified primary details, and saves through the existing deduplicating store. The application operation lease and browser lock serialise the read with queue work. Progress records opening, extraction, saving and completion; failure retains its stage. Importing requires declared scope but no candidate record, enabled automation or remaining daily sending capacity. Existing identifiers preserve their records. Manual entry, complete editing and the separate Greenhouse board importer remain available.
+
+Added **26 Python cases** covering intake, authorisation, ownership, provider/browser failure, canonical navigation, authentication and identity redirects, exhausted sending capacity, URL-only production controls and manual-entry parity. **127 existing/initial focused cases passed in 361.39 seconds**, and the final **26 feature cases passed in 22.86 seconds** after correcting three new UI assertions to account for the fixture's pre-existing opportunity. The complete inventory is **1,096 Python cases**; its fresh full-suite measurement is running at the implementation publication point. The final **161 React cases passed**, measuring **835/835 statements, 756/756 lines, 298/298 functions and 884/884 branch outcomes across all ten modules**. Ruff, formatting, strict mypy, TypeScript, ESLint, Prettier and the production build passed. A new modal screenshot uses only a disposable fictional candidate, with no external or model requests. Full-suite, independent coverage and paused rollout results are recorded separately when complete.
 
 ## CV selection and numeric duration readiness, 6 October 2026
 

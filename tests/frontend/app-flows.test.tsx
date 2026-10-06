@@ -109,6 +109,9 @@ it("creates a manual opportunity and imports a board through focused dialogues",
   await start();
   nav("Applications");
   fireEvent.click(screen.getByRole("button", { name: "Add opportunity" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Enter details manually" }),
+  );
   fill("Job URL", "https://example.test/new");
   fill("Job title", "API Engineer");
   fill("Company", "Example");

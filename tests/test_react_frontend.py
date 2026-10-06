@@ -1,6 +1,7 @@
 """React migration parity, native dialogue behaviour and document tab regressions."""
 
 import re
+import threading
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,8 @@ from playwright.sync_api import expect
 from test_browser import TOKEN
 from test_frontend import dashboard as dashboard
 
+from applicator.browser import LinkedInBrowser
+from applicator.models import Settings
 from applicator.service import PreparationError
 
 
@@ -23,6 +26,74 @@ def check_accessibility(page):
     assert not result["violations"], [
         (item["id"], [node["target"] for node in item["nodes"]]) for item in result["violations"]
     ]
+
+
+@pytest.mark.browser
+@pytest.mark.parametrize("existing", [False, True])
+def test_url_only_modal_imports_with_loading_and_preserves_duplicates(
+    dashboard, job, monkeypatch, existing
+):
+    page, app, _ = dashboard
+    store = app.state.store
+    original = store.applications()
+    store.set_settings(Settings(linkedin_authorised=True))
+    job.source, job.source_id, job.url = (
+        "linkedin",
+        "123",
+        "https://www.linkedin.com/jobs/view/123/",
+    )
+    if existing:
+        store.add_job(job)
+    held = threading.Event()
+    calls = []
+
+    def read(self, url):
+        calls.append(url)
+        self.report("extracting_opportunity", "Reading the job details.")
+        assert held.wait(15), "The browser test did not release the import"
+        return job
+
+    monkeypatch.setattr(LinkedInBrowser, "read_opportunity", read)
+    page.get_by_role("button", name="Applications", exact=True).click()
+    page.get_by_role("button", name="Add opportunity", exact=True).click()
+    assert page.get_by_label("Job title", exact=True).count() == 0
+    page.get_by_label("Job URL", exact=True).fill(job.url)
+    page.get_by_role("button", name="Save opportunity", exact=True).click()
+    try:
+        expect(page.get_by_role("button", name="Importing…", exact=True)).to_be_disabled()
+        expect(page.get_by_role("dialog")).to_contain_text("Opening the opportunity")
+        page.locator("#job-form").dispatch_event("submit")
+    finally:
+        held.set()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    expect(page.locator("#notice")).to_contain_text(
+        "already in your queue" if existing else "preparation queue"
+    )
+    assert calls == [job.url]
+    assert len(store.applications()) == len(original) + 1
+    imported = next(row for row in store.applications() if row["source_id"] == "123")
+    assert imported["job"] == job.model_dump()
+    assert all(row in store.applications() for row in original)
+    assert store.daily_usage().used == 0
+
+
+@pytest.mark.browser
+def test_url_import_failure_retains_draft_and_manual_entry(dashboard):
+    page, app, _ = dashboard
+    before = app.state.store.applications()
+    page.get_by_role("button", name="Applications", exact=True).click()
+    page.get_by_role("button", name="Add opportunity", exact=True).click()
+    url = "https://example.test/job"
+    page.get_by_label("Job URL", exact=True).fill(url)
+    page.get_by_role("button", name="Save opportunity", exact=True).click()
+    expect(page.get_by_role("dialog").get_by_role("alert")).to_contain_text(
+        "exact LinkedIn job URL"
+    )
+    expect(page.get_by_label("Job URL", exact=True)).to_have_value(url)
+    expect(page.get_by_role("button", name="Save opportunity", exact=True)).to_be_enabled()
+    page.get_by_role("button", name="Enter details manually", exact=True).click()
+    expect(page.get_by_label("Job title", exact=True)).to_be_visible()
+    assert app.state.store.applications() == before
 
 
 @pytest.mark.browser
@@ -65,6 +136,7 @@ def test_add_opportunity_and_evidence_from_modals_preserve_all_contract_fields(d
     page, app, _ = dashboard
     page.get_by_role("button", name="Applications", exact=True).click()
     page.get_by_role("button", name="Add opportunity", exact=True).click()
+    page.get_by_role("button", name="Enter details manually", exact=True).click()
     for label, value in [
         ("Job title", "Data Engineer"),
         ("Company", "Example Data"),
@@ -225,6 +297,7 @@ def test_lock_during_opportunity_hashing_cannot_import_a_stale_draft(dashboard):
     before = app.state.store.applications()
     page.get_by_role("button", name="Applications", exact=True).click()
     page.get_by_role("button", name="Add opportunity", exact=True).click()
+    page.get_by_role("button", name="Enter details manually", exact=True).click()
     for label, value in [
         ("Job title", "Unsaved role"),
         ("Company", "Example"),

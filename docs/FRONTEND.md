@@ -4,16 +4,18 @@ The local dashboard is implemented in React and strict TypeScript, built with Vi
 
 The main automation control toggles **Start agent / Pause agent** and shows **Starting agent… / Pausing agent…** while saving. It suppresses duplicate control requests separately from ordinary workspace work, so pausing remains possible during a slow operation. Start wakes the background queue immediately. The global pause preserves the user's separate networking switch, and stale responses cannot repopulate a locked workspace.
 
-The current React unit suite has 155 cases and measures 100% in all ten runtime modules: 817 statements, 740 lines, 294 functions and 864 branch outcomes. The earlier migration measurements below refer to their own source revisions. Production Chromium tests additionally exercise the actual background Start/Pause flow with fictional records. Progress retains the requested action while refreshed settings already show completion.
+The current React unit suite has 161 cases and measures 100% in all ten runtime modules: 835 statements, 756 lines, 298 functions and 884 branch outcomes. The earlier migration measurements below refer to their own source revisions. Production Chromium tests additionally exercise the actual background Start/Pause flow with fictional records. Progress retains the requested action while refreshed settings already show completion.
 
 ## Feature parity
+
+**Add opportunity** now defaults to a URL-only LinkedIn importer with a visible importing state, disabled duplicate submissions and retained input on failure. **Enter details manually** preserves every previous field and existing-opportunity editing keeps its complete form. Import completion is bound to the opening session both before and after refreshing the queue; a late response cannot close or populate a replacement session. The backend operation journal records each read/save stage. Unsupported websites retain manual entry and the separate Greenhouse board route. See [single-link operations](OPERATIONS.md#import-one-opportunity-from-its-link).
 
 | Area | Retained information and operations | Organisation |
 | --- | --- | --- |
 | Authentication | Local token, automatic session restoration, expiry handling, lock, private record removal | Dedicated lock screen; tokens are not placed in URLs |
 | Overview | Opportunities/ready/review/submitted totals, London-day usage, remaining attempts, saved scoring bands, recent vacancies, cautious outcome observations, agent cycle | Hero, metrics and separate decision/capacity cards |
 | Processing | Current vacancy, stage, run ID, total/stage elapsed time, terminal failure code, latest 50 results | Shared monitor visible in every unlocked area; read-only polling |
-| Opportunities | Manual import, LinkedIn discovery with progress, Greenhouse board import, search/status/sort/clear filters | Queue plus compact discovery controls; imports in dialogues |
+| Opportunities | URL-only LinkedIn import, manual entry, LinkedIn discovery with progress, Greenhouse board import, search/status/sort/clear filters | Queue plus compact discovery controls; import modes in dialogues |
 | Application overview | Original opportunity, named passed/blocked checks, local snapshot timestamp, fit reasons/blockers/matches/gaps, preparation origin, model/revision/evidence count, prepare/AI/submit/download actions, job editing | Overview tab; expandable full description, requirements, sponsorship, cover-letter requirement and source identity |
 | Documents | Current PDF/DOCX CV and cover-letter downloads, manual approved-evidence selection | Documents tab; manual selection is explicitly recorded as a different origin |
 | Questions | Exact approved keys/choices, required indicators, sensitive-question holds, application-scoped approval with readiness refresh, optional grounded GPT-6.1 Sol answer ideas | Questions tab; suggestions remain separate editable drafts and never approve answers; approvals retain valid CVs and other applications |

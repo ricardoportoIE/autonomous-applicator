@@ -19,7 +19,7 @@ from playwright.sync_api import Error as BrowserError
 from pydantic import Field
 
 from .adviser import advise
-from .browser import LinkedInBrowser
+from .browser import LinkedInBrowser, linkedin_job_id
 from .discovery import greenhouse
 from .documents import validate_manifest
 from .models import (
@@ -59,6 +59,10 @@ class Outcome(Contract):
 
 class Board(Contract):
     board: str
+
+
+class OpportunityLink(Contract):
+    url: str = Field(min_length=1, max_length=2000)
 
 
 class LocationReview(Contract):
@@ -464,6 +468,38 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
     @app.post("/api/jobs", dependencies=auth)
     def add_job(job: Job) -> dict[str, Any]:
         app_id, created = store.add_job(job)
+        return {"id": app_id, "created": created}
+
+    @app.post("/api/jobs/from-url", dependencies=auth)
+    def import_job(link: OpportunityLink) -> dict[str, Any]:
+        # Validate before acquiring the browser: never navigate to arbitrary input.
+        linkedin_job_id(link.url)
+        if not store.settings().linkedin_authorised:
+            raise ValueError("Configure the declared LinkedIn authorisation scope first")
+        with service.operations.run("import_opportunity") as operation, browser_lock:
+            browser = LinkedInBrowser(data)
+            browser.progress = operation.progress
+            try:
+                job = browser.read_opportunity(link.url)
+            except BrowserError as exc:
+                raise HTTPException(
+                    502,
+                    "The opportunity could not be read. Check the dedicated LinkedIn browser "
+                    "session and page layout, then retry or enter the details manually. "
+                    "No opportunity was saved.",
+                ) from exc
+            operation.progress(
+                "saving_opportunity", "Saving the extracted opportunity to the queue."
+            )
+            app_id, created = store.add_job(job)
+            operation.progress(
+                "opportunity_saved",
+                "Opportunity added to the queue."
+                if created
+                else "Opportunity already in the queue.",
+                app_id,
+            )
+            operation.result("imported" if created else "already_imported")
         return {"id": app_id, "created": created}
 
     @app.post("/api/applications/{app_id}/location-review", dependencies=auth)

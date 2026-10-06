@@ -1,4 +1,9 @@
-import type { FormEvent, ReactNode } from "react";
+import {
+  useState,
+  useSyncExternalStore,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import type { Application, Evidence, Profile, Settings } from "./contracts";
 import { linkedinIdentity, parseAnswers, splitList } from "./ui";
 import type { Workspace } from "./workspace";
@@ -296,109 +301,197 @@ export function JobForm({
   done: () => void;
 }) {
   const job = application?.job;
-  return (
-    <form
-      id="job-form"
-      onSubmit={(event) => {
-        const form = read(event);
-        const session = workspace.api.session();
-        void workspace.action(async () => {
-          const url = text(form, "url");
-          const identity = linkedinIdentity(url);
-          const hash =
-            !job && !identity
-              ? Array.from(
-                  new Uint8Array(
-                    await crypto.subtle.digest(
-                      "SHA-256",
-                      new TextEncoder().encode(url),
-                    ),
-                  ),
-                )
-                  .map((byte) => byte.toString(16).padStart(2, "0"))
-                  .join("")
-              : "";
-          if (!workspace.api.isCurrent(session))
-            throw new Error("Workspace locked. Unlock it before continuing.");
-          const value = {
-            title: text(form, "title"),
-            company: text(form, "company"),
-            location: text(form, "location"),
-            url,
-            description: text(form, "description"),
-            requirements: splitList(text(form, "requirements")),
-            sponsorship: text(form, "sponsorship"),
-            cover_letter_required: checked(form, "cover_letter_required"),
-            source: job?.source ?? (identity ? "linkedin" : "manual"),
-            source_id: job?.source_id ?? identity ?? hash,
-            questions: job?.questions ?? [],
-          };
-          await workspace.mutate(
-            application ? `/applications/${application.id}/job` : "/jobs",
-            application ? "PUT" : "POST",
-            value,
-            "Opportunity imported. Prepare it to evaluate the fit.",
-            application?.id,
-          );
-          done();
-        });
-      }}
-    >
-      <div className="grid">
-        <Field label="Job title" name="title" value={job?.title} required />
-        <Field label="Company" name="company" value={job?.company} required />
-        <Field
-          label="Location"
-          name="location"
-          value={job?.location}
-          required
-        />
-        <Field
-          label="Job URL"
-          name="url"
-          value={job?.url}
-          type="url"
-          required
-        />
-      </div>
-      <Field
-        label="Job description"
-        name="description"
-        value={job?.description}
-        rows={7}
-        required
-      />
-      <Field
-        label="Required technologies, comma-separated"
-        name="requirements"
-        value={job?.requirements.join(", ")}
-      />
-      <Field
-        label="Sponsorship"
-        name="sponsorship"
-        value={job?.sponsorship ?? "unknown"}
+  const [fromLink, setFromLink] = useState(true);
+  const state = useSyncExternalStore(
+    workspace.subscribe,
+    workspace.getSnapshot,
+  );
+  const mode = !job && (
+    <div className="form-actions" aria-label="Opportunity entry method">
+      <button
+        type="button"
+        className={fromLink ? "" : "secondary"}
+        aria-pressed={fromLink}
+        onClick={() => setFromLink(true)}
       >
-        <option value="unknown">Not stated</option>
-        <option value="available">Available</option>
-        <option value="unavailable">Explicitly unavailable</option>
-      </Field>
-      <Check
-        name="cover_letter_required"
-        label="Cover letter required"
-        checked={job?.cover_letter_required}
-      />
-      <div className="form-actions">
-        <button>{job ? "Save updated opportunity" : "Save opportunity"}</button>
-        <button
-          type="button"
-          id="cancel-job-edit"
-          className="secondary"
-          onClick={done}
+        Import from link
+      </button>
+      <button
+        type="button"
+        className={fromLink ? "secondary" : ""}
+        aria-pressed={!fromLink}
+        onClick={() => setFromLink(false)}
+      >
+        Enter details manually
+      </button>
+    </div>
+  );
+  if (!job && fromLink)
+    return (
+      <>
+        {mode}
+        <form
+          id="job-form"
+          aria-busy={state.pending}
+          onSubmit={(event) => {
+            const form = read(event);
+            const session = workspace.api.session();
+            void workspace.action(async () => {
+              const result = await workspace.api.json<{
+                id: number;
+                created: boolean;
+              }>("/jobs/from-url", "POST", { url: text(form, "url") });
+              if (!workspace.api.isCurrent(session)) return;
+              await workspace.refresh();
+              if (!workspace.api.isCurrent(session)) return;
+              workspace.message(
+                result.created
+                  ? "Opportunity imported from LinkedIn. Added to the preparation queue."
+                  : "This opportunity is already in your queue. Its saved details have been preserved.",
+              );
+              done();
+            });
+          }}
         >
-          {job ? "Cancel editing" : "Cancel"}
-        </button>
-      </div>
-    </form>
+          <p>
+            Paste a LinkedIn job link. The agent reads the title, company,
+            location and full description using your dedicated browser session.
+          </p>
+          <Field label="Job URL" name="url" type="url" required />
+          <p className="muted">
+            Other websites: use manual entry or the Greenhouse board importer.
+            Application questions are discovered when the application form is
+            opened.
+          </p>
+          <p role="status" aria-live="polite">
+            {state.pending
+              ? "Importing… Opening the opportunity, reading details and saving to the queue."
+              : "Ready to import. Your declared LinkedIn authorisation and browser sign-in are required."}
+          </p>
+          <div className="form-actions">
+            <button disabled={state.pending}>
+              {state.pending ? "Importing…" : "Save opportunity"}
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              disabled={state.pending}
+              onClick={done}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </>
+    );
+  return (
+    <>
+      {mode}
+      <form
+        id="job-form"
+        onSubmit={(event) => {
+          const form = read(event);
+          const session = workspace.api.session();
+          void workspace.action(async () => {
+            const url = text(form, "url");
+            const identity = linkedinIdentity(url);
+            const hash =
+              !job && !identity
+                ? Array.from(
+                    new Uint8Array(
+                      await crypto.subtle.digest(
+                        "SHA-256",
+                        new TextEncoder().encode(url),
+                      ),
+                    ),
+                  )
+                    .map((byte) => byte.toString(16).padStart(2, "0"))
+                    .join("")
+                : "";
+            if (!workspace.api.isCurrent(session))
+              throw new Error("Workspace locked. Unlock it before continuing.");
+            const value = {
+              title: text(form, "title"),
+              company: text(form, "company"),
+              location: text(form, "location"),
+              url,
+              description: text(form, "description"),
+              requirements: splitList(text(form, "requirements")),
+              sponsorship: text(form, "sponsorship"),
+              cover_letter_required: checked(form, "cover_letter_required"),
+              source: job?.source ?? (identity ? "linkedin" : "manual"),
+              source_id: job?.source_id ?? identity ?? hash,
+              questions: job?.questions ?? [],
+            };
+            await workspace.mutate(
+              application ? `/applications/${application.id}/job` : "/jobs",
+              application ? "PUT" : "POST",
+              value,
+              "Opportunity imported. Prepare it to evaluate the fit.",
+              application?.id,
+            );
+            done();
+          });
+        }}
+      >
+        <div className="grid">
+          <Field label="Job title" name="title" value={job?.title} required />
+          <Field label="Company" name="company" value={job?.company} required />
+          <Field
+            label="Location"
+            name="location"
+            value={job?.location}
+            required
+          />
+          <Field
+            label="Job URL"
+            name="url"
+            value={job?.url}
+            type="url"
+            required
+          />
+        </div>
+        <Field
+          label="Job description"
+          name="description"
+          value={job?.description}
+          rows={7}
+          required
+        />
+        <Field
+          label="Required technologies, comma-separated"
+          name="requirements"
+          value={job?.requirements.join(", ")}
+        />
+        <Field
+          label="Sponsorship"
+          name="sponsorship"
+          value={job?.sponsorship ?? "unknown"}
+        >
+          <option value="unknown">Not stated</option>
+          <option value="available">Available</option>
+          <option value="unavailable">Explicitly unavailable</option>
+        </Field>
+        <Check
+          name="cover_letter_required"
+          label="Cover letter required"
+          checked={job?.cover_letter_required}
+        />
+        <div className="form-actions">
+          <button>
+            {job ? "Save updated opportunity" : "Save opportunity"}
+          </button>
+          <button
+            type="button"
+            id="cancel-job-edit"
+            className="secondary"
+            onClick={done}
+          >
+            {job ? "Cancel editing" : "Cancel"}
+          </button>
+        </div>
+      </form>
+    </>
   );
 }
 export function ContactForm({
