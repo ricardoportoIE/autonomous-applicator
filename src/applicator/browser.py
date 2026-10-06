@@ -1021,6 +1021,7 @@ def fill_questions(
     resolver: Callable[[Question], str | None] | None = None,
     progress: Callable[[str, str], None] | None = None,
     memory: Callable[[str, str | None], str | None] | None = None,
+    observe_question: Callable[[Question], None] | None = None,
 ) -> None:
     fields = form_questions(page)
     phone_answers = contact_phone_answers(fields, profile)
@@ -1033,6 +1034,7 @@ def fill_questions(
         resolver=resolver,
         progress=progress,
         memory=memory,
+        observe_question=observe_question,
     )
 
 
@@ -1238,6 +1240,7 @@ def collect_questions(
     resolver: Callable[[Question], str | None] | None,
     progress: Callable[[str, str], None],
     memory: Callable[[str, str | None], str | None],
+    observe_question: Callable[[Question], None] | None = None,
 ) -> bool:
     """Complete independent fields, retaining every reachable gap without guessing."""
     seen: set[str] = set()
@@ -1292,7 +1295,15 @@ def collect_questions(
             if signature in seen:
                 continue
             seen.add(signature)
+            if observe_question:
+                observe_question(question)
             observed: list[Question] = []
+
+            def observe(item: Question, collected: list[Question] = observed) -> None:
+                collected.append(item)
+                if observe_question:
+                    observe_question(item)
+
             try:
                 if phone_error and label.casefold() in {
                     "phone country code",
@@ -1310,7 +1321,7 @@ def collect_questions(
                     resolver=resolve,
                     progress=progress,
                     memory=memory,
-                    observe_question=observed.append,
+                    observe_question=observe,
                 )
             except ValueError:
                 question = observed[-1] if observed else question
@@ -1358,6 +1369,7 @@ class LinkedInBrowser:
         self.data, self.profile = data, profile
         self.progress: Callable[[str, str], None] | None = None
         self.question_resolver: Callable[[Question], str | None] | None = None
+        self.question_observer: Callable[[Question], None] | None = None
         self.before_submit: Callable[[], None] | None = None
         self.observe_fields: Callable[[list[dict[str, Any]]], None] | None = None
         self.confirmation_folder: Path | None = None
@@ -1633,6 +1645,7 @@ class LinkedInBrowser:
                     resolver=self.question_resolver,
                     progress=self.report,
                     memory=recovery.recovery_strategy,
+                    observe_question=self.question_observer,
                 )
                 if progress["pending"]:
                     # Retain this page before advancing: a later hold must not erase its HTML.
@@ -1744,6 +1757,7 @@ class LinkedInBrowser:
                         resolver=self.question_resolver,
                         progress=self.report,
                         memory=recovery.recovery_strategy,
+                        observe_question=self.question_observer,
                     )
                     self.report(
                         "advancing_form",

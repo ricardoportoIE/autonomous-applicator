@@ -20,6 +20,7 @@ from .models import Advice, Job, Preflight, Profile, Question, State, Submission
 from .operations import Operation, Operations
 from .policy import answer_compatible, answer_questions, evaluate, select_evidence
 from .question_adviser import question_key
+from .question_library import InstructionGenerator, instruction_compatible, label_key, rule_source
 from .routine_answers import RoutineSelection, Selector, routine_answer
 from .store import Store
 from .submission_records import SubmissionRecords
@@ -49,11 +50,13 @@ class Service:
         *,
         selector: Callable[[Profile, Job, dict[str, Any]], Advice] | None = None,
         question_selector: Selector | None = None,
+        instruction_generator: InstructionGenerator | None = None,
     ):
         self.store, self.data = store, data
         self.adapters = adapters or {}
         self.selector = selector
         self.question_selector = question_selector
+        self.instruction_generator = instruction_generator
         self.operations = Operations(store)
         self.records = SubmissionRecords(store, data)
 
@@ -238,16 +241,11 @@ class Service:
             raise ValueError("This application is already submitted or needs reconciliation")
         job = Job.model_validate(row["job"])
         profile, revision = self.store.profile()
+        for question in job.questions:
+            self.store.question_library.observe(app_id, question)
+        instruction_failures: list[str] = []
         if self.store.settings().routine_answers_enabled and profile.confirmed:
             for question in job.questions:
-                effective = self.store.effective_profile(app_id, profile, job)
-                if (
-                    question.id
-                    in answer_questions(
-                        job.model_copy(update={"questions": [question]}), effective
-                    )[0]
-                ):
-                    continue
                 report(
                     "answering_routine_questions",
                     "Resolving routine questions from approved facts.",
@@ -255,10 +253,17 @@ class Service:
                 try:
                     self.resolve_question(app_id, profile, revision, job, question, progress=report)
                 except ValueError as exc:
+                    if self.store.question_library.candidates(question):
+                        instruction_failures.append(question.label)
                     with self.store.connect() as db:
                         self.store.event(db, "routine_question_review", type(exc).__name__, app_id)
         effective = self.store.effective_profile(app_id, profile, job)
         evaluation = evaluate(job, effective, self.store.settings())
+        if instruction_failures:
+            evaluation.state = State.REVIEW
+            evaluation.blockers.extend(
+                "Question instruction requires review: " + label for label in instruction_failures
+            )
         manifest = {}
 
         def hold_preparation(error: PreparationError) -> None:
@@ -482,13 +487,27 @@ class Service:
         previous_resolver = (
             adapter.question_resolver if isinstance(adapter, LinkedInBrowser) else None
         )
+        previous_question_observer = (
+            adapter.question_observer if isinstance(adapter, LinkedInBrowser) else None
+        )
         previous_before_submit = (
             adapter.before_submit if isinstance(adapter, LinkedInBrowser) else None
         )
         pending_question: Question | None = None
         if isinstance(adapter, LinkedInBrowser):
-            adapter.profile = effective
+            adapter.profile = (
+                profile.model_copy(
+                    update={"answers": {**profile.answers, **row["approved_answers"]}}
+                )
+                if any(item["enabled"] for item in self.store.question_library.entries())
+                else effective
+            )
             adapter.progress = progress
+
+            def observe_question(question: Question) -> None:
+                self.store.question_library.observe(app_id, question)
+
+            adapter.question_observer = observe_question
 
             def final_gate() -> None:
                 validate_manifest(row["manifest"], submission_folder, revision)
@@ -573,6 +592,7 @@ class Service:
             if isinstance(adapter, LinkedInBrowser):
                 adapter.progress = previous_progress
                 adapter.question_resolver = previous_resolver
+                adapter.question_observer = previous_question_observer
                 adapter.before_submit = previous_before_submit
         return receipt
 
@@ -586,12 +606,78 @@ class Service:
         *,
         progress: Callable[[str, str], None] | None = None,
     ) -> str | None:
+        self.store.question_library.observe(app_id, question)
         if not self.store.settings().routine_answers_enabled:
             return None
         row = self.store.application(app_id)
         if self.store.profile()[1] != revision or row["job"] != job.model_dump():
             raise ValueError("Candidate or opportunity changed before resolving a routine question")
+        if not profile.confirmed or question.sensitive:
+            return None
         effective = self.store.effective_profile(app_id, profile, job)
+        key = question_key(question)
+        approved = {**profile.answers, **row["approved_answers"]}.get(key)
+        if approved:
+            formatted = format_known_answer(question, approved)
+            if formatted and answer_compatible(question, formatted):
+                return formatted
+            # Retain established deterministic contact/sponsorship mappings without
+            # asking the model to reinterpret an incompatible approval.
+            known = routine_answer(effective, job, question)
+            if known is not None:
+                self.store.save_routine_answer(
+                    app_id, question, known.answer, known.source, known.evidence_ids, revision, job
+                )
+                return known.answer
+            return None
+        rules = self.store.question_library.candidates(question)
+        if rules and profile.confirmed and not question.sensitive:
+            cached_rule = next(
+                (
+                    item
+                    for item in row["routine_answers"]
+                    if item["answer_key"] == key
+                    and item["source"] in {rule_source(rule, question) for rule in rules}
+                ),
+                None,
+            )
+            if cached_rule and instruction_compatible(question, cached_rule["answer"]):
+                return str(cached_rule["answer"])
+            if self.instruction_generator is None:
+                raise ValueError("Configure GPT-6.1 Sol to use saved question instructions")
+            if progress:
+                progress(
+                    "answering_routine_questions",
+                    f"GPT-6.1 Sol is checking saved instructions for: {question.label}.",
+                )
+            # Generated/default answers are not confirmed facts for another rule.
+            grounded = profile.model_copy(
+                update={"answers": {**profile.answers, **row["approved_answers"]}}
+            )
+            result = self.instruction_generator(grounded, job, question, rules)
+            if [(item["id"], item["version"]) for item in rules] != [
+                (item["id"], item["version"])
+                for item in self.store.question_library.candidates(question)
+            ]:
+                raise ValueError("Question instructions changed while generating the answer")
+            if result.needs_review:
+                raise ValueError("The saved question instructions require manual review")
+            if result.rule_id is not None:
+                rule = next((item for item in rules if item["id"] == result.rule_id), None)
+                if rule is None or not instruction_compatible(question, result.answer):
+                    raise ValueError("The saved instruction did not produce a valid answer")
+                self.store.save_routine_answer(
+                    app_id,
+                    question,
+                    result.answer,
+                    rule_source(rule, question),
+                    result.evidence_ids,
+                    revision,
+                    job,
+                )
+                return result.answer
+            if any(item["label_key"] == label_key(question.label) for item in rules):
+                raise ValueError("The configured question instruction could not be applied")
         defaults = frozenset(
             item["answer_key"]
             for item in row["routine_answers"]

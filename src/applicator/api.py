@@ -38,6 +38,7 @@ from .networking import Networking
 from .photos import stored_photo
 from .question_adviser import MODEL as QUESTION_MODEL
 from .question_adviser import suggest_answer
+from .question_library import InstructionAnswer, InstructionUpdate, generate_instruction_answer
 from .routine_answers import RoutineSelection, select_routine_sources
 from .service import PreparationError, Service
 from .store import Store
@@ -148,7 +149,29 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
                 "Routine sources could not be verified; manual review is required"
             ) from exc
 
-    service = Service(store, data, selector=select_ai, question_selector=select_question)
+    def generate_instruction(
+        profile: Profile, job: Job, question: Question, rules: list[dict[str, Any]]
+    ) -> InstructionAnswer:
+        if (
+            not os.getenv("OPENAI_API_KEY")
+            or os.getenv("OPENAI_MODEL", QUESTION_MODEL) != QUESTION_MODEL
+        ):
+            raise ValueError("Configure gpt-6.1-sol to use saved question instructions")
+        try:
+            with OpenAI(timeout=180, max_retries=0) as ai_client:
+                return generate_instruction_answer(ai_client, profile, job, question, rules)
+        except Exception as exc:
+            raise ValueError(
+                "Question instruction generation failed; manual review is required"
+            ) from exc
+
+    service = Service(
+        store,
+        data,
+        selector=select_ai,
+        question_selector=select_question,
+        instruction_generator=generate_instruction,
+    )
     browser_lock = threading.Lock()
     stop = threading.Event()
     wake = threading.Event()
@@ -371,6 +394,14 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
     def put_settings(settings: Settings) -> Settings:
         store.set_settings(settings)
         return settings
+
+    @app.get("/api/question-instructions", dependencies=auth)
+    def question_instructions() -> list[dict[str, Any]]:
+        return store.question_library.entries()
+
+    @app.put("/api/question-instructions/{rule_id}", dependencies=auth)
+    def put_question_instruction(rule_id: str, instruction: InstructionUpdate) -> dict[str, Any]:
+        return store.question_library.update(rule_id, instruction)
 
     @app.get("/api/applications", dependencies=auth)
     def applications() -> list[dict[str, Any]]:

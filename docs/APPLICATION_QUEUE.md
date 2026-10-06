@@ -4,6 +4,8 @@ The queue completes one vacancy at a time. Quality checks and a confirmed provid
 
 ## Starting and pausing
 
+Saving an enabled or changed question instruction from **Settings → Routine answers** queues affected pending applications for re-preparation. Exact observed-question links and prior rule-derived answers identify affected records. Old generated answers expire; valid document files, explicit approvals and confirmed submission history remain available. The next authorised FIFO cycle prepares these records again, or the operator can use Prepare documents individually. Saving a prompt never starts a paused worker. Pause and wait for the active operation to finish before changing instructions; optimistic versions and final storage checks reject stale generation. See [question instructions](QUESTION_INSTRUCTIONS.md).
+
 The main **Start agent / Pause agent** control reflects the saved automation setting. Start enables automation and wakes the existing background worker immediately, rather than waiting for the polling interval. Repeated wake requests coalesce, and cycles remain on one worker thread with the durable operation guard. Pause remains available during slow preparation or provider work; it prevents subsequent actions at the existing pause boundaries. An external action already in flight can finish. Pausing keeps the separate networking preference: both queues require the global enable switch. Starting a server configured without its background worker returns an actionable error instead of claiming that processing has begun.
 
 ## Active queue and submission archive

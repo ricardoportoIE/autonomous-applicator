@@ -2,6 +2,8 @@
 
 ## Components
 
+The private `question_library` module adds candidate-owned prompts alongside the existing source-only resolver. Store captures job/review questions, and a separate browser observer captures every reachable field before resolution, including already approved answers and dropdown options discovered after opening the widget. Settings presents General and Routine answers tabs. The local catalogue, observation links and immutable prompt versions use three SQLite tables. GPT-6.1 Sol returns a structured match and grounded answer; current instruction versions, field signatures, explicit approvals and native validity govern acceptance. Changes queue affected pending applications for re-preparation, and active operation ownership blocks mid-operation edits. See [the question instruction contract](QUESTION_INSTRUCTIONS.md).
+
 FastAPI serves a same-origin dashboard and a token-protected API. SQLite persists versioned profiles, jobs, applications, document manifests, provider attempts and an append-only event log. Documents and dedicated browser profiles live in the ignored data directory.
 
 The dashboard is a React/TypeScript application built with Vite and locally compiled Tailwind CSS. Components render immutable workspace snapshots; a separate typed API client and workspace controller own session generations, mutation ownership, polling and private portrait caches. Creation/editing forms use native dialogues and application details use keyboard-accessible tabs. The packaged production bundle is served directly by FastAPI under the existing CSP. See [frontend architecture and feature parity](FRONTEND.md).

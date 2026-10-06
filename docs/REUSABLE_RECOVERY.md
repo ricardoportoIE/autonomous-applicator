@@ -4,6 +4,8 @@ Previously validated technical repairs are implemented in the common LinkedIn ad
 
 ## Shared repairs and their proof
 
+Owner instructions are now a separate, deliberate form of reusable knowledge. Every observed question enters a private Settings library; the candidate can write and enable a prompt which GPT-6.1 Sol applies to equivalent future questions. The agent does not create factual instructions from scraped text, model guesses or another application's scoped approval. Prior instruction versions and generated-answer provenance persist locally. Rule changes expire affected pending generated answers and queue re-preparation, with confirmed facts and submitted records preserved. See [Question instructions](QUESTION_INSTRUCTIONS.md) for the distinction from structural recovery and source-only question interpretation.
+
 | Supported contract | Behaviour in a new opportunity | Verification |
 | --- | --- | --- |
 | Telephone-country choices | Read up to 500 exact choices and select the country matching the confirmed international number, including entries beyond the former 100-option limit. | New opportunities complete 249/500-option contact forms after reopening the store. |

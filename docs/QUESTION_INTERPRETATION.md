@@ -2,6 +2,10 @@
 
 The provider adapter reads the current application dialogue and resolves known exact answers first. When an ordinary question is unfamiliar, GPT-6.1 Sol can interpret its wording and the observed control structure before the adapter fills it. This reduces unnecessary review holds caused by different labels for the same candidate fact or technical experience.
 
+## Reusable owner instructions
+
+**Agent settings → Routine answers** now automatically captures observed questions, including exact approved fields and pending questions on each reachable page. An enabled candidate-owned prompt can supply an explicit fact or decision, or direct wording from verified evidence. GPT-6.1 Sol matches equivalent questions and generates a field-compatible answer, with instruction/evidence references checked locally. This path differs from the source-only selector below and the separate manual draft button. Confirmed approvals retain priority. Blank/disabled prompts retain the established policy; applicable prompt/API failures require review. Versioned changes expire affected pending generated answers and queue re-preparation without changing candidate facts or submitted records. [Question instructions](QUESTION_INSTRUCTIONS.md) documents the complete contract and its real API sample.
+
 ## Candidate-authorised technology defaults and answer style
 
 The operator explicitly authorised a standard answer for a technology absent from the candidate profile which has not already been answered. The common resolver applies this preference during preparation and live forms; it does not add a qualification to the profile or ask AI to invent experience. The existing routine-answer switch controls the policy.

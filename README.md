@@ -6,7 +6,7 @@
 
 [![Quality and application safeguards](https://github.com/ricardoportoIE/autonomous-applicator/actions/workflows/ci.yml/badge.svg)](https://github.com/ricardoportoIE/autonomous-applicator/actions/workflows/ci.yml)
 [![Frontend runtime coverage: 100%](https://img.shields.io/badge/frontend_runtime_coverage-100%25-176b62)](docs/FRONTEND.md#development-and-checks)
-[![Backend runtime coverage: 100%](https://img.shields.io/badge/backend_runtime_coverage-100%25-176b62)](docs/TESTING.md#backend-acceptance-gate)
+[![Backend coverage gate: 100%](https://img.shields.io/badge/backend_coverage_gate-100%25-176b62)](docs/TESTING.md#backend-acceptance-gate)
 
 A personal engineering portfolio project by [Ricardo Porto](https://github.com/ricardoportoIE), built around a practical problem: preparing relevant job applications without losing control of candidate facts, external actions or submission history.
 
@@ -58,6 +58,7 @@ CV selection is proved against the current selected document card, rather than f
 | Explainable fit | Inspect matched technologies, evidence gaps, location considerations and explicit blockers before acting. |
 | Tailored documents | Generate A4 PDF/DOCX CVs and a required cover letter from approved evidence, with hashes and preparation provenance. |
 | Questionnaire assistance | Resolve routine questions from approved facts; request a separate GPT-6.1 Sol draft and explicitly review, edit and approve it. |
+| Reusable question instructions | Capture observed questions in Settings, save a private owner prompt, and use GPT-6.1 Sol to generate field-compatible answers to equivalent questions. |
 | Sequential processing | Follow the current opportunity, stage, elapsed time, run identifier and failure point. Start or pause background application and networking work. |
 | Complete records | Inspect dated attempts, candidate and opportunity snapshots, archived documents, observed form answers, receipts and private confirmation screenshots. |
 | Professional networking | Review European hiring contacts, open their profiles and send an invitation to the selected person without a note. Confirmed invitations move to Archived. |
@@ -87,6 +88,14 @@ Initials appear when no private portrait is available. Each send acts on the sel
 [View the complete mobile queue screenshot](docs/assets/mobile-queue.png). Browser tests also check mobile, tablet, desktop, enlarged text and keyboard navigation.
 
 </details>
+
+### Reusable question instructions
+
+![Settings library of observed questions and candidate-owned instructions](docs/assets/routine-answers.png)
+
+**Agent settings → Routine answers** captures questions automatically, including already answered fields. Add an instruction in a modal and enable it to authorise GPT-6.1 Sol to answer equivalent questions. Exact confirmed answers retain priority; unknown facts, ambiguous matches, incompatible fields and model failures stay in review. Prompt changes queue affected pending applications for re-preparation, with a private version history and preserved submission records. [The instruction guide](docs/QUESTION_INSTRUCTIONS.md) explains matching, examples and control boundaries.
+
+The library and [instruction modal](docs/assets/question-instruction.png) were captured on 6 October 2026 using fictional local records. The screenshots made no model or provider requests. A separate six-case real API check produced all expected answers or review outcomes; this bounded sample does not establish general accuracy. The new library's focused backend and frontend coverage, alongside the complete React acceptance, is recorded in [Testing](docs/TESTING.md#question-instruction-library-6-october-2026).
 
 ### What was submitted
 

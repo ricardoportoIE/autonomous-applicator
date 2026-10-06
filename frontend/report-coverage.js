@@ -47,6 +47,7 @@ for (const filename of [
   "application-detail.tsx",
   "application-record.tsx",
   "networking.tsx",
+  "routine-answers.tsx",
   "ui.ts",
 ]) {
   if (!map.files().some((file) => path.basename(file) === filename))

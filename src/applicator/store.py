@@ -133,6 +133,9 @@ class Store:
                         )
             if "sent_day" not in columns:
                 db.execute("ALTER TABLE attempts ADD COLUMN sent_day TEXT")
+        from .question_library import QuestionLibrary
+
+        self.question_library = QuestionLibrary(self)
 
     @contextmanager
     def connect(self, immediate: bool = False) -> Iterator[sqlite3.Connection]:
@@ -331,6 +334,8 @@ class Store:
             (job.source, job.source_id, job.model_dump_json(), State.REVIEW),
         )
         app_id = int(cursor.lastrowid or 0)
+        for question in job.questions:
+            self.question_library.observe(app_id, question, db)
         self.event(db, "job_added", f"Imported {job.source} job.", app_id)
         return app_id, True
 
@@ -570,6 +575,7 @@ class Store:
         from .question_adviser import question_key
 
         with self.connect(True) as db:
+            self.question_library.validate_current(db, source)
             row = db.execute("SELECT job,state FROM applications WHERE id=?", (app_id,)).fetchone()
             current = int(db.execute("SELECT value FROM config WHERE key='revision'").fetchone()[0])
             if not row or current != revision or Job.model_validate_json(row[0]) != expected_job:
@@ -659,6 +665,8 @@ class Store:
                 "Job details changed; re-evaluation and fresh materials required.",
                 app_id,
             )
+            for question in job.questions:
+                self.question_library.observe(app_id, question, db)
 
     def applications(self) -> list[dict[str, Any]]:
         with self.connect() as db:
@@ -1069,6 +1077,8 @@ class Store:
                     (fingerprint(job), app_id, previous_fingerprint, key),
                 )
             evaluation = json.loads(row[2])
+            for observed_question in job.questions:
+                self.question_library.observe(app_id, observed_question, db)
             evaluation["state"] = State.REVIEW
             blockers = evaluation.setdefault("blockers", [])
             if detail not in blockers:

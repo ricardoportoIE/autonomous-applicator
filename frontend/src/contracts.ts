@@ -237,3 +237,16 @@ export type View =
   | "settings"
   | "activity"
   | "record";
+export interface QuestionInstruction {
+  id: string;
+  question: Question & {
+    control_type?: string;
+    constraints?: Record<string, string>;
+  };
+  prompt: string;
+  enabled: boolean;
+  version: number;
+  first_seen: string;
+  last_seen: string;
+  application_count: number;
+}

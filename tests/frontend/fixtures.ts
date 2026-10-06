@@ -88,6 +88,7 @@ export const connection: Connection = {
   run_message: "",
 };
 export function payload(path: string): unknown {
+  if (path === "/api/question-instructions") return [];
   if (path === "/api/settings") return settings;
   if (path === "/api/profile") return { profile, revision: 1 };
   if (path === "/api/applications") return [application];

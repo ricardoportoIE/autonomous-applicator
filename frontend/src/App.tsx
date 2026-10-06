@@ -33,6 +33,7 @@ import {
   SettingsForm,
 } from "./forms";
 import { Networking } from "./networking";
+import { RoutineAnswers } from "./routine-answers";
 import { filterApplications } from "./ui";
 import { Workspace, savedToken } from "./workspace";
 import type { Application, Evidence, Profile, View } from "./contracts";
@@ -62,6 +63,7 @@ export function App({ workspace }: { workspace: Workspace }) {
   const [filter, setFilter] = useState("all");
   const [sort, setSort] = useState("recent");
   const [queueTab, setQueueTab] = useState("active");
+  const [settingsTab, setSettingsTab] = useState("general");
   const current = navigation.find(
     (item) =>
       item.id === (state.view === "record" ? "applications" : state.view),
@@ -90,6 +92,7 @@ export function App({ workspace }: { workspace: Workspace }) {
       setFilter("all");
       setSort("recent");
       setQueueTab("active");
+      setSettingsTab("general");
     }
   }, [state.unlocked]);
   const open = (value: Dialogue) => {
@@ -872,11 +875,30 @@ export function App({ workspace }: { workspace: Workspace }) {
           </section>
           <section data-section="settings" hidden={state.view !== "settings"}>
             {settings && (
-              <SettingsForm
-                key={JSON.stringify(settings)}
-                settings={settings}
-                workspace={workspace}
-              />
+              <Tabs
+                label="Agent settings sections"
+                prefix="settings"
+                selected={settingsTab}
+                onSelect={setSettingsTab}
+                items={[
+                  { id: "general", label: "General settings" },
+                  { id: "answers", label: "Routine answers" },
+                ]}
+              >
+                {(id) =>
+                  id === "general" ? (
+                    <SettingsForm
+                      key={JSON.stringify(settings)}
+                      settings={settings}
+                      workspace={workspace}
+                    />
+                  ) : state.unlocked &&
+                    state.view === "settings" &&
+                    settingsTab === "answers" ? (
+                    <RoutineAnswers workspace={workspace} />
+                  ) : null
+                }
+              </Tabs>
             )}
           </section>
           <section data-section="activity" hidden={state.view !== "activity"}>

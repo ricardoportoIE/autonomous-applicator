@@ -1,5 +1,13 @@
 # Source review, 2 October 2026
 
+## Candidate-owned question instructions, 6 October 2026
+
+Reviewed capture points across import, preparation, direct resolution, collection and review holds so approved fields and subsequently opened dropdown options are retained. Candidate-owned instructions use a separate trusted layer; scraped HTML, labels/options, descriptions and source values remain data. Model/schema/rule/quote/reference checks precede field compatibility and final native validation. Exact approvals retain precedence, with established deterministic legacy sponsorship mappings preserved. Provider callbacks are restored after both confirmed and held intercepted submissions.
+
+Instruction versions are retained privately and bind generated-answer caches to the actual field signature, candidate revision and opportunity fingerprint. Edits expire affected pending generated answers and queue re-preparation while preserving documents, approvals, candidate revision and archived/uncertain records. Optimistic versions, active-operation guards and final storage validation prevent stale generation or mid-submission changes. API failures, including client construction, produce a controlled review without provider error details. No runtime coverage exclusions were introduced.
+
+The broader 295-case affected-path acceptance and final 190-case focused acceptance passed. The new backend module covered all 169 statements and 78 branch outcomes. All 181 React tests passed with 100% coverage across 11 runtime files; packaged Chromium verifies actual prompt persistence and mobile behaviour. A separate six-case real GPT-6.1 Sol check used fictional data and produced all expected outcomes. The complete backend and production-browser coverage baselines were not regenerated. [Testing](TESTING.md#question-instruction-library-6-october-2026) records the scope.
+
 ## Candidate-authorised answer formatting, 6 October 2026
 
 Reviewed the shared formatter, deterministic technology policy, approved-duration reuse, effective-profile provenance, preparation/readiness and browser shortcut together. Previously compatible cached strings could bypass field-aware presentation. All three answer consumers now apply the same format rules. Numerical duration statements require complete approved wording; dates, approximations and unrelated numbers cannot become a count. Native choices retain exact labels, while positive capability and verified project/employment prose use short sentences without changing scope.
