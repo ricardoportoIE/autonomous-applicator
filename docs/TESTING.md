@@ -1,5 +1,13 @@
 # Testing and coverage
 
+## Populated instruction-library operational checks, 6 October 2026
+
+The authorised private population used the existing generation and versioned save endpoints. All 16 empty rules received reviewed real-model drafts against the newly confirmed candidate revision; 15 were enabled and one legal-status rule remained manual. Final saved prompts measured 41–59 words. Initial drafts were superseded after the operator supplied missing facts; source/runtime files did not change.
+
+Four real answering-model checks with controlled opportunity contexts verified geographical scope: both hybrid and commuting accepted the approved city and required review for another city. Seven new approved duration values fitted numerical controls without a model call or date inference. A stale save returned 409 and retained the current prompt/version. Private backup comparison checked unrelated facts/evidence, all five existing prompts, confirmed submission rows, sending attempts, networking rows and all 54 document files. Pending materials remained invalidated for fresh preparation. Previously skipped historical/low-fit outcomes were preserved after the general profile-save invalidation; this does not establish a new shared-runtime safeguard for future edits.
+
+These are operational and bounded real-model checks, not a fresh full-suite or coverage measurement. Both queues stayed paused and no application or invitation was requested. Real candidate values, generated prompts and reports remain private. [Delivery](STATUS.md#authorised-instruction-library-population-6-october-2026) and [operations](OPERATIONS.md#draft-a-reusable-question-instruction) distinguish confirmed facts, live context and manual decisions.
+
 ## Concise question instruction drafts, 6 October 2026
 
 Final fresh acceptance passed **104 affected backend cases in 50.95 seconds**, including **four new regressions**. The complete changed `question_library.py` measured **100% statements and branch outcomes**: **219 statements and 106 branch outcomes**, with zero missing paths. New cases verify the 120-word boundary, preservation of material conditions without truncation, private API failure with saved data intact, and the unchanged manual editor limit. Existing grounding, field-context, authentication, change-control and two packaged Chromium journeys remain green. A new fixture's trailing-space expectation was corrected to respect existing contract normalisation before the final fresh acceptance.
