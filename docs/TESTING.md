@@ -1,5 +1,23 @@
 # Testing and coverage
 
+## Requirement interpretation and review recovery, 6 October 2026
+
+Final acceptance passed **268 cases in 53.13 seconds**, including **51 new cases** in `tests/test_requirement_interpretation.py`. The complete changed policy module measured **100% statements and branch outcomes**: **168/168 statements and 86/86 branch outcomes**, with zero missing paths. Closure handling in the store was exercised by both the exact closed-opportunity and ambiguous-action cases, including capacity release and retained document files.
+
+The new cases cover optional clauses and headings, required-section resets, conservative mixed wording, reviewed metadata priority, cloud alternatives versus mandatory lists, repeated independent requirements, matching evidence selection, scoped professional minima and ranges, approved and unknown durations, exact candidate confirmation, contradictory known durations, production ML confirmations and explicit negative answers. Preparation is also verified for an interesting vacancy held for review. All ordinary fixtures use fictional candidates and controlled providers without paid model calls or external sends.
+
+A separate wider affected-path execution passed **567 behavioural cases in 439.65 seconds** across policy, persistence, answers, sending capacity, multi-page questionnaires and discovery/provider regressions. Its initial policy coverage gate reported **99.21%** because one exact-confirmation path was not exercised. The final fresh 268-case run above covers that path and the completed source; the wider run is not presented as a green 100% gate. Ruff, formatting and strict mypy passed across all 21 backend runtime modules.
+
+This is **focused backend acceptance**, not a new full-system or complete-backend coverage claim. The historical full baseline below remains associated with `f0119b6`; no frontend source changed. An authorised private operational recovery additionally regenerated five current review document sets through the normal API with `gpt-6.1-sol` and checked readiness, revisions and hashes. Submitted records, archived files, attempts and networking records were unchanged; both queues stayed paused. That paid model use is separate from the fictional test count.
+
+Reproduce the final policy gate:
+
+```powershell
+uv run pytest tests/test_requirement_interpretation.py tests/test_policy.py tests/test_answer_style_policy.py tests/test_backend_integrity.py tests/test_resume_duration_regressions.py --override-ini addopts= --cov=applicator.policy --cov-branch --cov-fail-under=100 --cov-report=term-missing -q
+```
+
+[Requirement interpretation](REQUIREMENT_INTERPRETATION.md) records the supported wording and review boundaries. [The delivery record](STATUS.md#requirement-interpretation-and-activated-review-recovery-6-october-2026) distinguishes loaded runtime recovery from historical restart notes.
+
 ## Resolved duration review holds, 6 October 2026
 
 The shared correction passed **418 affected-path cases in 138.28 seconds**, including **14 new cases** in `tests/test_missing_duration_review.py`. The existing exact-instruction precedence regression now expects an explicitly supplied duration to resolve a legacy narrative; compatible approvals still bypass generation.

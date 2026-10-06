@@ -1,5 +1,15 @@
 # Operating guide
 
+## Review recovery and closed opportunities
+
+Distinguish unresolved controls from genuine vacancy requirements before retrying. Inspect the latest activity, current profile revision, questionnaire answers, preparation manifest and readiness checks. Approved answers and intact model-generated documents can all pass whilst policy still requires review for insufficient professional experience. The [requirement guide](REQUIREMENT_INTERPRETATION.md) describes optional clauses, cloud alternatives and concrete minimum checks. Do not replace truthful durations merely to clear a hold.
+
+Save newly confirmed global facts through the authenticated profile API. That increments the candidate revision and invalidates pending preparation; regenerate the relevant documents through the normal API and validate the model, source revision and file hashes. Existing submitted snapshots must stay unchanged. A historical provider closure can classify a pending record as skipped when explicitly labelled with its original observation, retaining available documents; it must not be represented as a new live read.
+
+Restart the local server to load changed Python source, then verify the health endpoint and any newly added API endpoints. Preserve the application and networking pause settings during maintenance. On 6 October 2026, the server was restarted successfully, health and the question-library endpoint returned 200, confirmed facts were saved, and five current review document sets were regenerated with `gpt-6.1-sol`. An independent private check verified unchanged submitted records, archived file hashes, sending attempts and networking records. The remaining holds were explicit experience gaps, with all known required questionnaire answers resolved. No provider submission or invitation occurred during recovery.
+
+This activation supersedes the earlier delivery notes describing the older process and a required manual restart. The private recovery evidence is deliberately excluded from public documentation and version control.
+
 ## Import one opportunity from its link
 
 In **Applications → Add opportunity**, **Import from link** is the default entry method. Paste an exact `https://www.linkedin.com/jobs/view/<numeric-id>/` link and select **Save opportunity**. Tracking query parameters and fragments are discarded before navigation. The agent opens a visible window using the dedicated LinkedIn session, reads the primary title, company, location and full description, verifies the job identifier, and saves the opportunity to the normal preparation queue. No candidate profile is needed to read a vacancy. Declared LinkedIn authorisation and a signed-in dedicated browser session are required.

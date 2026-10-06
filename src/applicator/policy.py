@@ -46,6 +46,7 @@ TECHNOLOGIES = (
     "numpy",
     "kubernetes",
     "azure",
+    "gcp",
     "c#",
     ".net",
     "go",
@@ -64,10 +65,122 @@ def contains(text: str, term: str) -> bool:
     return bool(re.search(rf"(?<!\w){re.escape(normalise(term))}(?!\w)", normalise(text)))
 
 
+def required_description(job: Job) -> str:
+    """Separate explicit optional sections/clauses without interpreting page instructions."""
+    optional = False
+    lines = []
+    for raw in job.description.splitlines():
+        line = normalise(raw).strip(" :")
+        if re.fullmatch(
+            r"(?:preferred|desirable|optional|nice.to.have)(?: skills)?(?: & experience)?(?: requirements)?",
+            line,
+        ):
+            optional = True
+            continue
+        if re.fullmatch(
+            r"(?:requirements(?: added by the job poster)?|must.have skills & experience|what we.re looking for|"
+            r"(?:required )?qualifications(?: & technical experience)?|required(?: skills)?(?: & experience)?|"
+            r"essential(?: skills)?|responsibilities|primary duties|about you)",
+            line,
+        ):
+            optional = False
+            continue
+        if optional:
+            continue
+        for clause in re.split(r";|\.\s+|\bbut\b", line):
+            if re.search(
+                r"\b(?:preferred|desirable|optional|bonus|nice.to.have|not required)\b", clause
+            ):
+                if not re.search(
+                    r"\b(?:essential|must have|required)\b", clause.replace("not required", "")
+                ):
+                    continue
+                # Mixed mandatory/optional wording is not safely removable.
+            lines.append(clause)
+    return "\n".join(lines)
+
+
+def requirement_terms(requirement: str) -> list[str]:
+    """Only generated, recognised alternatives can satisfy a requirement with one member."""
+    alternatives = requirement.split(" or ")
+    return alternatives if all(term in TECHNOLOGIES for term in alternatives) else [requirement]
+
+
 def requirements(job: Job) -> list[str]:
     if job.requirements:
         return list(dict.fromkeys(normalise(item) for item in job.requirements))
-    return [tech for tech in TECHNOLOGIES if contains(job.description, tech)]
+    description = required_description(job)
+    groups = []
+    cloud = r"\b(?:aws|azure|gcp|google cloud)\b"
+
+    def group(match: re.Match[str]) -> str:
+        value = match[0]
+        if "/" not in value and not re.search(r"\bor\b", value):
+            return value
+        terms = ["gcp" if term == "google cloud" else term for term in re.findall(cloud, value)]
+        groups.append(" or ".join(dict.fromkeys(terms)))
+        return " "
+
+    description = re.sub(
+        cloud + r"(?:\s*(?:/|,\s*(?:or\s+)?|\bor\b)\s*" + cloud + r")+", group, description
+    )
+    return list(
+        dict.fromkeys([*[tech for tech in TECHNOLOGIES if contains(description, tech)], *groups])
+    )
+
+
+def required_experience_holds(job: Job, profile: Profile) -> list[str]:
+    """Missing explicit professional minima require review, whilst dates/projects are not years."""
+    from .routine_answers import QUESTION_TECHNOLOGIES, known_experience_duration
+
+    holds = []
+    for line in required_description(job).splitlines():
+        minimum = re.search(
+            r"\b(\d{1,2})(?:\s*[-–—]\s*\d{1,2})?\+?\s+years?(?: of)?\s+.{0,100}?experience\b", line
+        )
+        if not minimum or not re.search(
+            r"\b(?:professional|work|commercial|paid|backend|software engineering|cloud)\b",
+            minimum[0],
+        ):
+            continue
+        technologies: list[str] = []
+        for tech in sorted(
+            set(
+                (
+                    *TECHNOLOGIES,
+                    *QUESTION_TECHNOLOGIES,
+                    "software engineering",
+                    "backend software engineering",
+                )
+            ),
+            key=len,
+            reverse=True,
+        ):
+            if contains(line, tech) and not any(
+                contains(selected, tech) for selected in technologies
+            ):
+                technologies.append(tech)
+        duration = None
+        if len(technologies) == 1:
+            question = Question(
+                id="required_experience",
+                label="How many years of work experience do you have with " + technologies[0] + "?",
+            )
+            duration = known_experience_duration(profile, question, frozenset())
+        if duration is not None and Decimal(duration.answer) >= Decimal(minimum[1]):
+            continue
+        key = "condition:experience_requirement:" + line
+        if duration is None and profile.answers.get(key) == "Confirmed":
+            continue
+        if duration is not None:
+            holds.append(
+                "Required professional experience is below the stated minimum: "
+                + line[:500]
+                + f" (approved {duration.answer} years; requires at least {minimum[1]})."
+            )
+        else:
+            holds.append("Required professional experience needs review: " + line[:500])
+    return list(dict.fromkeys(holds))
 
 
 def answer_compatible(question: Question, value: str) -> bool:
@@ -131,7 +244,11 @@ def select_evidence(job: Job, profile: Profile, evidence_ids: list[str]) -> list
     needs = requirements(job)
     eligible = [item for item in profile.evidence if item.verified and item.id in evidence_ids]
     ranked = sorted(
-        eligible, key=lambda item: sum(normalise(tag) in needs for tag in item.tags), reverse=True
+        eligible,
+        key=lambda item: sum(
+            any(normalise(tag) in requirement_terms(need) for tag in item.tags) for need in needs
+        ),
+        reverse=True,
     )
     projects = [item.id for item in ranked if item.category == "project"][:3]
     other = [item.id for item in ranked if item.category != "project"][:3]
@@ -146,13 +263,13 @@ def evaluate(job: Job, profile: Profile, settings: Settings) -> Evaluation:
         matches = [
             item.id
             for item in profile.evidence
-            if item.verified and any(normalise(tag) == need for tag in item.tags)
+            if item.verified and any(normalise(tag) in requirement_terms(need) for tag in item.tags)
         ]
         if matches:
             matched.append(need)
             evidence_ids.extend(matches)
     gaps = [need for need in needs if need not in matched]
-    # Technical evidence is the primary signal. Seniority/years are deliberately not vetoes.
+    # Technical evidence is the primary signal; missing professional minima require review.
     technical = round(70 * len(matched) / len(needs)) if needs else 0
     target = any(
         contains(job.location, country) for country in settings.allowed_countries
@@ -215,6 +332,19 @@ def evaluate(job: Job, profile: Profile, settings: Settings) -> Evaluation:
             and profile.answers.get("condition:" + key) != "Confirmed"
         ):
             blockers.append(f"Mandatory eligibility condition needs candidate confirmation: {key}.")
+    blockers.extend(required_experience_holds(job, profile))
+    if (
+        re.search(
+            r"\bdeploying (?:ml|machine learning) models into production\b",
+            required_description(job),
+        )
+        and profile.answers.get("condition:production_ml") != "Confirmed"
+    ):
+        blockers.append(
+            "Required production machine learning experience is not met: no professional production experience confirmed."
+            if profile.answers.get("condition:production_ml") == "No"
+            else "Production machine learning experience needs candidate confirmation."
+        )
     if not profile.confirmed:
         blockers.append("Candidate profile needs confirmation.")
     _, unresolved = answer_questions(job, profile)

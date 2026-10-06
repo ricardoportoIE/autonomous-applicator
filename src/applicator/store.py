@@ -1089,13 +1089,18 @@ class Store:
             evaluation = json.loads(row[2])
             for observed_question in job.questions:
                 self.question_library.observe(app_id, observed_question, db)
-            evaluation["state"] = State.REVIEW
+            state = (
+                State.SKIPPED
+                if detail == "The LinkedIn opportunity is no longer accepting applications"
+                else State.REVIEW
+            )
+            evaluation["state"] = state
             blockers = evaluation.setdefault("blockers", [])
             if detail not in blockers:
                 blockers.append(detail[:2000])
             db.execute(
                 "UPDATE applications SET state=?,job=?,evaluation=? WHERE id=?",
-                (State.REVIEW, job.model_dump_json(), json.dumps(evaluation), app_id),
+                (state, job.model_dump_json(), json.dumps(evaluation), app_id),
             )
             self.event(db, "provider_review_required", detail[:2000], app_id)
 

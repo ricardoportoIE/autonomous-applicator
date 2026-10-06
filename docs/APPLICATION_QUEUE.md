@@ -2,6 +2,12 @@
 
 The queue completes one vacancy at a time. Quality checks and a confirmed provider outcome take precedence over throughput.
 
+## Requirement and closure decisions
+
+Description-based scoring excludes explicitly optional criteria and accepts a verified member of a recognised cloud-provider alternative. Reviewed explicit technical requirements remain authoritative. A high technical score does not override a recognised professional experience minimum: missing or insufficient approved durations and required production ML experience remain review conditions. Interesting opportunities can still receive prepared documents. [Requirement interpretation](REQUIREMENT_INTERPRETATION.md) explains the bounded parsing and exact confirmation rules.
+
+A provider-confirmed closed LinkedIn opportunity becomes `skipped`, preserving its record and documents and releasing a proven pre-send capacity hold. An ambiguous or unavailable application action remains in review. Skipped opportunities are not confirmed submissions and do not enter the submission archive. Maintenance that uses an old closure observation must retain its historical provenance rather than claiming a fresh provider read.
+
 ## Starting and pausing
 
 Saving an enabled or changed question instruction from **Settings → Routine answers** queues affected pending applications for re-preparation. Exact observed-question links and prior rule-derived answers identify affected records. Old generated answers expire; valid document files, explicit approvals and confirmed submission history remain available. The next authorised FIFO cycle prepares these records again, or the operator can use Prepare documents individually. Saving a prompt never starts a paused worker. Pause and wait for the active operation to finish before changing instructions; optimistic versions and final storage checks reject stale generation. See [question instructions](QUESTION_INSTRUCTIONS.md).
