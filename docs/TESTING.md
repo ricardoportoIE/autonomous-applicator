@@ -2,6 +2,8 @@
 
 The CV/duration regression suite adds 30 cases for duplicate filename references, existing same-name CVs, nested/hidden labels, ambiguous native/ARIA states, stale selections, operation-scoped reuse, changed file hashes and React node replacement, numeric readiness and scoped approval without document regeneration. It replaces an older depth rejection with a supported deep-filename case. Chromium providers are fictional and no model calls or real submissions occur.
 
+The complete Windows/Python 3.14.2 measurement passed 1,070 cases in 1,503.35 seconds, covering all 2,948 statements and 1,046 branch outcomes across 19 backend modules. The independent inventory gate confirmed 100% in every module. The 155 React unit cases retained 100% per runtime module; the separate production-browser report measured 98.66% statements/lines, 91.99% branches and 98.12% functions. [Delivery record](STATUS.md#cv-selection-and-numeric-duration-readiness-6-october-2026) records the paused rollout and real-document maintenance separately from ordinary tests.
+
 ## Backend acceptance gate
 
 The complete Python suite must reach **100% statement and branch coverage in every module under `src/applicator`**, including API endpoints, policy, AI contracts, persistence, document rendering, browser adapters, networking, operation recovery and the command-line entry point. The runtime inventory contains **19 modules**. Statement and branch counts change with source revisions and Python versions; the JSON report and inventory-gate output record the exact counts for each run. Each interpreter must cover its complete measured inventory. The empty package initializer is included in the inventory. Historical measurements are retained in [the delivery record](STATUS.md).
