@@ -20,6 +20,8 @@ The [initial functional CI run](https://github.com/ricardoportoIE/autonomous-app
 
 The [final CI matrix](https://github.com/ricardoportoIE/autonomous-applicator/actions/runs/37432798280) passed all four Windows/Linux and Python 3.12/3.14 jobs, including complete pytest, independent per-module coverage inventory, frontend checks, production-browser reporting, the offline benchmark and dependency audits. This accepts commit `6fcc33f` with the corrected harness. Application sources remain identical to runtime commit `2d80b05`; the final delivery-record commit changes documentation only. Both local automated queues remain paused.
 
+Later workspace updates resolved the outstanding questionnaire answers whilst CI was running. Final readiness checks found two document sets requiring refreshed opportunity provenance and one valid set held after pause prevented sending. The two sets were regenerated through the configured `gpt-6.1-sol` integration; both CVs were extracted and rendered as two readable pages without clipping. The third manifest was retained. All three affected applications are now ready, with paused automation as their only failed local readiness check. Candidate revision 13, current approved answers, other opportunities, attempts, submission archives, connections and settings were preserved during this refresh. No application was sent, and the private verification renders were removed.
+
 Version 0.3.0 reviewed through resume and navigation recovery on 6 October 2026. Repository: [ricardoportoIE/autonomous-applicator](https://github.com/ricardoportoIE/autonomous-applicator).
 
 ## Single-link opportunity import, 6 October 2026
