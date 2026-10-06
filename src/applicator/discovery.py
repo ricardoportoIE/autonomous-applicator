@@ -31,7 +31,14 @@ def greenhouse(board: str, client: httpx.Client) -> list[Job]:
             content.extend(chunk)
     result: list[Job] = []
     for item in json.loads(content)["jobs"]:
-        text = unescape(re.sub(r"<[^>]+>", " ", item.get("content", "")))
+        # Section headings and bullet boundaries are needed by requirement interpretation.
+        html = re.sub(
+            r"</?(?:p|div|section|li|ul|ol|h[1-6]|br)\b[^>]*>",
+            "\n",
+            item.get("content", ""),
+            flags=re.I,
+        )
+        text = unescape(re.sub(r"<[^>]+>", " ", html))
         if text.strip():
             result.append(
                 Job(

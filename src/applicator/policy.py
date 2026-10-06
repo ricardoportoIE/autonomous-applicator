@@ -4,11 +4,17 @@ import re
 from decimal import Decimal, InvalidOperation
 
 from .answer_style import format_known_answer, numeric_field
-from .location_policy import location_confirmed, location_needs_review
+from .location_policy import country, location_confirmed, location_needs_review
 from .models import Evaluation, Job, Profile, Question, Settings, State
 
 ALIASES = {
     "amazon web services": "aws",
+    "google cloud platform": "gcp",
+    "google cloud": "gcp",
+    "golang": "go",
+    "retrieval-augmented generation": "rag",
+    "retrieval augmented generation": "rag",
+    "machine-learning": "machine learning",
     "postgres": "postgresql",
     "postgresql": "postgresql",
     "django rest framework": "django",
@@ -47,10 +53,24 @@ TECHNOLOGIES = (
     "kubernetes",
     "azure",
     "gcp",
+    "c++",
     "c#",
     ".net",
     "go",
     "rust",
+    "machine learning",
+    "rag",
+)
+
+TECHNOLOGY_PATTERN = (
+    r"(?<!\w)(?:"
+    + "|".join(re.escape(term) for term in sorted(TECHNOLOGIES, key=len, reverse=True))
+    + r")(?!\w)"
+)
+PEER_FAMILIES = (
+    {"aws", "azure", "gcp"},
+    {"python", "java", "php", "javascript", "typescript", "go", "rust", "c++", "c#"},
+    {"django", "fastapi", "spring boot"},
 )
 
 
@@ -70,9 +90,10 @@ def required_description(job: Job) -> str:
     optional = False
     lines = []
     for raw in job.description.splitlines():
-        line = normalise(raw).strip(" :")
+        line = re.sub(r"^#{1,6}\s+", "", normalise(raw)).strip(" *:")
         if re.fullmatch(
-            r"(?:preferred|desirable|optional|nice.to.have)(?: skills)?(?: & experience)?(?: requirements)?",
+            r"(?:preferred|desirable|optional|nice.to.have)(?: (?:skills|qualifications|experience))?"
+            r"(?: (?:&|and) experience)?(?: requirements)?",
             line,
         ):
             optional = True
@@ -106,26 +127,90 @@ def requirement_terms(requirement: str) -> list[str]:
     return alternatives if all(term in TECHNOLOGIES for term in alternatives) else [requirement]
 
 
+def alternative_requirement(value: str) -> str | None:
+    """Explicit OR is logical; slash stacks need a known peer family."""
+    separator = r"\s*(?:/|,\s*(?:or\s+)?|\bor\b)\s*"
+    if not re.fullmatch(
+        TECHNOLOGY_PATTERN + r"(?:" + separator + TECHNOLOGY_PATTERN + r")+", value
+    ):
+        return None
+    terms = set(re.findall(TECHNOLOGY_PATTERN, value))
+    if "/" in value and not any(terms <= family for family in PEER_FAMILIES):
+        return None
+    if "/" not in value and not re.search(r"\bor\b", value):
+        return None
+    return " or ".join(sorted(terms))
+
+
+def required_technology_text(description: str) -> str:
+    """Remove explicit single-technology optional/negative statements, retaining other duties."""
+    optional = (
+        TECHNOLOGY_PATTERN
+        + r"(?:\s+(?:experience|knowledge|skills|expertise))?\s+(?:is\s+)?(?:preferred|desirable|optional|a bonus|not required)\b"
+    )
+    description = re.sub(optional, " ", description)
+    negative = (
+        r"\bno\s+(?:prior\s+)?(?:experience\s+(?:with|in)\s+"
+        + TECHNOLOGY_PATTERN
+        + r"|"
+        + TECHNOLOGY_PATTERN
+        + r"\s+experience)\s+(?:is\s+)?(?:required|necessary)\b"
+    )
+    return re.sub(negative, " ", description)
+
+
+def go_language_mentioned(description: str) -> bool:
+    """An ordinary English verb cannot introduce a programming-language requirement."""
+    return bool(
+        re.search(
+            r"(?:^|\n)\s*(?:[-*•]\s*)?go(?:\s+(?:required|essential))?[\s.,:;]*$|`go`|"
+            r"\b(?:use|using|with|in|knowledge of|proficien(?:cy|t) in)\s+go\b|"
+            r"\bgo\s+(?:programming|development|developer|engineer|language|experience|skills)\b|"
+            + TECHNOLOGY_PATTERN
+            + r"\s*(?:,|and)\s*go\b|\bgo\s*(?:,|and)\s*"
+            + TECHNOLOGY_PATTERN,
+            description,
+            re.MULTILINE,
+        )
+    )
+
+
 def requirements(job: Job) -> list[str]:
     if job.requirements:
-        return list(dict.fromkeys(normalise(item) for item in job.requirements))
-    description = required_description(job)
-    groups = []
-    cloud = r"\b(?:aws|azure|gcp|google cloud)\b"
+        return list(
+            dict.fromkeys(
+                alternative_requirement(value) or value
+                for item in job.requirements
+                if (value := normalise(item))
+            )
+        )
+    description = required_technology_text(required_description(job))
+    groups: list[str] = []
 
     def group(match: re.Match[str]) -> str:
-        value = match[0]
-        if "/" not in value and not re.search(r"\bor\b", value):
-            return value
-        terms = ["gcp" if term == "google cloud" else term for term in re.findall(cloud, value)]
-        groups.append(" or ".join(dict.fromkeys(terms)))
+        alternative = alternative_requirement(match[0])
+        if alternative is None:
+            return match[0]
+        groups.append(alternative)
         return " "
 
     description = re.sub(
-        cloud + r"(?:\s*(?:/|,\s*(?:or\s+)?|\bor\b)\s*" + cloud + r")+", group, description
+        TECHNOLOGY_PATTERN + r"(?:\s*(?:/|,\s*(?:or\s+)?|\bor\b)\s*" + TECHNOLOGY_PATTERN + r")+",
+        group,
+        description,
     )
     return list(
-        dict.fromkeys([*[tech for tech in TECHNOLOGIES if contains(description, tech)], *groups])
+        dict.fromkeys(
+            [
+                *[
+                    tech
+                    for tech in TECHNOLOGIES
+                    if contains(description, tech)
+                    and (tech != "go" or go_language_mentioned(description))
+                ],
+                *groups,
+            ]
+        )
     )
 
 
@@ -136,7 +221,8 @@ def required_experience_holds(job: Job, profile: Profile) -> list[str]:
     holds = []
     for line in required_description(job).splitlines():
         minimum = re.search(
-            r"\b(\d{1,2})(?:\s*[-–—]\s*\d{1,2})?\+?\s+years?(?: of)?\s+.{0,100}?experience\b", line
+            r"(?<![\w.])(\d{1,2}(?:\.\d+)?)(?:\s*[-–—]\s*\d{1,2}(?:\.\d+)?)?\+?\s+years?(?: of)?\s+.{0,100}?experience\b",
+            line,
         )
         if not minimum or not re.search(
             r"\b(?:professional|work|commercial|paid|backend|software engineering|cloud)\b",
@@ -255,6 +341,26 @@ def select_evidence(job: Job, profile: Profile, evidence_ids: list[str]) -> list
     return other + projects
 
 
+def technology_role(title: str) -> bool:
+    text = normalise(title)
+    if re.search(r"\b(?:recruiter|recruitment|sales)\b", text):
+        return False
+    if re.search(
+        r"\b(?:civil|structural|mechanical|chemical|biomedical|electrical|manufacturing)\b", text
+    ) and not re.search(r"\b(?:software|backend|frontend|automation|data|cloud|devops)\b", text):
+        return False
+    return any(
+        contains(text, term)
+        for term in (
+            "engineer",
+            "developer",
+            "software",
+            "automation",
+            "analyst",
+        )
+    ) or bool(re.search(r"\btechnical (?:lead|architect|consultant)\b", text))
+
+
 def evaluate(job: Job, profile: Profile, settings: Settings) -> Evaluation:
     needs = requirements(job)
     matched: list[str] = []
@@ -270,22 +376,12 @@ def evaluate(job: Job, profile: Profile, settings: Settings) -> Evaluation:
             evidence_ids.extend(matches)
     gaps = [need for need in needs if need not in matched]
     # Technical evidence is the primary signal; missing professional minima require review.
-    technical = round(70 * len(matched) / len(needs)) if needs else 0
+    # Exact integer half-up rounding, independent of binary floats and banker rounding.
+    technical = (140 * len(matched) + len(needs)) // (2 * len(needs)) if needs else 0
     target = any(
-        contains(job.location, country) for country in settings.allowed_countries
+        country(job.location) == country(allowed) for allowed in settings.allowed_countries
     ) or location_confirmed(job, profile)
-    role = any(
-        contains(job.title, term)
-        for term in (
-            "engineer",
-            "developer",
-            "software",
-            "automation",
-            "technical",
-            "graduate",
-            "analyst",
-        )
-    )
+    role = technology_role(job.title)
     score = min(100, technical + (15 if target else 0) + (15 if role else 0))
     reasons = [
         f"Technical evidence: {len(matched)}/{len(needs)} requirements ({technical}/70).",
@@ -308,6 +404,8 @@ def evaluate(job: Job, profile: Profile, settings: Settings) -> Evaluation:
         state = State.SKIPPED
     if not needs:
         blockers.append("No assessable requirements; review the job description.")
+    if not role:
+        blockers.append("Role relevance needs candidate review.")
     if not target and not location_confirmed(job, profile):
         blockers.append("Location needs candidate confirmation.")
     if location_needs_review(job, profile, settings):

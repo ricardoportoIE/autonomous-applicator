@@ -45,10 +45,10 @@ def test_optional_clause_is_removed_independently(job, suffix):
     assert requirements(job) == ["python"]
 
 
-def test_ambiguous_mixed_clause_keeps_mandatory_mentions(job):
+def test_directly_optional_technology_is_separated_from_a_mandatory_clause(job):
     job.requirements = []
     job.description = "Python required and Azure preferred"
-    assert requirements(job) == ["python", "azure"]
+    assert requirements(job) == ["python"]
 
 
 @pytest.mark.parametrize(

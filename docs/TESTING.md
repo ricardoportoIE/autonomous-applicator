@@ -1,5 +1,21 @@
 # Testing and coverage
 
+## Vacancy scoring audit, 6 October 2026
+
+Final fresh acceptance passed **401 affected-path cases in 42.98 seconds**, including **62 new cases** in `tests/test_scoring_audit.py`. Both complete affected runtime modules measured **100% statements and branch outcomes**: `policy.py` covers **194 statements and 98 branch outcomes**, and `discovery.py` covers **24 statements and 12 branch outcomes**, with zero missing paths. These are focused measurements, not a new complete-backend or frontend coverage result.
+
+Regressions cover optional headings and directly scoped clauses, explicit negation, known OR alternatives versus peer-family slashes and mandatory stacks, reviewed metadata canonicalisation, independent requirements, verified evidence selection, finite technology aliases, ordinary Go verbs, exact country identity, unrelated and recognised role titles, decimal professional minima/ranges, half-up rounding, repeated mentions and unverified evidence. Controlled Greenhouse responses verify preserved block boundaries and the unchanged encoding guard. Existing policy, intake/exclusion, document, capacity, readiness, answer-style and duration paths were exercised together.
+
+An initial affected run exposed an incorrect new test expectation for an alternative containing an unknown platform. It was corrected to assert that the parser does not invent an OR equivalence; production behaviour was retained. The fresh 401-case acceptance above ran after that correction. Ruff, formatting and strict mypy passed across all 21 runtime modules. No frontend source changed, no complete system suite was rerun, and no model request or provider submission occurred. Tests use fictional records and controlled providers.
+
+Reproduce the final two-module coverage gate:
+
+```powershell
+uv run pytest tests/test_scoring_audit.py tests/test_requirement_interpretation.py tests/test_policy.py tests/test_discovery_screening.py tests/test_documents_adviser_discovery.py tests/test_sending_capacity.py tests/test_preflight.py tests/test_answer_style_policy.py tests/test_backend_integrity.py tests/test_resume_duration_regressions.py --override-ini addopts= --cov=applicator.policy --cov=applicator.discovery --cov-branch --cov-fail-under=100 --cov-report=term-missing -q
+```
+
+[Scoring rules](REQUIREMENT_INTERPRETATION.md#formula-and-routing) retain the 70/15/15 formula and independent eligibility gates. [Queue operations](APPLICATION_QUEUE.md#requirement-and-closure-decisions) explain cached scores and exclusion memory; [delivery](STATUS.md#vacancy-scoring-audit-6-october-2026) distinguishes the read-only operational audit from fictional tests.
+
 ## Field-aware instruction drafts, 6 October 2026
 
 The final affected-library run passed **100 backend cases in 62.06 seconds**, including **36 new cases** in `tests/test_instruction_draft.py`. The complete changed library measured **100% statements and branch outcomes**: **217/217 statements and 104/104 branch outcomes**, with zero missing paths. The new authenticated API route's executable paths were exercised, whilst the broader API module was only partially measured by this focused run. No new complete-backend coverage claim is made.
