@@ -1,5 +1,19 @@
 # Testing and coverage
 
+## Manual review at the final sending gate, 7 October 2026
+
+The final `Store.mark_sending` check used the base evaluator rather than the scoped candidate decision, so an approved experience criterion passed preparation/reservation but failed immediately before Submit. Changed that transaction to the shared review-aware evaluator. Fresh affected-path acceptance passed **107 cases in 42.28 seconds**, including **16 new regressions**. The changed function reached **100% of its measured executable lines and branch outcomes: 18 lines and eight outcomes**. Whole-store coverage in this focused run was **69.55%**; this is not a fresh complete-backend coverage claim.
+
+Four service regressions explicitly invoke the actual final callback for known years, unmapped experience, confirmed lack of production ML experience and the manual fit band. Eight additional cases preserve last-moment vetoes for revoked decisions, pause, LinkedIn scope, candidate revision, changed job identity, reduced capacity, unconfirmed facts and location. Four fully intercepted Chromium journeys exercise real form reading, document upload, the service callback, final transaction, observed Submit click and confirmation. Current decisions permit one fixture click; revocation permits none, releases the unsent slot and preserves truthful facts. No real provider send, paid model request or frontend source change was used in this repair.
+
+The first capacity fixture incorrectly added a newer held attempt for the same application, violating the existing hold-reconciliation contract. It was corrected to reserve a separate fictional opportunity before the fresh successful execution. Static analysis, formatting and strict mypy passed. Reproduce:
+
+```powershell
+uv run pytest tests/test_review_final_gate.py tests/test_application_management.py tests/test_sending_capacity.py tests/test_submission_records.py tests/test_preflight.py --override-ini addopts= --cov=applicator.store --cov-branch --cov-report=term-missing --cov-fail-under=0 -q
+```
+
+Historical full frontend/backend measurements remain separately dated. [Operations](OPERATIONS.md#resolve-a-review-or-remove-an-opportunity) explain unsent versus uncertain recovery.
+
 ## Unresolved experience requirement decisions, 7 October 2026
 
 Extended the explicit per-opportunity review decision to professional experience criteria whose wording cannot be mapped to a confirmed duration, including commercial software development and combined technology requirements. The candidate can choose to apply without confirming that the criterion is met. Numerical scoring, documents and factual answers stay unchanged; a missing experience-question answer remains a separate hold, and sibling opportunities retain their own decisions.

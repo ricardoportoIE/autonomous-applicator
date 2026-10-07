@@ -70,6 +70,8 @@ Job discovery supports verified company-name and company-logo headers. A failed 
 
 ### Queue and review
 
+Explicit experience/fit decisions are honoured throughout preparation, reservation and the final transaction immediately before Submit. The final gate rechecks the current scoped decision alongside permission, candidate/job identity, capacity and remaining eligibility conditions; revocation or a changed independent condition still prevents the click. [Final-gate regressions](docs/TESTING.md#manual-review-at-the-final-sending-gate-7-october-2026) include actual intercepted browser clicks and no-click outcomes.
+
 Experience requirements inform review rather than obliging the candidate to claim every criterion. The operator may explicitly approve one opportunity despite a known shortfall or an experience description the evaluator cannot map to confirmed years. This is a decision to apply, not a new factual approval; actual years, questionnaire answers and document evidence remain truthful. Automatic scoring thresholds and independent submission checks still apply.
 
 **Overview** explains each current review blocker and provides the appropriate action for questions, documents, candidate facts, location, settings or activity. An explicit approval can accept a known experience shortfall for one opportunity whilst retaining truthful answers and every other submission check. **Trash** removes an unsuitable opportunity from processing and repeated discovery without deleting its documents or history; restoration requires fresh checks for pending work. [Review controls](docs/OPERATIONS.md#resolve-a-review-or-remove-an-opportunity) explain the decisions and their limits.

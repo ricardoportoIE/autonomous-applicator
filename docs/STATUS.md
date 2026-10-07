@@ -1,5 +1,13 @@
 # Delivery and validation record
 
+## Manual review final-gate repair, 7 October 2026
+
+Diagnosed a submitting-stage review hold after an already approved production-experience shortfall. The stored diagnostic and journal confirmed form completion and an unsent attempt: the failure occurred in the last local policy check, before Submit. That check still used the base evaluator, ignoring the scoped decision honoured by the other preparation/submission checks. It now uses the same review-aware evaluation inside the existing sending transaction, retaining current permission, candidate/job identity, quota and other factual policy gates.
+
+Fresh acceptance passed **107 affected-path cases**, including **16 new regressions** and four fully intercepted browser journeys. The changed final-gate function has **100% of measured executable lines and branch outcomes** (18 lines, eight outcomes); whole-store focused coverage is 69.55%, separate from historical complete-backend coverage. Static checks passed. [Testing](TESTING.md#manual-review-at-the-final-sending-gate-7-october-2026) records the corrected capacity fixture and reproduction.
+
+Paused the active global agent switch for safe activation while preserving the networking preference. The loopback server restarted and passed authenticated health/read checks. A normal authenticated review command reapplied one existing, current decision to remove the proved technical hold and return that opportunity to Ready. Independent private comparison preserved the decision content, candidate/answers, other applications, sending attempts and all **64 document hashes**. No real provider click, paid model request or new eligibility claim was made. The agent remains paused. Delivery uses a **local commit only**, without a remote push.
+
 ## Unresolved experience requirement review, 7 October 2026
 
 Corrected a missing manual decision for commercial software development experience: the prior control accepted known numeric shortfalls but treated unmapped professional requirements solely as factual corrections. The shared backend/frontend now accept a deliberate application decision for either form, without confirming the requirement, increasing years or supplying unknown questionnaire answers. The score remains indicative, and other checks remain intact. Updated operational documentation and the fictional review screenshot.

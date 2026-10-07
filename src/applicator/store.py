@@ -880,13 +880,13 @@ class Store:
                 raise ValueError("Candidate or opportunity changed before sending")
             if count > settings.daily_limit:
                 raise ValueError("Daily sending capacity changed before sending")
-            from .policy import evaluate
-
             profile = Profile.model_validate_json(
                 db.execute("SELECT value FROM config WHERE key='profile'").fetchone()[0]
             )
             if (
-                evaluate(job, self.effective_profile(app_id, profile, job, db), settings).state
+                self.management.evaluation(
+                    app_id, self.effective_profile(app_id, profile, job, db), job, settings, db
+                ).state
                 != State.READY
             ):
                 raise ValueError("Submission policy changed before sending")
