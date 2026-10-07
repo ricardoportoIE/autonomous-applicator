@@ -136,6 +136,9 @@ class Store:
         from .question_library import QuestionLibrary
 
         self.question_library = QuestionLibrary(self)
+        from .application_management import ApplicationManagement
+
+        self.management = ApplicationManagement(self)
 
     @contextmanager
     def connect(self, immediate: bool = False) -> Iterator[sqlite3.Connection]:
@@ -250,7 +253,8 @@ class Store:
             if settings.ai_document_preparation and not previous.ai_document_preparation:
                 count = db.execute(
                     "UPDATE applications SET state=?,evaluation='{}',revision=0,manifest='{}' "
-                    "WHERE state IN (?,?) AND COALESCE(json_extract(manifest,'$.generation.method'),'') != ?",
+                    "WHERE state IN (?,?) AND COALESCE(json_extract(manifest,'$.generation.method'),'') != ? "
+                    "AND id NOT IN (SELECT application_id FROM application_trash)",
                     (State.REVIEW, State.REVIEW, State.READY, "openai"),
                 ).rowcount
                 self.event(
@@ -288,7 +292,7 @@ class Store:
         )
         db.execute("UPDATE config SET value=? WHERE key='revision'", (str(revision),))
         db.execute(
-            "UPDATE applications SET state=?, manifest='{}' WHERE state IN (?, ?, ?)",
+            "UPDATE applications SET state=?, manifest='{}' WHERE state IN (?, ?, ?) AND id NOT IN (SELECT application_id FROM application_trash)",
             (State.REVIEW, State.READY, State.REVIEW, State.SKIPPED),
         )
         self.event(db, "profile_updated", f"Revision {revision}; previous materials invalidated.")
@@ -443,6 +447,7 @@ class Store:
             result["approved_answers"] = self._approved_answers(
                 db, app_id, Job.model_validate(result["job"])
             )
+            result.update(self.management.metadata(db, app_id))
             return result
 
     def _approved_answers(self, db: sqlite3.Connection, app_id: int, job: Job) -> dict[str, str]:
@@ -467,6 +472,8 @@ class Store:
 
         with self.connect(True) as db:
             row = db.execute("SELECT job,state FROM applications WHERE id=?", (app_id,)).fetchone()
+            if self.management.trashed(db, app_id):
+                raise ValueError("Restore this opportunity from Trash before changing its answers")
             current = int(db.execute("SELECT value FROM config WHERE key='revision'").fetchone()[0])
             if not row:
                 raise KeyError(app_id)
@@ -653,6 +660,8 @@ class Store:
 
     def update_job(self, app_id: int, job: Job) -> None:
         with self.connect(True) as db:
+            if self.management.trashed(db, app_id):
+                raise ValueError("Restore this opportunity from Trash before editing it")
             row = db.execute("SELECT job,state FROM applications WHERE id=?", (app_id,)).fetchone()
             if not row:
                 raise KeyError(app_id)
@@ -680,8 +689,14 @@ class Store:
 
     def applications(self) -> list[dict[str, Any]]:
         with self.connect() as db:
-            rows = [dict(row) for row in db.execute("SELECT * FROM applications ORDER BY id DESC")]
+            rows = [
+                dict(row)
+                for row in db.execute(
+                    "SELECT a.*,t.moved_at AS trashed_at,t.reason AS trash_reason FROM applications a LEFT JOIN application_trash t ON t.application_id=a.id ORDER BY a.id DESC"
+                )
+            ]
         for row in rows:
+            row["trashed"] = row["trashed_at"] is not None
             for key in ("job", "evaluation", "manifest"):
                 row[key] = json.loads(row[key])
         return rows
@@ -721,6 +736,8 @@ class Store:
         expected_job: Job | None = None,
     ) -> None:
         with self.connect(True) as db:
+            if self.management.trashed(db, app_id):
+                raise ValueError("Restore this application from Trash before preparing it")
             current_revision = int(
                 db.execute("SELECT value FROM config WHERE key='revision'").fetchone()[0]
             )
@@ -743,6 +760,8 @@ class Store:
 
     def reserve(self, app_id: int, revision: int) -> int:
         with self.connect(True) as db:
+            if self.management.trashed(db, app_id):
+                raise ValueError("Applications in Trash cannot be submitted")
             settings = Settings.model_validate_json(
                 db.execute("SELECT value FROM config WHERE key='settings'").fetchone()[0]
             )
@@ -767,8 +786,6 @@ class Store:
                 or revision != actual_revision
             ):
                 raise ValueError("Application is not ready or its profile revision is stale")
-            from .policy import evaluate
-
             application = db.execute(
                 "SELECT job,manifest FROM applications WHERE id=?", (app_id,)
             ).fetchone()
@@ -776,8 +793,8 @@ class Store:
                 db.execute("SELECT value FROM config WHERE key='profile'").fetchone()[0]
             )
             vacancy = Job.model_validate_json(application["job"])
-            evaluation = evaluate(
-                vacancy, self.effective_profile(app_id, profile, vacancy, db), settings
+            evaluation = self.management.evaluation(
+                app_id, self.effective_profile(app_id, profile, vacancy, db), vacancy, settings, db
             )
             if (
                 Job.model_validate_json(application["job"]).source == "linkedin"

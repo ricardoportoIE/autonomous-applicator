@@ -117,6 +117,13 @@ class Service:
             if row["state"] == State.REVIEW and row["evaluation"].get("blockers")
             else "Prepare pending records; reconcile uncertain attempts. Submitted records cannot be retried.",
         )
+        if row["trashed"]:
+            check(
+                "trash",
+                "Removed from the queue",
+                False,
+                "Restore this opportunity from Trash before preparing or submitting it.",
+            )
         permitted = job.source in (sources if sources is not None else self.adapters.keys())
         check(
             "adapter",
@@ -163,7 +170,7 @@ class Service:
                 else "Confirm the candidate facts first.",
             )
             effective = self.store.effective_profile(app_id, profile, job)
-            evaluation = evaluate(job, effective, settings)
+            evaluation = self.store.management.evaluation(app_id, effective, job, settings)
             check(
                 "policy",
                 "Current fit and eligibility",
@@ -237,6 +244,8 @@ class Service:
         report = progress
         report("evaluating", "Checking the opportunity against approved candidate facts.")
         row = self.store.application(app_id)
+        if row["trashed"]:
+            raise ValueError("Restore this application from Trash before preparing it")
         if row["state"] in {State.SUBMITTED, State.SUBMITTING, State.UNCERTAIN}:
             raise ValueError("This application is already submitted or needs reconciliation")
         job = Job.model_validate(row["job"])
@@ -258,7 +267,7 @@ class Service:
                     with self.store.connect() as db:
                         self.store.event(db, "routine_question_review", type(exc).__name__, app_id)
         effective = self.store.effective_profile(app_id, profile, job)
-        evaluation = evaluate(job, effective, self.store.settings())
+        evaluation = self.store.management.evaluation(app_id, effective, job, self.store.settings())
         if instruction_failures:
             evaluation.state = State.REVIEW
             evaluation.blockers.extend(
@@ -362,7 +371,9 @@ class Service:
         profile, revision = self.store.profile()
         job = Job.model_validate(row["job"])
         settings = self.store.settings()
-        evaluation = evaluate(job, self.store.effective_profile(app_id, profile, job), settings)
+        evaluation = self.store.management.evaluation(
+            app_id, self.store.effective_profile(app_id, profile, job), job, settings
+        )
         try:
             validate_manifest(row["manifest"], self.data / "documents" / str(app_id), revision)
             validate_generation(
@@ -410,6 +421,7 @@ class Service:
                 )
             )
             for row in self.store.applications()
+            if not row["trashed"]
         )
 
     def submit(self, app_id: int, *, progress: Callable[[str, str], None] | None = None) -> str:
@@ -424,10 +436,12 @@ class Service:
             "Rechecking policy, approved answers, document hashes and AI provenance.",
         )
         row = self.store.application(app_id)
+        if row["trashed"]:
+            raise ValueError("Applications in Trash cannot be submitted")
         profile, revision = self.store.profile()
         job = Job.model_validate(row["job"])
         effective = self.store.effective_profile(app_id, profile, job)
-        evaluation = evaluate(job, effective, self.store.settings())
+        evaluation = self.store.management.evaluation(app_id, effective, job, self.store.settings())
         if evaluation.state != State.READY or row["state"] != State.READY:
             raise ValueError("Application does not pass current submission policy")
         if job.source not in self.adapters:
@@ -755,6 +769,8 @@ class Service:
             operation.completion_status = "paused"
             return result
         for candidate in sorted(self.store.applications(), key=lambda row: row["id"]):
+            if candidate["trashed"]:
+                continue
             if stopping and stopping():
                 operation.completion_status = "stopped"
                 break
@@ -801,8 +817,11 @@ class Service:
                 row = self.store.application(app_id)
                 profile, revision = self.store.profile()
                 job = Job.model_validate(row["job"])
-                current = evaluate(
-                    job, self.store.effective_profile(app_id, profile, job), self.store.settings()
+                current = self.store.management.evaluation(
+                    app_id,
+                    self.store.effective_profile(app_id, profile, job),
+                    job,
+                    self.store.settings(),
                 )
                 if row["state"] == State.READY and current.state != State.READY:
                     self.store.prepare(
@@ -841,9 +860,10 @@ class Service:
                     # Persist a current-revision hold: a later cycle must not retry this failure.
                     profile, revision = self.store.profile()
                     held_job = Job.model_validate(row["job"])
-                    evaluation = evaluate(
-                        held_job,
+                    evaluation = self.store.management.evaluation(
+                        app_id,
                         self.store.effective_profile(app_id, profile, held_job),
+                        held_job,
                         self.store.settings(),
                     )
                     evaluation.state = State.REVIEW

@@ -70,6 +70,12 @@ Job discovery supports verified company-name and company-logo headers. A failed 
 
 ### Queue and review
 
+**Overview** explains each current review blocker and provides the appropriate action for questions, documents, candidate facts, location, settings or activity. An explicit approval can accept a known experience shortfall for one opportunity whilst retaining truthful answers and every other submission check. **Trash** removes an unsuitable opportunity from processing and repeated discovery without deleting its documents or history; restoration requires fresh checks for pending work. [Review controls](docs/OPERATIONS.md#resolve-a-review-or-remove-an-opportunity) explain the decisions and their limits.
+
+![Actionable review with a truthful, opportunity-specific decision](docs/assets/application-review.png)
+
+*Review screenshot updated on 7 October 2026 using a disposable, fictional candidate and vacancy. The agent is paused; no real application was submitted.*
+
 ![URL-only opportunity import with a separate manual entry option](docs/assets/opportunity-import.png)
 
 **Add opportunity** defaults to pasting a LinkedIn job link. The agent reads verified primary job details in the dedicated browser and saves the vacancy to the preparation queue. Importing shows visible progress, preserves duplicate records and retains failed drafts for an explicit retry. The modal capture above was updated on 6 October 2026 using a disposable fictional candidate; no provider account or model call was used. See [single-link operations](docs/OPERATIONS.md#import-one-opportunity-from-its-link) for supported links and review boundaries.

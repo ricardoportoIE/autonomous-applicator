@@ -385,7 +385,8 @@ export class Workspace {
         path,
         method,
         body,
-        path === "/profile" || path.endsWith("/answer")
+        path === "/profile" ||
+          /\/(answer|trash|restore|review-decision)$/.test(path)
           ? profileRevision
           : undefined,
       );

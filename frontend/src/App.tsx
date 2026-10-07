@@ -23,6 +23,7 @@ import {
   WorkerMonitor,
 } from "./components";
 import { ApplicationDetails } from "./application-detail";
+import { TrashForm, restoreApplication } from "./application-controls";
 import { ApplicationRecordPage } from "./application-record";
 import {
   BoardForm,
@@ -50,6 +51,7 @@ type Dialogue =
   | { kind: "contact" | "board" }
   | { kind: "profile"; profile: Profile | null; revision: number }
   | { kind: "job"; application: Application | null }
+  | { kind: "trash"; application: Application; revision: number }
   | { kind: "evidence"; evidence: Evidence | null };
 
 export function App({ workspace }: { workspace: Workspace }) {
@@ -100,13 +102,18 @@ export function App({ workspace }: { workspace: Workspace }) {
     setModal(value);
   };
   const activeApplications = state.applications.filter(
-    (row) => row.state !== "submitted",
+    (row) => row.state !== "submitted" && !row.trashed,
   );
   const archivedApplications = state.applications.filter(
-    (row) => row.state === "submitted",
+    (row) => row.state === "submitted" && !row.trashed,
   );
+  const trashedApplications = state.applications.filter((row) => row.trashed);
   const queueApplications =
-    queueTab === "active" ? activeApplications : archivedApplications;
+    queueTab === "active"
+      ? activeApplications
+      : queueTab === "archived"
+        ? archivedApplications
+        : trashedApplications;
   const rows = filterApplications(queueApplications, {
     query,
     state: filter,
@@ -348,13 +355,15 @@ export function App({ workspace }: { workspace: Workspace }) {
                   ["Opportunities", state.applications.length],
                   [
                     "Ready",
-                    state.applications.filter((a) => a.state === "ready")
-                      .length,
+                    state.applications.filter(
+                      (a) => a.state === "ready" && !a.trashed,
+                    ).length,
                   ],
                   [
                     "For review",
-                    state.applications.filter((a) => a.state === "review")
-                      .length,
+                    state.applications.filter(
+                      (a) => a.state === "review" && !a.trashed,
+                    ).length,
                   ],
                   [
                     "Submitted",
@@ -454,7 +463,9 @@ export function App({ workspace }: { workspace: Workspace }) {
               <div id="recent">
                 {state.unlocked && (
                   <ApplicationTable
-                    rows={state.applications.slice(0, 5)}
+                    rows={state.applications
+                      .filter((row) => !row.trashed)
+                      .slice(0, 5)}
                     onOpen={openDetail}
                   />
                 )}
@@ -593,6 +604,10 @@ export function App({ workspace }: { workspace: Workspace }) {
                     id: "archived",
                     label: `Archive (${archivedApplications.length})`,
                   },
+                  {
+                    id: "trash",
+                    label: `Trash (${trashedApplications.length})`,
+                  },
                 ]}
               >
                 {(section) =>
@@ -603,6 +618,14 @@ export function App({ workspace }: { workspace: Workspace }) {
                           Confirmed submissions are kept here with their full
                           records, documents and receipts. Applications needing
                           review or reconciliation stay in Active.
+                        </p>
+                      )}
+                      {section === "trash" && (
+                        <p>
+                          Removed opportunities are excluded from processing and
+                          automatic re-import. Documents and history stay
+                          available. Restore pending work for a fresh readiness
+                          check; confirmed submissions return to Archive.
                         </p>
                       )}
                       <div className="queue-tools">
@@ -637,7 +660,9 @@ export function App({ workspace }: { workspace: Workspace }) {
                               .filter(([value]) =>
                                 section === "active"
                                   ? value !== "submitted"
-                                  : value === "all" || value === "submitted",
+                                  : section === "trash" ||
+                                    value === "all" ||
+                                    value === "submitted",
                               )
                               .map(([value, label]) => (
                                 <option key={value} value={value}>
@@ -682,12 +707,24 @@ export function App({ workspace }: { workspace: Workspace }) {
                           <ApplicationTable
                             rows={rows}
                             onOpen={openDetail}
+                            onTrash={(row) =>
+                              open({
+                                kind: "trash",
+                                application: row,
+                                revision: state.revision,
+                              })
+                            }
+                            onRestore={(row) =>
+                              void restoreApplication(workspace, row)
+                            }
                             empty={
                               queueApplications.length
                                 ? "No opportunities match these filters. Try another search or clear the filters."
                                 : section === "archived"
                                   ? "No completed applications yet. Confirmed submissions appear here automatically."
-                                  : "No active opportunities. Discover or add a job to start."
+                                  : section === "trash"
+                                    ? "Trash is empty. Move unsuitable opportunities here to remove them from the queue."
+                                    : "No active opportunities. Discover or add a job to start."
                             }
                           />
                         )}
@@ -704,6 +741,16 @@ export function App({ workspace }: { workspace: Workspace }) {
                 workspace={workspace}
                 profile={profile}
                 edit={(application) => open({ kind: "job", application })}
+                editProfile={() =>
+                  open({ kind: "profile", profile, revision: state.revision })
+                }
+                moveToTrash={() =>
+                  open({
+                    kind: "trash",
+                    application: state.detail!.row,
+                    revision: state.revision,
+                  })
+                }
               />
             ) : (
               <article id="application-detail" hidden />
@@ -924,33 +971,50 @@ export function App({ workspace }: { workspace: Workspace }) {
       {state.unlocked && modal && (
         <Modal
           title={
-            modal.kind === "profile"
-              ? profile
-                ? "Edit candidate profile"
-                : "Add candidate profile"
-              : modal.kind === "job"
-                ? modal.application
-                  ? "Edit opportunity"
-                  : "Add an opportunity"
-                : modal.kind === "evidence"
-                  ? modal.evidence
-                    ? "Edit evidence"
-                    : "Add evidence"
-                  : modal.kind === "contact"
-                    ? "Queue a professional connection"
-                    : "Import Greenhouse opportunities"
+            modal.kind === "trash"
+              ? "Move opportunity to Trash"
+              : modal.kind === "profile"
+                ? profile
+                  ? "Edit candidate profile"
+                  : "Add candidate profile"
+                : modal.kind === "job"
+                  ? modal.application
+                    ? "Edit opportunity"
+                    : "Add an opportunity"
+                  : modal.kind === "evidence"
+                    ? modal.evidence
+                      ? "Edit evidence"
+                      : "Add evidence"
+                    : modal.kind === "contact"
+                      ? "Queue a professional connection"
+                      : "Import Greenhouse opportunities"
           }
           onClose={() => setModal(null)}
           busy={state.pending}
           notice={state.notice}
           error={state.error}
         >
-          {modal.kind === "profile" ? (
+          {modal.kind === "trash" ? (
+            <TrashForm
+              row={modal.application}
+              revision={modal.revision}
+              workspace={workspace}
+              done={() => setModal(null)}
+            />
+          ) : modal.kind === "profile" ? (
             <ProfileForm
               profile={modal.profile}
               revision={modal.revision}
               workspace={workspace}
-              done={() => setModal(null)}
+              done={() => {
+                setModal(null);
+                const current = workspace.getSnapshot();
+                if (current.unlocked && current.detail)
+                  void workspace.action(
+                    () => workspace.openDetail(current.detail!.row.id),
+                    true,
+                  );
+              }}
             />
           ) : modal.kind === "job" ? (
             <JobForm

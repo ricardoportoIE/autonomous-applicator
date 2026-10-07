@@ -1,5 +1,15 @@
 # Delivery and validation record
 
+## Actionable review and reversible Trash, 7 October 2026
+
+Added explicit review cards and corrective controls for questions, documents, facts, location, settings, job details and activity. Known experience shortfalls and the configured manual fit band have a deliberate per-opportunity acceptance control. Decisions retain truthful facts/answers, record current candidate/job identity and expire after changes; unresolved facts, legal conditions and every other submission gate remain intact. Acceptance rechecks readiness without sending. Profile editing now refreshes the selected review detail even while the enclosing save operation is completing.
+
+Added reversible Trash removal with an optional reason, a separate queue tab and restoration. Removed records leave worker preparation/sending and automatic rediscovery, whilst documents, attempts, receipts and original status remain accessible. Pending restoration requires fresh preparation and a new decision; terminal history remains intact. Atomic revision/job checks and operation guards reject concurrent, pending or uncertain sends. Candidate/settings edits preserve dormant Trash document manifests.
+
+Acceptance passed **208 focused backend cases** with **100% in the new management module** (86 statements, 34 branch outcomes), **223 complete React cases** with **100% in all 13 measured runtime files**, and four packaged desktop/mobile journeys. Static checks and production build passed. [Testing](TESTING.md#actionable-review-and-reversible-trash-7-october-2026) records scope, initial fixture/coverage failures and reproduction. The README includes a visually inspected fictional review screenshot. This backend result is focused acceptance, distinct from historical complete-backend coverage.
+
+The loopback server restarted and passed authenticated health, dashboard and new metadata reads. A fresh pre-activation private snapshot accounted for intervening local activity since the previous diagnosis. Independent comparison preserved all current application/configuration/answer/instruction/sending/networking records and all **64 document hashes**; only existing startup question-observation timestamps may refresh. New management tables remain empty: no real opportunity was approved, moved or restored on the operator's behalf. Both queues stayed paused, and activation made no paid model request or provider send. Delivery uses a **local commit only**, without a remote push.
+
 ## Discovery loop diagnosis and recovery, 7 October 2026
 
 Diagnosed three consecutive discovery failures on one provider detail page. A read-only real-browser reproduction showed that LinkedIn had replaced the supported company marker with a company-logo accessibility label. The shared reader now supports that observed header with independent company-name, title and location checks. A second real read extracted the vacancy successfully without opening its application form. These failed discovery cycles were browser reads, not model-generated answers.

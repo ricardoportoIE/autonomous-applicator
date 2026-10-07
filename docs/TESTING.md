@@ -1,5 +1,27 @@
 # Testing and coverage
 
+## Actionable review and reversible Trash, 7 October 2026
+
+The focused backend gate passed **208 cases in 45.60 seconds** across the new management module and affected FIFO, preflight, scoped-answer, capacity, requirement, receipt and discovery paths. `application_management.py` reached **100% statements and branch outcomes: 86/86 statements and 34/34 branch outcomes**. The complete React suite passed **223 cases in 21.16 seconds**, with **100% statements, lines, functions and branches in every measured runtime file** (1,016 statements, 923 lines, 361 functions and 1,097 branch outcomes across 13 files). This is a fresh complete React measurement and focused backend acceptance, not a new complete-backend coverage measurement.
+
+Tests verify exact, truthful, opportunity-specific decisions; candidate/job expiry; untouched scores; unresolved factual/legal/question gates; concurrent operation refusal; stale revision and acknowledgement validation; idempotent removal; FIFO/reservation/preparation exclusion; rediscovery deduplication; preserved manifests across candidate/settings changes in Trash; restoration requiring fresh preparation; and retained submitted/skipped history. Component tests exercise corrective navigation, explicit acknowledgements, failed-removal editor retention, empty Trash, restoration and profile-save detail refresh. The first full React run passed behaviour but failed the strict coverage gate; additional action/branch regressions closed those gaps. One new profile-save test exposed a nested busy-state read being skipped, which was corrected before final acceptance. Incorrect new fixture button labels and a missing detail response were also corrected.
+
+Four packaged Chromium journeys cover desktop/mobile review approval and removal/restoration, plus the existing submission archive. They use a real isolated API, fictional candidates and generated documents, reject external requests, check overflow and JavaScript errors, and verify unchanged candidate facts, document hashes and sending counts. No paid model call, real application or invitation is part of these tests. Ruff, formatting, strict mypy, TypeScript, ESLint and production build also passed.
+
+Reproduce:
+
+```powershell
+uv run pytest tests/test_application_management.py tests/test_application_queue.py tests/test_preflight.py tests/test_scoped_answers.py tests/test_sending_capacity.py tests/test_requirement_interpretation.py tests/test_submission_records.py tests/test_discovery_memory.py --override-ini addopts= --cov=applicator.application_management --cov-branch --cov-report=term-missing --cov-fail-under=100 -q
+npm test
+npm run typecheck
+npm run lint
+npm run format:check
+npm run build
+uv run pytest tests/test_review_management_browser.py tests/test_application_archive_browser.py --override-ini addopts= --no-cov -q
+```
+
+[Operations](OPERATIONS.md#resolve-a-review-or-remove-an-opportunity) explain the explicit decision and retained safeguards; [queue design](APPLICATION_QUEUE.md#active-queue-and-submission-archive) explains lifecycle and discovery exclusion.
+
 ## Discovery read recovery, 7 October 2026
 
 The fresh broad affected-path run passed **149 backend cases in 373.39 seconds** across discovery, authentication, API, scoped answers, worker controls and recovery. A final **42-case run passed in 75.82 seconds**, covering all **19 new discovery cases** and **23 existing FIFO cases**. This includes the two subsequently added navigation/shutdown checks, also verified independently in 16.72 seconds. Both coverage runs measured **100% statements and branch outcomes in `discovery_memory.py`: 43/43 statements and 8/8 branch outcomes**. The executions overlap; they exercise 174 distinct backend cases rather than 191 distinct cases. These are focused measurements, not a fresh complete-backend coverage claim.

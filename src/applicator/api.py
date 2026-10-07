@@ -58,6 +58,20 @@ class Preparation(Contract):
     use_ai: bool | None = None
 
 
+class ManageApplication(Contract):
+    job: Job
+    reason: str = Field(default="", max_length=500)
+
+
+class ReviewDecision(Contract):
+    job: Job
+    blockers: list[Annotated[str, Field(min_length=1, max_length=1000)]] = Field(
+        default_factory=list, max_length=50
+    )
+    accept_fit: bool = False
+    answers_remain_truthful: Literal[True]
+
+
 class Receipt(Contract):
     receipt: str = Field(min_length=1, max_length=1000)
 
@@ -248,7 +262,7 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
             result = service.tick(operation, stopping=stop.is_set)
             settings = store.settings()
             if empty_search and settings.automation_enabled and not service.queue_pending():
-                rows = store.applications()
+                rows = [row for row in store.applications() if not row["trashed"]]
                 review_count = sum(row["state"] == State.REVIEW for row in rows)
                 ready_count = sum(row["state"] == State.READY for row in rows)
                 operation.progress(
@@ -504,6 +518,34 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
     def application(app_id: int) -> dict[str, Any]:
         return store.application(app_id)
 
+    @app.post("/api/applications/{app_id}/trash", dependencies=auth)
+    def trash_application(
+        app_id: int, request: ManageApplication, if_match: Annotated[int, Header(ge=0)]
+    ) -> dict[str, str]:
+        with service.operations.run("trash", app_id):
+            store.management.move(app_id, if_match, request.job, request.reason)
+        return {"status": "trashed"}
+
+    @app.post("/api/applications/{app_id}/restore", dependencies=auth)
+    def restore_application(
+        app_id: int, request: ManageApplication, if_match: Annotated[int, Header(ge=0)]
+    ) -> dict[str, str]:
+        with service.operations.run("restore", app_id):
+            store.management.restore(app_id, if_match, request.job)
+        return {"status": "restored"}
+
+    @app.post("/api/applications/{app_id}/review-decision", dependencies=auth)
+    def accept_application_review(
+        app_id: int, request: ReviewDecision, if_match: Annotated[int, Header(ge=1)]
+    ) -> dict[str, str]:
+        with service.operations.run("review_decision", app_id) as operation:
+            store.management.accept(
+                app_id, if_match, request.job, request.blockers, request.accept_fit
+            )
+            service.refresh_readiness(app_id)
+            operation.result(store.application(app_id)["state"])
+        return {"status": "accepted"}
+
     @app.get("/api/applications/{app_id}/record", dependencies=auth)
     def application_record(
         app_id: int, before: Annotated[int | None, Query(ge=1)] = None
@@ -716,7 +758,7 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
     def document(app_id: int, key: str) -> FileResponse:
         row = store.application(app_id)
         _, revision = store.profile()
-        if row["state"] in {State.SUBMITTED, State.SUBMITTING, State.UNCERTAIN}:
+        if row["state"] in {State.SUBMITTED, State.SUBMITTING, State.UNCERTAIN} or row["trashed"]:
             revision = row["revision"]
         folder = data / "documents" / str(app_id)
         validate_manifest(row["manifest"], folder, revision)

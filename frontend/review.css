@@ -1,0 +1,63 @@
+.review-guidance {
+  margin: 1rem 0 1.5rem;
+  padding: 1.4rem;
+  border: 1px solid #d7dfe9;
+  border-radius: 1.2rem;
+  background: linear-gradient(135deg, #f7faff, #fffaf1);
+}
+.review-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+}
+.review-heading > svg {
+  flex-shrink: 0;
+  color: #b66b16;
+  margin-top: 0.2rem;
+}
+.review-heading h3 {
+  margin-top: 0.15rem;
+}
+.review-issues {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 0.8rem;
+  margin: 1rem 0;
+}
+.review-issue {
+  padding: 1rem;
+  border: 1px solid #e0e6ef;
+  border-radius: 0.85rem;
+  background: #fff;
+  min-width: 0;
+}
+.review-issue h4 {
+  margin: 0 0 0.5rem;
+  color: #193a5f;
+}
+.review-issue p {
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+.review-detail {
+  padding: 0.6rem 0.75rem;
+  border-left: 3px solid #d9a458;
+  border-radius: 0.3rem;
+  background: #fff8e8;
+}
+.review-decision {
+  padding: 1rem;
+  border: 1px solid #bfdecf;
+  background: #f1faf5;
+  border-radius: 0.85rem;
+  margin: 1rem 0;
+}
+.review-decision h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #21583e;
+}
+.review-decision .check {
+  margin: 0.9rem 0;
+}

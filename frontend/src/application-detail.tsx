@@ -16,6 +16,8 @@ import type {
   RoutineAnswerRecord,
 } from "./contracts";
 import type { Workspace } from "./workspace";
+import { ReviewGuidance } from "./review-guidance";
+import { RestoreButton } from "./application-controls";
 
 export function Answer({
   question,
@@ -24,6 +26,7 @@ export function Answer({
   id,
   automatic,
   approvedAnswer,
+  disabled = false,
 }: {
   question: Question;
   profile: Profile | null;
@@ -31,6 +34,7 @@ export function Answer({
   id: number;
   automatic?: RoutineAnswerRecord;
   approvedAnswer?: string;
+  disabled?: boolean;
 }) {
   const { revision, pending } = useSyncExternalStore(
     workspace.subscribe,
@@ -103,6 +107,7 @@ export function Answer({
       className="question-card"
       onSubmit={(event) => {
         event.preventDefault();
+        if (disabled) return;
         void workspace.action(async () => {
           if (!profile)
             throw new Error("Configure the candidate profile first.");
@@ -122,6 +127,7 @@ export function Answer({
         {question.choices.length ? (
           <select
             aria-label={question.label}
+            disabled={disabled}
             value={value}
             onChange={(event) => setValue(event.target.value)}
             required
@@ -134,6 +140,7 @@ export function Answer({
         ) : (
           <textarea
             aria-label={question.label}
+            disabled={disabled}
             value={value}
             onChange={(event) => setValue(event.target.value)}
             required
@@ -159,7 +166,7 @@ export function Answer({
         <button
           className="secondary"
           type="button"
-          disabled={pending || !profile?.confirmed}
+          disabled={pending || disabled || !profile?.confirmed}
           onClick={suggest}
         >
           {generating ? (
@@ -173,7 +180,7 @@ export function Answer({
           )}
           {generating ? "Generating answer idea…" : "Suggest with GPT-6.1 Sol"}
         </button>
-        <button className="secondary" disabled={pending}>
+        <button className="secondary" disabled={pending || disabled}>
           Approve answer
         </button>
       </div>
@@ -289,11 +296,15 @@ export function ApplicationDetails({
   workspace,
   profile,
   edit,
+  editProfile,
+  moveToTrash,
 }: {
   detail: ApplicationDetail;
   workspace: Workspace;
   profile: Profile | null;
   edit: (row: Application) => void;
+  editProfile?: () => void;
+  moveToTrash?: () => void;
 }) {
   const { row, report, events } = detail;
   const collection = events.find(
@@ -322,9 +333,9 @@ export function ApplicationDetails({
   );
   const [outcome, setOutcome] = useState(row.outcome ?? "interview");
   useEffect(() => setOutcome(row.outcome ?? "interview"), [row.outcome]);
-  const protectedState = ["submitted", "submitting", "uncertain"].includes(
-    row.state,
-  );
+  const protectedState =
+    ["submitted", "submitting", "uncertain"].includes(row.state) ||
+    Boolean(row.trashed);
   const prepare = (body: object) =>
     void workspace.action(() =>
       workspace.mutate(
@@ -364,6 +375,17 @@ export function ApplicationDetails({
           View full application record
         </a>
       </div>
+      {row.trashed && (
+        <section className="review-note" aria-label="Removed opportunity">
+          <h3>In Trash</h3>
+          <p>
+            This opportunity is excluded from queue processing and automatic
+            re-import. Your records and documents remain available.
+          </p>
+          {row.trash?.reason && <p>Reason: {row.trash.reason}</p>}
+          <RestoreButton row={row} workspace={workspace} />
+        </section>
+      )}
       <Tabs
         prefix="application"
         label="Application details"
@@ -379,6 +401,16 @@ export function ApplicationDetails({
         {(section) =>
           section === "summary" ? (
             <>
+              <ReviewGuidance
+                detail={detail}
+                workspace={workspace}
+                onTab={setTab}
+                editProfile={
+                  editProfile ?? (() => workspace.navigate("profile"))
+                }
+                editJob={() => edit(row)}
+                moveToTrash={moveToTrash}
+              />
               <section
                 className="preflight"
                 aria-label="Local submission checks"
@@ -425,6 +457,7 @@ export function ApplicationDetails({
                   ) && (
                     <form
                       className="review-note"
+                      id="location-review"
                       onSubmit={(event) => {
                         event.preventDefault();
                         const revision =
@@ -473,6 +506,16 @@ export function ApplicationDetails({
               )}
               <Provenance row={row} />
               <div className="actions">
+                {!row.trashed && moveToTrash && (
+                  <button
+                    type="button"
+                    className="secondary"
+                    disabled={["submitting", "uncertain"].includes(row.state)}
+                    onClick={moveToTrash}
+                  >
+                    Move to Trash
+                  </button>
+                )}
                 {!protectedState && (
                   <button
                     type="button"
@@ -498,7 +541,7 @@ export function ApplicationDetails({
                 >
                   Select evidence with GPT-6.1 Sol
                 </button>
-                {row.state === "ready" && (
+                {row.state === "ready" && !row.trashed && (
                   <button
                     type="button"
                     disabled={!report.can_submit}
@@ -637,6 +680,7 @@ export function ApplicationDetails({
               {questions.length ? (
                 questions.map((question) => (
                   <Answer
+                    disabled={Boolean(row.trashed)}
                     key={question.id}
                     question={question}
                     profile={profile}

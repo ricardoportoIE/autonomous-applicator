@@ -17,6 +17,8 @@ export function Badge({
   );
 }
 export function ApplicationBadge({ row }: { row: Application }) {
+  if (row.trashed)
+    return <Badge state="skipped">In Trash · {stateLabel(row.state)}</Badge>;
   const preparing =
     row.state === "review" &&
     (row.evaluation.preparation_pending || row.evaluation.score === undefined);
@@ -278,10 +280,14 @@ export function ApplicationTable({
   rows,
   onOpen,
   empty = "No opportunities yet. Import a job to start.",
+  onTrash,
+  onRestore,
 }: {
   rows: Application[];
   onOpen: (id: number) => void;
   empty?: string;
+  onTrash?: (row: Application) => void;
+  onRestore?: (row: Application) => void;
 }) {
   return (
     <div className="table-wrap">
@@ -327,6 +333,31 @@ export function ApplicationTable({
                   >
                     Full record
                   </a>
+                  {row.trashed && onRestore ? (
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => onRestore(row)}
+                      aria-label={`Restore ${row.job.title} at ${row.job.company}`}
+                    >
+                      Restore
+                    </button>
+                  ) : (
+                    !row.trashed &&
+                    onTrash && (
+                      <button
+                        type="button"
+                        className="secondary"
+                        disabled={["submitting", "uncertain"].includes(
+                          row.state,
+                        )}
+                        onClick={() => onTrash(row)}
+                        aria-label={`Move ${row.job.title} at ${row.job.company} to Trash`}
+                      >
+                        Move to Trash
+                      </button>
+                    )
+                  )}
                 </td>
               </tr>
             ))}

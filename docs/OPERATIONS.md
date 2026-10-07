@@ -1,5 +1,13 @@
 # Operating guide
 
+## Resolve a review or remove an opportunity
+
+Open **Applications**, select **Open** beside the vacancy and use **Overview → Why this application needs review**. Questions may already be complete: read the exact reason before changing answers. The cards open Questions, Documents, Activity, Agent settings, candidate editing or job editing as appropriate. Location holds link to the existing per-opportunity location confirmation. After editing candidate facts, the detail panel rechecks that opportunity; regenerating documents may still be required.
+
+For a known experience shortfall, decide case by case. Check **I have reviewed this opportunity and want to apply with my truthful profile**, then select **Approve this opportunity for the queue**. A score in the configured manual review band offers the same explicit decision. This accepts only the displayed experience/fit condition for that vacancy: it does not increase years of experience, approve missing answers, bypass legal/consent checks, or send an application. Documents, other blockers and live provider checks still apply. Changing the candidate profile or vacancy invalidates the decision.
+
+To remove a vacancy, select **Move to Trash** in the row or details. The dialogue accepts an optional reason and preserves it if the request fails. **Trash** retains records, documents, receipts and the original employer link while excluding preparation, sending and automatic rediscovery. A moved confirmed submission remains submitted at the employer. Select **Restore** to return the record: pending applications require fresh checks/preparation and a new experience decision, whilst completed/skipped records retain their historical status. Pause active work before managing records; an uncertain submission needs reconciliation first. These controls never permanently delete application evidence.
+
 ## Diagnosing repeated discovery cycles
 
 Check the run stage and opportunity URL before attributing repeated work to a model. On 7 October 2026, three successive cycles stopped on one job-details selector: LinkedIn displayed a company-logo accessibility label instead of the previously supported company label. Read-only reproduction confirmed the vacancy was present and signed in. The updated shared reader extracted its real title, company, location and description without opening Easy Apply.

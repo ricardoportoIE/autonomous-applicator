@@ -74,6 +74,10 @@ export type ApplicationState =
   "ready" | "review" | "skipped" | "submitting" | "submitted" | "uncertain";
 export interface Application {
   id: number;
+  trashed?: boolean;
+  trash?: { moved_at: string; reason: string } | null;
+  trashed_at?: string | null;
+  trash_reason?: string | null;
   job: Job;
   state: ApplicationState;
   outcome: string | null;
