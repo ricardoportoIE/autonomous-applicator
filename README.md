@@ -52,6 +52,8 @@ For unfamiliar ordinary questions, GPT-6.1 Sol interprets the field's wording an
 
 CV selection is proved against the current selected document card, rather than filename occurrence count. Within one application, verified uploads are reused by content hash and DOM identity. Numeric years answers are checked before submission readiness, whilst explicit provider range choices remain valid. [Operational diagnostics](docs/OPERATIONS.md#duplicate-cv-labels-and-numeric-experience-answers) explains the recovery and review boundaries.
 
+Job discovery supports verified company-name and company-logo headers. A failed detail page is deferred with persistent, bounded backoff while other readable results continue; authentication and unexpected origins still stop the batch. Automatic searches skip opportunities already in the queue, and the monitor distinguishes review waits from active application processing. [Discovery recovery](docs/APPLICATION_QUEUE.md#discovery-read-recovery-and-idle-monitoring) explains temporary holds, manual retries and pause boundaries.
+
 ## What the workspace does
 
 | Capability | User outcome |

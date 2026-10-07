@@ -21,6 +21,7 @@ from pydantic import Field
 from .adviser import advise
 from .browser import LinkedInBrowser, linkedin_job_id
 from .discovery import greenhouse
+from .discovery_memory import DiscoveryMemory
 from .documents import validate_manifest
 from .models import (
     Advice,
@@ -35,6 +36,7 @@ from .models import (
     State,
 )
 from .networking import Networking
+from .operations import Operation
 from .photos import stored_photo
 from .question_adviser import MODEL as QUESTION_MODEL
 from .question_adviser import suggest_answer
@@ -186,31 +188,77 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
         profile, _ = store.profile()
         service.adapters["linkedin"] = LinkedInBrowser(data, profile)
 
+    discovery_memory = DiscoveryMemory(store)
+
+    def search_jobs(operation: Operation, *, automatic: bool) -> list[Job]:
+        settings = store.settings()
+        profile, _ = store.profile()
+        adapter = LinkedInBrowser(data, profile)
+        adapter.progress = operation.progress
+        adapter.discovery_failure = discovery_memory.defer
+        adapter.discovery_stopping = lambda: (
+            stop.is_set() or (automatic and not store.settings().automation_enabled)
+        )
+        try:
+            jobs = adapter.search(
+                settings.search_keywords,
+                settings.search_location,
+                excluded_ids=discovery_memory.excluded_ids(known=automatic),
+            )
+        except (BrowserError, ValueError) as exc:
+            retry_at = discovery_memory.defer("search", type(exc).__name__)
+            operation.progress(
+                adapter.form_stage,
+                f"LinkedIn search could not complete ({type(exc).__name__}). "
+                f"Automatic discovery will wait until {retry_at}; check sign-in and page layout. "
+                "No applications were sent by discovery.",
+            )
+            raise
+        discovery_memory.resolved("search")
+        for job in jobs:
+            discovery_memory.resolved(job.source_id)
+        return jobs
+
     def tick() -> dict[str, str]:
         with service.operations.run("cycle") as operation, browser_lock:
             configure_adapter()
             settings = store.settings()
+            empty_search = False
             if settings.automation_enabled:
                 if (
                     settings.discovery_enabled
                     and settings.linkedin_authorised
                     and not service.queue_pending()
                 ):
-                    profile, _ = store.profile()
-                    operation.progress(
-                        "discovering_jobs",
-                        "Searching for new opportunities before processing the FIFO queue.",
-                    )
-                    discovery_browser = LinkedInBrowser(data, profile)
-                    discovery_browser.progress = operation.progress
-                    jobs = discovery_browser.search(
-                        settings.search_keywords,
-                        settings.search_location,
-                        excluded_ids=store.discarded_job_ids("linkedin"),
-                    )
-                    service.screen_discovery(jobs, operation.progress)
+                    retry_at = discovery_memory.waiting_until("search")
+                    if retry_at:
+                        operation.progress(
+                            "waiting_for_discovery",
+                            f"Automatic discovery is waiting until {retry_at} after a read failure. "
+                            "Existing queue work remains available; manual search can retry now.",
+                        )
+                    else:
+                        operation.progress(
+                            "discovering_jobs",
+                            "Searching for new opportunities before processing the FIFO queue.",
+                        )
+                        jobs = search_jobs(operation, automatic=True)
+                        service.screen_discovery(jobs, operation.progress)
+                        empty_search = not jobs
             result = service.tick(operation, stopping=stop.is_set)
             settings = store.settings()
+            if empty_search and settings.automation_enabled and not service.queue_pending():
+                rows = store.applications()
+                review_count = sum(row["state"] == State.REVIEW for row in rows)
+                ready_count = sum(row["state"] == State.READY for row in rows)
+                operation.progress(
+                    "waiting_for_review" if review_count else "waiting_for_opportunities",
+                    "No new readable opportunities in this search. "
+                    f"{review_count} applications await review; {ready_count} are prepared. "
+                    f"Next scheduled search in {settings.poll_seconds} seconds. "
+                    "Known opportunities and temporary read holds are excluded from automatic discovery.",
+                    clear_application=True,
+                )
             if (
                 settings.automation_enabled
                 and settings.connections_enabled
@@ -607,21 +655,16 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
         settings = store.settings()
         if not settings.linkedin_authorised:
             raise ValueError("Configure the declared LinkedIn authorisation scope first")
-        profile, _ = store.profile()
-        with browser_lock:
+        with service.operations.run("discover") as operation, browser_lock:
             try:
-                jobs = LinkedInBrowser(data, profile).search(
-                    settings.search_keywords,
-                    settings.search_location,
-                    excluded_ids=store.discarded_job_ids("linkedin"),
-                )
+                jobs = search_jobs(operation, automatic=False)
             except BrowserError as exc:
                 raise HTTPException(
                     502,
                     "The browser could not read the LinkedIn job search. Check the dedicated "
                     "browser session and try again. No opportunities were imported or applications sent.",
                 ) from exc
-        return service.screen_discovery(jobs)
+            return service.screen_discovery(jobs, operation.progress)
 
     @app.get("/api/discovery/discards", dependencies=auth)
     def discovery_discards(

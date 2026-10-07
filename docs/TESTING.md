@@ -1,5 +1,25 @@
 # Testing and coverage
 
+## Discovery read recovery, 7 October 2026
+
+The fresh broad affected-path run passed **149 backend cases in 373.39 seconds** across discovery, authentication, API, scoped answers, worker controls and recovery. A final **42-case run passed in 75.82 seconds**, covering all **19 new discovery cases** and **23 existing FIFO cases**. This includes the two subsequently added navigation/shutdown checks, also verified independently in 16.72 seconds. Both coverage runs measured **100% statements and branch outcomes in `discovery_memory.py`: 43/43 statements and 8/8 branch outcomes**. The executions overlap; they exercise 174 distinct backend cases rather than 191 distinct cases. These are focused measurements, not a fresh complete-backend coverage claim.
+
+New cases exercise the company-logo layout, nested logo markup, independent primary-name validation, missing/conflicting/duplicate identity, preservation of valid batch results, navigation/read errors, delayed authentication and unexpected-origin global stops, pause/shutdown boundaries, persistent retry timing and expiry, a 60-minute backoff ceiling, successful-read reset, manual retry, known-record filtering, idle review counts and continued FIFO preparation during a discovery hold. Controlled errors containing private-looking text verify that raw provider diagnostics never enter the new public API/run messages or private event details.
+
+All **23 affected React cases passed in 6.47 seconds**, including three new monitor cases for per-job deferral, global discovery waiting and idle review waiting. They verify the reported stage, retry/polling information and absence of a false application-failure claim. Runtime frontend source and packaged assets did not change. Ruff, formatting, strict mypy, TypeScript, ESLint and documentation-link checks passed.
+
+The first broad execution recorded 129 passes and four fixture failures because newly written rejection tests expected the word `ambiguous`, whereas the established reader correctly raised its incomplete/unsupported review message. Corrected expectations and final-source additions preceded the fresh successful run. Test fixtures use fictional opportunities without paid model calls or external sends. A separate live, read-only check reproduced the actual provider layout and verified successful extraction after the repair; it did not test a real submission.
+
+Reproduce the affected-path gate (the two subsequently added cases are included by these files):
+
+```powershell
+uv run pytest tests/test_discovery_memory.py tests/test_discovery_read_recovery.py tests/test_discovery_diagnostics.py tests/test_job_discovery.py tests/test_discovery_screening.py tests/test_linkedin_authentication.py tests/test_review_and_worker.py tests/test_scoped_answers.py tests/test_worker_controls.py tests/test_worker_recovery.py tests/test_api.py --override-ini addopts= --cov=applicator.discovery_memory --cov-branch --cov-report=term-missing --cov-fail-under=100 -q
+uv run pytest tests/test_discovery_memory.py tests/test_discovery_read_recovery.py tests/test_application_queue.py --override-ini addopts= --cov=applicator.discovery_memory --cov-branch --cov-report=term-missing --cov-fail-under=100 -q
+npx vitest run tests/frontend/components.test.tsx tests/frontend/app-flows.test.tsx
+```
+
+[Queue recovery](APPLICATION_QUEUE.md#discovery-read-recovery-and-idle-monitoring) documents backoff and partial-result boundaries. [Delivery](STATUS.md#discovery-loop-diagnosis-and-recovery-7-october-2026) records paused activation, immutable submitted evidence and local-only version control.
+
 ## Populated instruction-library operational checks, 6 October 2026
 
 The authorised private population used the existing generation and versioned save endpoints. All 16 empty rules received reviewed real-model drafts against the newly confirmed candidate revision; 15 were enabled and one legal-status rule remained manual. Final saved prompts measured 41–59 words. Initial drafts were superseded after the operator supplied missing facts; source/runtime files did not change.

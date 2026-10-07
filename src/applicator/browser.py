@@ -195,7 +195,8 @@ def job_details(page: Page, expected_id: str, *, timeout: int = 10000) -> Job:
         raise ReviewRequired("LinkedIn opened a different job; re-import and review")
     main = page.get_by_role("main")
     main.locator(
-        '.job-details-jobs-unified-top-card__company-name, [aria-label^="Company, "]'
+        '.job-details-jobs-unified-top-card__company-name, [aria-label^="Company, "], '
+        '[aria-label^="Company logo for, "]'
     ).first.wait_for(timeout=timeout)
     legacy = main.locator(".job-details-jobs-unified-top-card__company-name")
     if legacy.count():
@@ -219,22 +220,34 @@ def job_details(page: Page, expected_id: str, *, timeout: int = 10000) -> Job:
           // Current job detail pages use paragraphs and generated CSS classes.
           // The company label, its link, and the preceding title/location rows
           // identify the primary header without reading recommended jobs.
-          const company = main.querySelector('[aria-label^="Company, "]');
+          const companySelector = '[aria-label^="Company, "], [aria-label^="Company logo for, "]';
+          const company = main.querySelector(companySelector);
           if (!company) return null;
+          const logo = company.getAttribute('aria-label').startsWith('Company logo for, ');
           let header = company.parentElement;
           let identity = null;
           for (let depth=0; header && header!==main && depth<12; depth++,header=header.parentElement) {
-            if (header.querySelectorAll('[aria-label^="Company, "]').length!==1) break;
+            const companies = [...header.querySelectorAll(companySelector)].filter(el=>!el.parentElement.closest(companySelector));
+            if (companies.length!==1) break;
             const rows = [...header.children];
             const metadata = rows.filter(el=>el.tagName==='P' && el.firstElementChild?.tagName==='SPAN' && text(el.firstElementChild));
             if (metadata.length!==1) continue;
             const titles = rows.slice(0,rows.indexOf(metadata[0])).filter(el=>!el.contains(company))
               .flatMap(row=>[...row.querySelectorAll('p')]);
             const links = [...company.querySelectorAll('a[href*="/company/"]')].filter(link=>text(link));
-            if (titles.length!==1 || links.length!==1 || company.getAttribute('aria-label')!==`Company, ${text(links[0])}.`) return null;
-            const link = new URL(links[0].href);
-            if (link.origin!=='https://www.linkedin.com' || !link.pathname.startsWith('/company/')) return null;
-            identity = {title:text(titles[0]),company:text(links[0]),location:text(metadata[0].firstElementChild)};
+            let name;
+            if (logo) {
+              const names = rows.filter(row=>row.contains(company)).flatMap(row=>[...row.querySelectorAll('p')]).filter(el=>text(el));
+              if (names.length!==1 || company.getAttribute('aria-label')!==`Company logo for, ${text(names[0])}.`) return null;
+              name = text(names[0]);
+            } else {
+              if (links.length!==1 || company.getAttribute('aria-label')!==`Company, ${text(links[0])}.`) return null;
+              const link = new URL(links[0].href);
+              if (link.origin!=='https://www.linkedin.com' || !link.pathname.startsWith('/company/')) return null;
+              name = text(links[0]);
+            }
+            if (titles.length!==1) return null;
+            identity = {title:text(titles[0]),company:name,location:text(metadata[0].firstElementChild)};
             break;
           }
           if (!identity) return null;
@@ -1368,6 +1381,8 @@ class LinkedInBrowser:
     def __init__(self, data: Path, profile: Profile | None = None):
         self.data, self.profile = data, profile
         self.progress: Callable[[str, str], None] | None = None
+        self.discovery_failure: Callable[[str, str], str] | None = None
+        self.discovery_stopping: Callable[[], bool] | None = None
         self.question_resolver: Callable[[Question], str | None] | None = None
         self.question_observer: Callable[[Question], None] | None = None
         self.before_submit: Callable[[], None] | None = None
@@ -1476,14 +1491,34 @@ class LinkedInBrowser:
                 )
             ids = [job_id for job_id in ids if job_id not in (excluded_ids or set())]
             for index, job_id in enumerate(ids[:limit], start=1):
+                if self.discovery_stopping and self.discovery_stopping():
+                    self.report(
+                        "discovery_paused",
+                        "Job discovery stopped before opening the next opportunity.",
+                    )
+                    break
                 url = f"https://www.linkedin.com/jobs/view/{job_id}/"
                 identity = f"Opportunity {index}/{min(len(ids), limit)}: {url}"
-                with self.discovery_step("opening_discovered_job", identity + " Opening the page."):
-                    page.goto(url, wait_until="domcontentloaded", timeout=60000)
-                with self.discovery_step(
-                    "reading_discovered_job", identity + " Reading job details."
-                ):
-                    jobs.append(job_details(page, job_id, timeout=30000))
+                try:
+                    with self.discovery_step(
+                        "opening_discovered_job", identity + " Opening the page."
+                    ):
+                        page.goto(url, wait_until="domcontentloaded", timeout=60000)
+                    with self.discovery_step(
+                        "reading_discovered_job", identity + " Reading job details."
+                    ):
+                        jobs.append(job_details(page, job_id, timeout=30000))
+                except (BrowserError, ReviewRequired) as exc:
+                    # Authentication/origin failures remain global stops, not per-job skips.
+                    ensure_linkedin(page)
+                    if self.discovery_failure is None:
+                        raise
+                    retry_at = self.discovery_failure(job_id, type(exc).__name__)
+                    self.report(
+                        "deferring_discovered_job",
+                        identity
+                        + f" Read deferred until {retry_at}; continuing with other opportunities.",
+                    )
         return jobs
 
     def read_opportunity(self, url: str) -> Job:

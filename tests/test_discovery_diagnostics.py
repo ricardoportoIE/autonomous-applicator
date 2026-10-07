@@ -116,12 +116,15 @@ def test_worker_persists_discovery_progress_without_application_or_capacity_chan
     assert response.status_code == (502 if failed else 200)
     record = session.get("/api/worker/status").json()
     assert record["run"]["status"] == ("failed" if failed else "completed")
-    assert record["run"]["stage"] == "reading_job_results"
+    assert record["run"]["stage"] == (
+        "reading_job_results" if failed else "waiting_for_opportunities"
+    )
     assert record["run"]["application_id"] is None
     assert record["results"] == []
     if failed:
         assert record["run"]["error_code"] == "TimeoutError"
-        assert record["run"]["detail"] == "The provider did not complete the read step."
+        assert "Automatic discovery will wait until" in record["run"]["detail"]
+        assert "No applications were sent by discovery" in record["run"]["detail"]
     assert "private-provider-token" not in json.dumps(record)
     assert "private-provider-token" not in json.dumps(store.events())
     assert store.daily_usage().used == 0

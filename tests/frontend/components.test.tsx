@@ -186,6 +186,52 @@ it("keeps idle, terminal failures and total/stage elapsed time visible without p
     "Live status unavailable",
   );
 });
+it.each([
+  [
+    "deferring_discovered_job",
+    "running",
+    "Read deferred until 2026-10-07T21:05:00+00:00; continuing with other opportunities.",
+  ],
+  [
+    "waiting_for_discovery",
+    "completed",
+    "Automatic discovery is waiting until 2026-10-07T21:05:00+00:00 after a read failure. Existing queue work remains available; manual search can retry now.",
+  ],
+  [
+    "waiting_for_review",
+    "completed",
+    "No new readable opportunities in this search. 5 applications await review; 0 are prepared. Next scheduled search in 60 seconds.",
+  ],
+])(
+  "shows %s with the retry time and no application failure claim",
+  (stage, status, detail) => {
+    render(
+      <WorkerMonitor
+        record={{
+          run: {
+            id: "read-run",
+            status,
+            application_id: null,
+            job: null,
+            stage,
+            detail,
+            error_code: null,
+            started: "2026-10-07T21:00:00Z",
+            stage_started: "2026-10-07T21:00:01Z",
+            finished: status === "completed" ? "2026-10-07T21:00:02Z" : null,
+          },
+          results: [],
+        }}
+        error=""
+      />,
+    );
+    const monitor = screen.getByRole("status");
+    expect(monitor).toHaveTextContent(stage.replaceAll("_", " "));
+    expect(monitor).toHaveTextContent(detail);
+    expect(monitor).not.toHaveTextContent("Failure at");
+    expect(monitor).not.toHaveTextContent("Application #");
+  },
+);
 it("authenticates the workspace and clears private data and open forms on lock", async () => {
   const user = userEvent.setup();
   render(<App workspace={workspace} />);

@@ -2,6 +2,18 @@
 
 The queue completes one vacancy at a time. Quality checks and a confirmed provider outcome take precedence over throughput.
 
+## Discovery read recovery and idle monitoring
+
+Automatic searches exclude LinkedIn opportunities already in the local queue, including review, skipped and submitted records. Manual searches retain duplicate detection, and existing records remain available for explicit preparation or review. A lack of eligible queue work is different from a running application: an empty automatic search reports the current review/prepared counts and the next polling interval.
+
+The reader supports the legacy company header, the linked `Company, ...` header and the observed `Company logo for, ...` header. The last form requires one matching company name in the primary header, one title and one location; recommended cards cannot supply missing identity. An unsupported or ambiguous page is not converted into invented job details.
+
+A per-opportunity browser/read-layout error is recorded privately and deferred while other readable results continue. The normal authenticated manual and background searches use the same recovery path. A persistent read journal waits 5, 10, 20, 40 and then at most 60 minutes for repeated failures of that identifier. Expiry permits another bounded attempt; a successful read clears its failure history. This is temporary read memory, separate from permanent below-50 fit exclusions, application decisions and approved candidate answers. Direct adapters without the recovery callback retain their fail-closed contract.
+
+A search-page, authentication or origin failure still stops the batch without partial imports. Automatic discovery then waits according to the same bounded backoff instead of immediately reopening the failed search each cycle. The monitor shows `waiting_for_discovery` with its UTC retry time. Existing eligible FIFO preparation/sending work retains priority and is not blocked by this search hold. An explicit **Search LinkedIn** can retry the search immediately; it still respects individual job deferrals. **Import from link** provides an explicit single-opportunity read without changing the automatic hold.
+
+Pause is checked before each discovered opportunity. A navigation/read already in flight can finish; no further opportunity is opened after the next pause boundary. These repairs do not approve review holds, increase sending limits or restart paused automation. Idle cycles continue at the configured polling interval to look for new opportunities; the monitor distinguishes this from active processing.
+
 ## Requirement and closure decisions
 
 Description-based scoring excludes explicitly optional criteria and accepts a verified member of a recognised technology alternative. Slash alternatives are restricted to supported peer families; mandatory stacks remain separate. Reviewed explicit technical requirements remain authoritative. The unchanged 70/15/15 weights cover verified evidence, country identity and recognised role relevance. A high technical score does not override a recognised professional experience minimum: missing or insufficient approved durations and required production ML experience remain review conditions. Interesting opportunities can still receive prepared documents. [Requirement interpretation](REQUIREMENT_INTERPRETATION.md) explains the formula, bounded parsing and exact confirmation rules.

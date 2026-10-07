@@ -1,5 +1,13 @@
 # Operating guide
 
+## Diagnosing repeated discovery cycles
+
+Check the run stage and opportunity URL before attributing repeated work to a model. On 7 October 2026, three successive cycles stopped on one job-details selector: LinkedIn displayed a company-logo accessibility label instead of the previously supported company label. Read-only reproduction confirmed the vacancy was present and signed in. The updated shared reader extracted its real title, company, location and description without opening Easy Apply.
+
+Authenticated searches now preserve other readable opportunities when one detail page fails, record `discovery_read_deferred` with a controlled error code and UTC retry time, and exclude that identifier temporarily. Search-wide errors remain visible failed runs and delay the next automatic discovery attempt. The subsequent waiting stage states when automatic discovery may resume. If all readable results are already known, the monitor reports review/prepared counts and the next scheduled search instead of implying an application is being processed. See [queue recovery](APPLICATION_QUEUE.md#discovery-read-recovery-and-idle-monitoring) for timing and scope.
+
+Keep both queues paused during diagnosis. Read attempts do not submit applications, change confirmed facts or consume sending capacity. Temporary read holds are neither low-fit discards nor approval of pending questionnaire decisions. Authentication and unexpected origins still stop discovery. After a source update, restart the server to load the fix; pausing the agent alone does not reload Python modules.
+
 ## Draft a reusable question instruction
 
 Open **Agent settings → Routine answers → Add instruction** (or Edit instruction) and select **Generate instruction with GPT-6.1 Sol**. Confirm the candidate profile first and configure the local OpenAI key/model. Generation shows progress and fills only the editor; inspect the clarification note, amend the prompt and explicitly select **Save instruction** when ready. The draft replaces editor text, so retain any unsaved wording before requesting a replacement. A failed request keeps the previous text. Unknown factual decisions must be confirmed rather than inferred from the generated instruction.
