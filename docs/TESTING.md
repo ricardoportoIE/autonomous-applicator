@@ -1,5 +1,18 @@
 # Testing and coverage
 
+## Unresolved experience requirement decisions, 7 October 2026
+
+Extended the explicit per-opportunity review decision to professional experience criteria whose wording cannot be mapped to a confirmed duration, including commercial software development and combined technology requirements. The candidate can choose to apply without confirming that the criterion is met. Numerical scoring, documents and factual answers stay unchanged; a missing experience-question answer remains a separate hold, and sibling opportunities retain their own decisions.
+
+Fresh affected-path acceptance passed **112 backend cases in 25.44 seconds**, with **100% statements and branch outcomes in `application_management.py`** (86 statements, 34 branch outcomes), and **40 React cases in 3.76 seconds**, with **100% in `review-guidance.tsx`** (52 statements, 46 lines, 13 functions, 61 branch outcomes). Four packaged desktop/mobile cases passed in 13.22 seconds, exercising both known and unmapped experience requirements through approval, Trash and restoration. These are focused measurements; previous full-system results retain their separately dated scope. An initial new fixture used an unsupported `Question.kind` field and was corrected; one formerly covered fallback moved into the new decision path, so a candidate-confirmation regression restored the focused coverage gate. No provider send or paid model call was used in testing.
+
+```powershell
+uv run pytest tests/test_application_management.py tests/test_requirement_interpretation.py tests/test_preflight.py tests/test_application_queue.py --override-ini addopts= --cov=applicator.application_management --cov-branch --cov-report=term-missing --cov-fail-under=100 -q
+npx vitest run tests/frontend/review-management.test.tsx tests/frontend/detail.test.tsx --coverage --coverage.include=src/review-guidance.tsx
+npm run build
+uv run pytest tests/test_review_management_browser.py --override-ini addopts= --no-cov -q
+```
+
 ## Actionable review and reversible Trash, 7 October 2026
 
 The focused backend gate passed **208 cases in 45.60 seconds** across the new management module and affected FIFO, preflight, scoped-answer, capacity, requirement, receipt and discovery paths. `application_management.py` reached **100% statements and branch outcomes: 86/86 statements and 34/34 branch outcomes**. The complete React suite passed **223 cases in 21.16 seconds**, with **100% statements, lines, functions and branches in every measured runtime file** (1,016 statements, 923 lines, 361 functions and 1,097 branch outcomes across 13 files). This is a fresh complete React measurement and focused backend acceptance, not a new complete-backend coverage measurement.

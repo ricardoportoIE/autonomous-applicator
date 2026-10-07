@@ -9,6 +9,7 @@ export function experienceReviewable(value: string) {
     value.startsWith(
       "Required professional experience is below the stated minimum: ",
     ) ||
+    value.startsWith("Required professional experience needs review: ") ||
     value.startsWith(
       "Required production machine learning experience is not met: ",
     )
@@ -31,9 +32,9 @@ export function reviewAdvice(value: string): {
 } {
   if (experienceReviewable(value))
     return {
-      title: "Experience requirement not met",
+      title: "Experience requirement needs your decision",
       guidance:
-        "Your confirmed experience is below this vacancy's requirement. Keep the truthful answers and decide whether to apply despite the gap, correct an inaccurate fact, or move the opportunity to Trash.",
+        "The vacancy requests experience your profile may not fully establish. You can approve applying despite this requirement without claiming to meet it. Keep your real experience and truthful answers, correct an inaccurate fact if needed, or move the opportunity to Trash.",
       action: "Review candidate facts",
       destination: "facts",
     };
@@ -87,11 +88,7 @@ export function reviewAdvice(value: string): {
       action: "Review job details",
       destination: "job",
     };
-  if (
-    /Candidate|professional experience needs review|confirmation|seniority|machine learning/i.test(
-      value,
-    )
-  )
+  if (/Candidate|confirmation|seniority|machine learning/i.test(value))
     return {
       title: "Confirmed fact or responsibility needed",
       guidance:

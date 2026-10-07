@@ -119,6 +119,63 @@ def test_question_and_automation_gates_survive_experience_acceptance(reviewed):
     assert store.daily_usage().attempts == 0
 
 
+@pytest.mark.parametrize(
+    "requirement",
+    [
+        "5+ years of commercial software development experience",
+        "Minimum 5 years of professional experience with Python and Django",
+    ],
+)
+def test_unconfirmed_experience_requirement_can_be_waived_without_confirming_facts(
+    reviewed, requirement
+):
+    store, service, app_id, profile, job, adapter = reviewed
+    job.description = "Build Python APIs.\nRequirements\n" + requirement
+    store.update_job(app_id, job)
+    service.prepare(app_id)
+    before = copy.deepcopy(store.application(app_id))
+    assert any(
+        value.startswith("Required professional experience needs review: ")
+        for value in service.preflight(app_id).evaluation.blockers
+    )
+    accept(reviewed)
+    assert service.preflight(app_id).can_submit
+    assert store.application(app_id)["evaluation"]["score"] == before["evaluation"]["score"]
+    assert store.application(app_id)["manifest"] == before["manifest"]
+    assert store.profile()[0] == profile
+    assert not any(key.startswith("condition:experience_requirement:") for key in profile.answers)
+    other, _ = store.add_job(
+        job.model_copy(update={"source_id": "other-gap", "url": "http://127.0.0.1:9999/gap"})
+    )
+    service.prepare(other)
+    assert store.application(other)["state"] == State.REVIEW
+    assert service.submit(app_id) == "fixture:confirmed"
+    assert adapter.submit.call_count == 1 and store.profile()[0] == profile
+
+
+def test_experience_waiver_does_not_answer_missing_experience_questions(reviewed):
+    store, service, app_id, profile, job, adapter = reviewed
+    job.description = "Build Python APIs.\n5+ years of commercial software development experience"
+    job.questions = [
+        Question(
+            id="unknown-duration",
+            label="How many years of paid production database administration do you have?",
+        )
+    ]
+    store.update_job(app_id, job)
+    service.prepare(app_id)
+    accept(reviewed)
+    assert store.profile()[0] == profile
+    report = service.preflight(app_id)
+    assert not report.can_submit
+    assert not any(experience_reviewable(value) for value in report.evaluation.blockers)
+    assert any("approved answer" in value for value in report.evaluation.blockers)
+    with pytest.raises(ValueError, match="policy"):
+        service.submit(app_id)
+    adapter.submit.assert_not_called()
+    assert store.daily_usage().attempts == 0
+
+
 def test_fit_acceptance_keeps_score_and_cannot_accept_below_review_band(data, profile, job):
     store = Store(data / "db.sqlite3")
     store.save_profile(profile)

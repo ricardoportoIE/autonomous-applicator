@@ -17,6 +17,7 @@ def experience_reviewable(blocker: str) -> bool:
     return blocker.startswith(
         (
             "Required professional experience is below the stated minimum: ",
+            "Required professional experience needs review: ",
             "Required production machine learning experience is not met: ",
         )
     )
@@ -136,7 +137,9 @@ class ApplicationManagement:
                 not experience_reviewable(value) or value not in result.blockers
                 for value in blockers
             ):
-                raise ValueError("Only current, known experience shortfalls can be accepted")
+                raise ValueError(
+                    "Only current professional experience requirements can be accepted"
+                )
             if (
                 accept_fit
                 and not settings.review_threshold <= result.score < settings.auto_threshold

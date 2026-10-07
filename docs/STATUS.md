@@ -1,5 +1,13 @@
 # Delivery and validation record
 
+## Unresolved experience requirement review, 7 October 2026
+
+Corrected a missing manual decision for commercial software development experience: the prior control accepted known numeric shortfalls but treated unmapped professional requirements solely as factual corrections. The shared backend/frontend now accept a deliberate application decision for either form, without confirming the requirement, increasing years or supplying unknown questionnaire answers. The score remains indicative, and other checks remain intact. Updated operational documentation and the fictional review screenshot.
+
+Focused acceptance passed **112 backend cases**, **40 React cases** and four packaged desktop/mobile journeys, with **100% in the changed management module and review component**. Static analysis and production build passed. [Testing](TESTING.md#unresolved-experience-requirement-decisions-7-october-2026) records reproduction and scope. This follow-up does not rerun or replace historical complete-system measurements.
+
+The local server loaded the correction with both queues paused. After a fresh private snapshot, one expressly requested opportunity received a review decision through the normal authenticated API and became ready for the queue. Independent comparison verified unchanged candidate facts, questionnaire approvals, score, documents, sending attempts and other applications, including existing Trash decisions. All 62 current document hashes matched before activation. The decision did not send an application, invoke a model or enable automation. Delivery uses a **local commit only**, without a remote push.
+
 ## Actionable review and reversible Trash, 7 October 2026
 
 Added explicit review cards and corrective controls for questions, documents, facts, location, settings, job details and activity. Known experience shortfalls and the configured manual fit band have a deliberate per-opportunity acceptance control. Decisions retain truthful facts/answers, record current candidate/job identity and expire after changes; unresolved facts, legal conditions and every other submission gate remain intact. Acceptance rechecks readiness without sending. Profile editing now refreshes the selected review detail even while the enclosing save operation is completing.

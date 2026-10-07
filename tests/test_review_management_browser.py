@@ -15,7 +15,16 @@ from applicator.question_adviser import question_key
 
 @pytest.mark.browser
 @pytest.mark.parametrize("width", [390, 1440])
-def test_review_decision_trash_restore_preserves_facts_and_artifacts(data, profile, job, width):
+@pytest.mark.parametrize(
+    "requirement",
+    [
+        "Minimum 5 years of work experience with Python",
+        "5+ years of commercial software development experience",
+    ],
+)
+def test_review_decision_trash_restore_preserves_facts_and_artifacts(
+    data, profile, job, width, requirement
+):
     app = create_app(data, TOKEN)
     store, service = app.state.store, app.state.service
     profile.answers[
@@ -24,7 +33,7 @@ def test_review_decision_trash_restore_preserves_facts_and_artifacts(data, profi
         )
     ] = "3"
     store.save_profile(profile)
-    job.description += "\nMinimum 5 years of work experience with Python"
+    job.description += "\n" + requirement
     app_id, _ = store.add_job(job)
     service.prepare(app_id)
     original = store.application(app_id)
@@ -59,7 +68,9 @@ def test_review_decision_trash_restore_preserves_facts_and_artifacts(data, profi
         expect(
             panel.get_by_role("heading", name="Why this application needs review")
         ).to_be_visible()
-        expect(panel.get_by_role("heading", name="Experience requirement not met")).to_be_visible()
+        expect(
+            panel.get_by_role("heading", name="Experience requirement needs your decision")
+        ).to_be_visible()
         approval = panel.get_by_role("button", name="Approve this opportunity for the queue")
         expect(approval).to_be_disabled()
         assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")

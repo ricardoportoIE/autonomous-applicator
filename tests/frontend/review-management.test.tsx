@@ -64,6 +64,29 @@ function mount(value = detail()) {
   return { ...callbacks, view };
 }
 
+it("offers a truthful application decision for a commercial experience requirement without claiming it is met", async () => {
+  await h.unlock();
+  const requirement =
+    "Required professional experience needs review: 5+ years of commercial software development experience";
+  const before = h.workspace.getSnapshot().profile;
+  mount(detail([requirement]));
+  expect(
+    screen.getByText("Experience requirement needs your decision"),
+  ).toBeVisible();
+  expect(screen.getByText(/without claiming to meet it/)).toBeVisible();
+  fireEvent.click(screen.getByRole("checkbox"));
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Approve this opportunity for the queue",
+    }),
+  );
+  await waitFor(() => expect(h.workspace.getSnapshot().pending).toBe(false));
+  expect(
+    JSON.parse(String(requestOptions("review-decision").body)),
+  ).toMatchObject({ blockers: [requirement], answers_remain_truthful: true });
+  expect(h.workspace.getSnapshot().profile).toEqual(before);
+});
+
 it.each([
   [gap, "facts"],
   [
@@ -77,11 +100,14 @@ it.each([
   ["Daily capacity exhausted", "settings"],
   ["Explicit sponsorship incompatibility.", "job"],
   ["Required professional experience needs review: unknown", "facts"],
+  ["Candidate profile needs confirmation.", "facts"],
   ["Unclassified provider issue", "history"],
 ])("maps %s to an explicit next step", (value, destination) => {
   expect(reviewAdvice(value).destination).toBe(destination);
   expect(experienceReviewable(value)).toBe(
-    value === gap || value.startsWith("Required production"),
+    value === gap ||
+      value.startsWith("Required production") ||
+      value.startsWith("Required professional experience needs review:"),
   );
 });
 
