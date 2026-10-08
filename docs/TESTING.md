@@ -1,5 +1,35 @@
 # Testing and coverage
 
+## Specialised agents and runtime recovery, 8 October 2026
+
+The feature acceptance passes **55 new cases** across `test_agents.py` and `test_runtime_recovery.py`. Both new runtime modules have **100% statements and branch outcomes**: 47 statements/two outcomes in `agents.py`, and 110 statements/28 outcomes in `runtime_recovery.py`. The final broader acceptance passes **104 cases in 152.41 seconds**, including all 49 existing application-dialog cases with the new named progress prefix.
+
+Real intercepted Chromium journeys exercise Easy Apply, direct company forms and LinkedIn-to-company handoff. A transient field failure reopens once, uploads the archived vacancy-specific CV and sends exactly once using one reservation. A separate two-vacancy journey reuses confirmed method memory without another diagnosis call while verifying different current contact facts, filenames and actual uploaded byte hashes. Runtime budgets survive controller recreation; exhaustion prevents cross-cycle resumption. Pending questions, authentication, possible sends, changed facts/documents, pause/shutdown, company enablement and hostname changes all veto unsafe retries. Non-mutating checkpoints leave sending timestamps and destination claims untouched. Model/schema/HTML hash/path/size failures stop cleanly; memory-journal faults cannot replace a confirmed outcome. Diagnostic HTML survives successful recovery and each handoff contributes only its own current evidence.
+
+The complete React suite passes **230 cases in 21.35 seconds**, with per-file **100% in all 13 runtime modules**: 1,019 statements, 926 lines, 362 functions and 1,102 branch outcomes. Four new cases cover Scout, Link, Bridge and historical unprefixed records. TypeScript, ESLint, Ruff, mypy, formatting, the packaged build, dependency audits and all eight native Windows ACL cases pass. The isolated role screenshot blocks external requests and verifies zero attempts. No real application, invitation or paid model request is used.
+
+```powershell
+uv run pytest tests/test_agents.py tests/test_runtime_recovery.py --override-ini addopts= --cov=applicator.agents --cov=applicator.runtime_recovery --cov-branch --cov-fail-under=100 -q
+uv run pytest tests/test_agents.py tests/test_runtime_recovery.py tests/test_application_dialog.py --override-ini addopts= -q
+npm test
+npm run typecheck
+npm run lint
+npm run build
+uv run python scripts/capture_agent_roles.py
+```
+
+The [specialised-agent design](SPECIALISED_AGENTS.md) distinguishes runtime retries from existing per-control and cross-cycle recovery, and records supported forms and deliberate review boundaries.
+
+### Complete regression and final acceptance
+
+The complete **1,829-case execution across all 81 Python test files** used four non-overlapping partitions against the same frozen runtime source: 319 passed in 719.03 seconds; 520 passed and one old progress-prefix assertion failed in 900.72 seconds; 493 passed in 408.94 seconds; 496 passed in 766.15 seconds. The historical assertion was updated to require the exact `Link ·` prefix while retaining field labels, types and submitted values. The final **104-case acceptance passed**, including that corrected journey and one additional cross-vacancy memory/CV regression added after complete collection. Together these executions verify every case in the current **1,830-case inventory**; this is complete execution plus affected-path acceptance rather than a second complete run.
+
+The consolidated coverage and independent inventory gate pass at **100% in all 27 runtime modules**: **4,640/4,640 statements and 1,724/1,724 branch outcomes**. Each partition and the affected run used its own coverage file; consolidation measures the same current runtime source, with no executable exclusions. Separate production Chromium coverage measures 95.59% statements/lines, 90.61% branches and 88.38% functions across 12 dashboard modules. React retains its separate per-file 100% gate.
+
+Dependency audits report no known vulnerabilities in audited dependencies; the unpublished editable project is outside the Python advisory index. The offline performance benchmark retains count/order/fit and zero-send assertions. These checks use disposable workspaces; they do not exercise real provider accounts or a paid diagnosis request. No new remote CI result or push is claimed.
+
+Production assets reproduce the staged build. The final 14-case monitor/component recheck passes against the typed current fixture. Paused server activation passes authenticated health/read checks and a fresh private comparison preserving 33 applications, revision 15, 64 document hashes, facts, answers, settings and attempts. Company execution remains opt-in; the global agent and networking remain paused.
+
 ## Company-site executor, 8 October 2026
 
 Company-site checks contribute **98 new cases**: isolated unit/API boundaries, fully intercepted Chromium journeys, six native-surface isolation/label regressions and two packaged desktop/mobile settings cases. The final affected-path acceptance passed **128 cases in 86.03 seconds**, including all 98 feature cases and the complete 30-case coverage-gate suite. Tests make no employer requests or paid AI calls. The two new runtime modules have **100% statements and branch outcomes**: `external_browser.py` measures **329 statements and 122 outcomes**, and `external_urls.py` **29 statements and ten outcomes**. Shared form helpers retain LinkedIn dialogue isolation, and settings persist without starting the global agent.

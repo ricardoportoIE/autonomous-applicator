@@ -11,7 +11,7 @@ from contextvars import ContextVar
 from datetime import UTC, datetime
 from html import escape
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 from urllib.parse import urlencode, urlsplit
 
 from playwright.sync_api import (
@@ -33,6 +33,9 @@ from .photos import save_photo
 from .policy import answer_compatible
 from .question_adviser import question_key
 from .submission_records import capture_confirmation
+
+if TYPE_CHECKING:
+    from .runtime_recovery import RuntimeRecovery
 
 
 class BrowserOptions(TypedDict, total=False):
@@ -1420,6 +1423,8 @@ def collect_questions(
 class LinkedInBrowser:
     """A bounded Easy Apply adapter. Site changes fail closed rather than guess."""
 
+    agent_name = "Link"
+
     def __init__(self, data: Path, profile: Profile | None = None):
         self.data, self.profile = data, profile
         self.progress: Callable[[str, str], None] | None = None
@@ -1437,8 +1442,16 @@ class LinkedInBrowser:
         self.external_executor: LinkedInBrowser | None = None
         self.include_external_jobs = False
         self.external_sending_url: str | None = None
+        self.runtime_recovery: RuntimeRecovery | None = None
+        self.active_agent = self.agent_name
+        self.recovery_host: str | None = None
+        self.recovery_target: str | None = None
 
     def report(self, stage: str, detail: str) -> None:
+        from .agents import agent_detail
+
+        detail = agent_detail(self.agent_name, detail)
+        self.active_agent = detail.split(" · ", 1)[0]
         self.form_stage = stage
         if self.progress:
             self.progress(stage, detail)
@@ -1653,17 +1666,52 @@ class LinkedInBrowser:
         self.form_diagnostic = {}
         self.form_diagnostics_evidence = []
         self.external_sending_url = None
-        progress: SubmissionProgress = {"submitted": False, "pending": {}, "step": 0}
-        try:
-            return self._submit(job, answers, folder, progress)
-        except Exception as exc:
-            if not progress["submitted"]:
+        while True:
+            evidence_start = len(self.form_diagnostics_evidence)
+            progress: SubmissionProgress = {"submitted": False, "pending": {}, "step": 0}
+            try:
+                receipt = self._submit(job, answers, folder, progress)
+                if self.runtime_recovery:
+                    self.runtime_recovery.finish(True)
+                return receipt
+            except Exception as exc:
+                if self.runtime_recovery:
+                    if self.runtime_recovery.retry(
+                        exc,
+                        agent=self.active_agent,
+                        stage=self.form_stage,
+                        evidence=next(
+                            (
+                                item
+                                for item in reversed(
+                                    self.form_diagnostics_evidence[evidence_start:]
+                                )
+                                if item.get("path")
+                            ),
+                            self.form_diagnostic,
+                        ),
+                        sent=progress["submitted"],
+                        pending=bool(progress["pending"]),
+                        step=progress["step"],
+                        host=self.recovery_host,
+                    ):
+                        self.external_sending_url = None
+                        self.form_diagnostic = {}
+                        self.confirmation_evidence = {}
+                        continue
+                    self.runtime_recovery.finish(False)
+                if progress["submitted"]:
+                    if isinstance(exc, ReviewRequired):
+                        raise RuntimeError(
+                            "Submission outcome needs reconciliation; no automatic retry is permitted"
+                        ) from exc
+                    raise
                 if progress["pending"]:
                     raise QuestionnaireReview(
                         list(progress["pending"].values()), progress["step"], str(exc)[:1200]
                     ) from exc
-                raise ReviewRequired(str(exc)[:2000]) from exc
-            raise
+                reason = self.runtime_recovery.stop_reason if self.runtime_recovery else ""
+                raise ReviewRequired(reason or str(exc)[:2000]) from exc
 
     def _submit(
         self, job: Job, answers: dict[str, str], folder: Path, progress: SubmissionProgress
@@ -1682,6 +1730,8 @@ class LinkedInBrowser:
             self.form_diagnostics(page, job, progress),
         ):
             self.report("opening_opportunity", "Opening the reviewed LinkedIn opportunity.")
+            self.recovery_host = urlsplit(job.url).hostname
+            self.recovery_target = job.url
             page.goto(job.url, wait_until="domcontentloaded")
             self.report(
                 "verifying_opportunity",

@@ -1,5 +1,7 @@
 # Architecture
 
+`agents.py` separates orchestration into **Scout** (research and preparation), **Link** (Easy Apply) and **Bridge** (company websites). The existing service retains one FIFO owner, domain policy and attempt journal. `runtime_recovery.py` adds structured GPT-6.1 Sol diagnosis and a durable two-retry budget to both application paths. It reopens only a recognised pre-send technical failure, reuses archived documents and rechecks mutable gates before and after diagnosis. Confirmed recovery hints persist locally; uncertain sending never retries. [Specialised agents](SPECIALISED_AGENTS.md) documents the responsibilities, handoffs and bounds.
+
 Company-site applications add a second specialised executor under the existing operation lease and FIFO worker. `ExternalBrowser` shares truthful field helpers and the audited callback lifecycle with `LinkedInBrowser`, with separate navigation guards and a persistent browser profile. Its explicit task-local native-form surface changes neither the DOM nor LinkedIn origin checks. Shared callbacks retain questionnaire resolution, archived fields, progress, confirmation evidence and the final sending transaction. See [company-site applications](COMPANY_APPLICATIONS.md).
 
 ## Components

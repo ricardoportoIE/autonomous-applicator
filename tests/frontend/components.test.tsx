@@ -13,6 +13,44 @@ import { application, payload } from "./fixtures";
 import type { WorkerRecord } from "../../frontend/src/contracts";
 
 let workspace: Workspace;
+it.each(["Scout", "Link", "Bridge", "Historical"])(
+  "reports the %s role alongside the current vacancy and recovery stage",
+  (agent) => {
+    render(
+      <WorkerMonitor
+        error=""
+        record={{
+          run: {
+            id: "role-run",
+            status: "running",
+            application_id: 1,
+            job: {
+              ...application.job,
+              title: "Backend Engineer",
+              company: "Example Employer",
+            },
+            stage: "diagnosing_runtime_error",
+            detail: `${agent} · Checking the current form before recovery.`,
+            error_code: null,
+            started: "2026-10-08T10:00:00Z",
+            stage_started: "2026-10-08T10:00:01Z",
+            finished: null,
+          },
+          results: [],
+        }}
+      />,
+    );
+    const monitor = screen.getByRole("status");
+    expect(monitor).toHaveTextContent(
+      "Backend Engineer · Example Employer · Application #1",
+    );
+    expect(monitor).toHaveTextContent(
+      "Current stage: diagnosing runtime error",
+    );
+    if (agent === "Historical") expect(monitor).not.toHaveTextContent("Agent:");
+    else expect(monitor).toHaveTextContent(`Agent: ${agent}`);
+  },
+);
 it("distinguishes preparation work from policy review and readiness", () => {
   const view = render(
     <ApplicationBadge

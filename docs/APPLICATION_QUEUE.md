@@ -1,5 +1,7 @@
 # Application queue operation
 
+The queue is shared by **Scout**, **Link** and **Bridge**. Scout discovers, assesses and prepares; Link completes Easy Apply; Bridge handles configured company forms, including primary external Apply links from LinkedIn. One opportunity retains ownership through a handoff and any bounded runtime recovery. A technical reopen uses the existing attempt and archived documents rather than adding another queue item. See [specialised agents](SPECIALISED_AGENTS.md).
+
 Both executors share this queue. Enabling company-site applications broadens LinkedIn discovery beyond Easy Apply. External Apply destinations run in a separate browser whilst the original opportunity keeps its FIFO position. Documents, pending questions, manual decisions, pause and sending limits remain shared. Destination claims prevent duplicate external sending through LinkedIn and direct imports. See [company-site applications](COMPANY_APPLICATIONS.md).
 
 The queue completes one vacancy at a time. Quality checks and a confirmed provider outcome take precedence over throughput.

@@ -1,5 +1,9 @@
 # Security and privacy
 
+## Runtime recovery
+
+Link and Bridge expose only the structured `reopen`/`review` diagnostic decision. The model cannot generate executable repairs, selectors, factual answers, destinations or permissions. Pre/post-model checkpoints revalidate pause/shutdown, archived document hashes, mutable candidate/job/policy/capacity and company scope without claiming a destination or setting a sending timestamp. Two retries share a durable held-attempt budget. A possible Submit click prohibits automatic retry, including post-click review exceptions. Private hashed HTML and value-free method/outcome events support diagnosis; confirmed method memory never grants submission approval. See [specialised agents](SPECIALISED_AGENTS.md).
+
 ## Company-site executor
 
 The external executor has its own browser profile and configured public HTTPS destinations. Browser requests check public DNS; document navigations/redirects and mutating requests also require exact configured hostnames. Service workers are blocked in that browser to preserve request-route interception. This is application-level checking, not OS network isolation or DNS IP pinning. Model output selects only a live recognised action. Field values and uploaded byte hashes are rechecked after model latency; the atomic gate verifies enablement/hostname alongside candidate/job/quota/pause gates. Destination claims prevent duplicate confirmed/uncertain sending across direct and LinkedIn imports. Inert, value-free diagnostics and method/outcome memory stay local. Memory cannot approve facts or retry uncertain sends. [Company-site applications](COMPANY_APPLICATIONS.md) records the supported contract and limitations.

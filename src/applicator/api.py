@@ -19,9 +19,9 @@ from playwright.sync_api import Error as BrowserError
 from pydantic import Field
 
 from .adviser import advise
+from .agents import BridgeAgent, LinkAgent, ScoutAgent
 from .browser import LinkedInBrowser, linkedin_job_id
 from .discovery import greenhouse
-from .discovery_memory import DiscoveryMemory
 from .documents import validate_manifest
 from .external_browser import ExternalBrowser, SitePlan, plan_site_step
 from .models import (
@@ -49,6 +49,7 @@ from .question_library import (
     generate_instruction_answer,
 )
 from .routine_answers import RoutineSelection, select_routine_sources
+from .runtime_recovery import RecoveryPlan, diagnose_runtime
 from .service import PreparationError, Service
 from .store import Store
 from .workspace import server_owner
@@ -216,8 +217,8 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
                     "Company-site interpretation failed; check the model configuration and review the current form"
                 ) from exc
 
-        external = ExternalBrowser(data, profile, settings=store.settings, planner=interpret_site)
-        linkedin = LinkedInBrowser(data, profile)
+        external = BridgeAgent(data, profile, settings=store.settings, planner=interpret_site)
+        linkedin = LinkAgent(data, profile)
         if store.settings().external_applications_enabled:
             linkedin.external_executor = external
             for source in ("manual", "greenhouse", "permitted"):
@@ -228,37 +229,27 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
                     service.adapters.pop(source, None)
         service.adapters["linkedin"] = linkedin
 
-    discovery_memory = DiscoveryMemory(store)
+    def interpret_failure(observation: dict[str, Any]) -> RecoveryPlan:
+        if (
+            not os.environ.get("OPENAI_API_KEY")
+            or os.environ.get("OPENAI_MODEL", QUESTION_MODEL) != QUESTION_MODEL
+        ):
+            raise ValueError("Configure GPT-6.1 Sol for runtime diagnosis")
+        with OpenAI(timeout=180, max_retries=0) as ai_client:
+            return diagnose_runtime(ai_client, observation)
+
+    service.runtime_diagnoser = interpret_failure
+    service.runtime_stopping = stop.is_set
+    scout = ScoutAgent(
+        service,
+        stopping=stop.is_set,
+        browser_factory=lambda data, profile: LinkedInBrowser(data, profile),
+    )
+    service.scout = scout
+    discovery_memory = scout.memory
 
     def search_jobs(operation: Operation, *, automatic: bool) -> list[Job]:
-        settings = store.settings()
-        profile, _ = store.profile()
-        adapter = LinkedInBrowser(data, profile)
-        adapter.include_external_jobs = settings.external_applications_enabled
-        adapter.progress = operation.progress
-        adapter.discovery_failure = discovery_memory.defer
-        adapter.discovery_stopping = lambda: (
-            stop.is_set() or (automatic and not store.settings().automation_enabled)
-        )
-        try:
-            jobs = adapter.search(
-                settings.search_keywords,
-                settings.search_location,
-                excluded_ids=discovery_memory.excluded_ids(known=automatic),
-            )
-        except (BrowserError, ValueError) as exc:
-            retry_at = discovery_memory.defer("search", type(exc).__name__)
-            operation.progress(
-                adapter.form_stage,
-                f"LinkedIn search could not complete ({type(exc).__name__}). "
-                f"Automatic discovery will wait until {retry_at}; check sign-in and page layout. "
-                "No applications were sent by discovery.",
-            )
-            raise
-        discovery_memory.resolved("search")
-        for job in jobs:
-            discovery_memory.resolved(job.source_id)
-        return jobs
+        return scout.search(operation, automatic=automatic)
 
     def tick() -> dict[str, str]:
         with service.operations.run("cycle") as operation, browser_lock:
@@ -284,7 +275,7 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
                             "Searching for new opportunities before processing the FIFO queue.",
                         )
                         jobs = search_jobs(operation, automatic=True)
-                        service.screen_discovery(jobs, operation.progress)
+                        scout.screen(jobs, operation.progress)
                         empty_search = not jobs
             result = service.tick(operation, stopping=stop.is_set)
             settings = store.settings()
@@ -727,7 +718,7 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
                 jobs = greenhouse(board.board, client)
         except httpx.HTTPError as exc:
             raise HTTPException(502, "Job discovery failed; no applications were sent") from exc
-        return service.screen_discovery(jobs)
+        return scout.screen(jobs)
 
     @app.post("/api/discover/linkedin", dependencies=auth)
     def discover_linkedin() -> dict[str, int]:
@@ -743,7 +734,7 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
                     "The browser could not read the LinkedIn job search. Check the dedicated "
                     "browser session and try again. No opportunities were imported or applications sent.",
                 ) from exc
-            return service.screen_discovery(jobs, operation.progress)
+            return scout.screen(jobs, operation.progress)
 
     @app.get("/api/discovery/discards", dependencies=auth)
     def discovery_discards(
@@ -755,7 +746,7 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
     @app.post("/api/applications/{app_id}/prepare", dependencies=auth)
     def prepare(app_id: int, preparation: Preparation) -> dict[str, Any]:
         with service.operations.run("prepare", app_id) as operation, browser_lock:
-            service.prepare(
+            scout.prepare(
                 app_id,
                 preparation.evidence_ids,
                 use_ai=preparation.use_ai,

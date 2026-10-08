@@ -376,6 +376,9 @@ export function WorkerMonitor({
 }) {
   const [, clock] = useState(0);
   const run = record?.run;
+  const activeAgent = ["Scout", "Link", "Bridge"].find((name) =>
+    run?.detail.startsWith(name + " · "),
+  );
   useEffect(() => {
     if (!run || run.finished) return;
     const timer = setInterval(() => clock((v) => v + 1), 1000);
@@ -410,8 +413,9 @@ export function WorkerMonitor({
         </span>
       </div>
       <p>
-        The agent completes preparation, submission checks and result recording
-        for the current opportunity before starting the next.
+        Scout researches and prepares opportunities. Link handles Easy Apply;
+        Bridge handles company websites. They share one FIFO queue and process
+        one opportunity at a time.
       </p>
       <div
         id="worker-status"
@@ -427,6 +431,11 @@ export function WorkerMonitor({
           ) : (
             <>
               <strong>{labels[run.status] ?? run.status}</strong>
+              {activeAgent && (
+                <p>
+                  Agent: <strong>{activeAgent}</strong>
+                </p>
+              )}
               {run.job && (
                 <p>
                   {run.job.title} · {run.job.company} · Application #

@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
+from .agents import ScoutAgent, agent_detail
 from .answer_style import experience_target, format_known_answer, numeric_field
 from .browser import (
     FixtureBrowser,
@@ -22,6 +23,7 @@ from .policy import answer_compatible, answer_questions, evaluate, select_eviden
 from .question_adviser import question_key
 from .question_library import InstructionGenerator, instruction_compatible, label_key, rule_source
 from .routine_answers import RoutineSelection, Selector, routine_answer
+from .runtime_recovery import RecoveryPlan, RuntimeRecovery
 from .store import Store
 from .submission_records import SubmissionRecords
 
@@ -51,6 +53,7 @@ class Service:
         selector: Callable[[Profile, Job, dict[str, Any]], Advice] | None = None,
         question_selector: Selector | None = None,
         instruction_generator: InstructionGenerator | None = None,
+        runtime_diagnoser: Callable[[dict[str, Any]], RecoveryPlan] | None = None,
     ):
         self.store, self.data = store, data
         self.adapters = adapters or {}
@@ -58,6 +61,9 @@ class Service:
         self.question_selector = question_selector
         self.instruction_generator = instruction_generator
         self.operations = Operations(store)
+        self.scout = ScoutAgent(self)
+        self.runtime_diagnoser = runtime_diagnoser
+        self.runtime_stopping: Callable[[], bool] = lambda: False
         self.records = SubmissionRecords(store, data)
 
     def screen_discovery(
@@ -453,16 +459,25 @@ class Service:
                 receipt = self.submit(app_id, progress=operation.progress)
                 operation.result("submitted")
                 return receipt
-        report = progress
-        report(
-            "checking_readiness",
-            "Rechecking policy, approved answers, document hashes and AI provenance.",
-        )
         row = self.store.application(app_id)
         if row["trashed"]:
             raise ValueError("Applications in Trash cannot be submitted")
         profile, revision = self.store.profile()
         job = Job.model_validate(row["job"])
+        role = "Link" if job.source == "linkedin" else "Bridge"
+
+        def report(stage: str, detail: str) -> None:
+            nonlocal role
+            for name in ("Scout", "Link", "Bridge"):
+                if detail.startswith(name + " · "):
+                    role = name
+                    break
+            progress(stage, agent_detail(role, detail))
+
+        report(
+            "checking_readiness",
+            "Rechecking policy, approved answers, document hashes and AI provenance.",
+        )
         effective = self.store.effective_profile(app_id, profile, job)
         evaluation = self.store.management.evaluation(app_id, effective, job, self.store.settings())
         if evaluation.state != State.READY or row["state"] != State.READY:
@@ -532,6 +547,34 @@ class Service:
         )
         pending_question: Question | None = None
         if isinstance(adapter, LinkedInBrowser):
+            previous_recovery = adapter.runtime_recovery
+            if self.runtime_diagnoser is not None:
+
+                def recovery_checkpoint() -> None:
+                    if self.runtime_stopping():
+                        raise ValueError("The worker is stopping; runtime recovery is paused")
+                    validate_manifest(row["manifest"], submission_folder, revision)
+                    self.store.mark_sending(
+                        app_id,
+                        attempt,
+                        revision,
+                        job,
+                        external_target=adapter.recovery_target
+                        if adapter.active_agent == "Bridge"
+                        else None,
+                        checkpoint_only=True,
+                    )
+
+                adapter.runtime_recovery = RuntimeRecovery(
+                    self.store,
+                    self.data,
+                    app_id,
+                    attempt,
+                    job,
+                    self.runtime_diagnoser,
+                    recovery_checkpoint,
+                    report,
+                )
             adapter.profile = (
                 profile.model_copy(
                     update={"answers": {**profile.answers, **row["approved_answers"]}}
@@ -539,7 +582,7 @@ class Service:
                 if any(item["enabled"] for item in self.store.question_library.entries())
                 else effective
             )
-            adapter.progress = progress
+            adapter.progress = report
 
             def observe_question(question: Question) -> None:
                 self.store.question_library.observe(app_id, question)
@@ -607,7 +650,9 @@ class Service:
             self.store.finish(app_id, attempt, None)
             raise
         finally:
-            if isinstance(adapter, LinkedInBrowser) and adapter.form_diagnostic:
+            if isinstance(adapter, LinkedInBrowser) and (
+                adapter.form_diagnostic or adapter.form_diagnostics_evidence
+            ):
                 try:
                     with self.store.connect() as db:
                         for evidence in adapter.form_diagnostics_evidence or [
@@ -632,6 +677,7 @@ class Service:
                 adapter.confirmation_folder = previous_folder
                 adapter.confirmation_evidence = previous_evidence
             if isinstance(adapter, LinkedInBrowser):
+                adapter.runtime_recovery = previous_recovery
                 adapter.progress = previous_progress
                 adapter.question_resolver = previous_resolver
                 adapter.question_observer = previous_question_observer
@@ -819,7 +865,7 @@ class Service:
                 continue
             app_id = row["id"]
             operation.progress(
-                "evaluating", "Starting the next opportunity in order of arrival.", app_id
+                "evaluating", "Scout · Starting the next opportunity in order of arrival.", app_id
             )
             try:
                 if recoverable:
@@ -833,7 +879,7 @@ class Service:
                     self.refresh_readiness(app_id)
                     row = self.store.application(app_id)
                 if stale or row["state"] == State.REVIEW:
-                    self.prepare(app_id, progress=operation.progress)
+                    self.scout.prepare(app_id, progress=operation.progress)
                 if stopping and stopping():
                     operation.result(self.store.application(app_id)["state"])
                     operation.completion_status = "stopped"

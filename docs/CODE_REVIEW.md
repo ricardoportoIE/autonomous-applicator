@@ -1,5 +1,13 @@
 # Source review and verification record
 
+## Specialised roles and bounded runtime recovery, 8 October 2026
+
+Reviewed discovery/preparation routing, FIFO ownership, submission callback restoration, held-attempt budgets, private diagnostic intake, model decisions, post-model gates, handoff targets, sending timestamps and confirmed/uncertain outcomes together. Scout delegates domain policy and preparation rather than duplicating them. Link and Bridge share existing field methods and one runtime controller, including a LinkedIn handoff; retries never allocate another reservation or regenerate materials.
+
+New real-browser regressions exposed two diagnostic lifecycle faults: a successful retry cleared the failed form before service journalling, and the outer LinkedIn scope could replace Bridge's native-form HTML with a missing-dialog result. The service now journals retained evidence even with an empty current diagnostic, and runtime diagnosis selects the latest hashed form from the current try. Handoffs clear the executor's current evidence before forwarding it, while the owner retains previous tries, preventing duplicates or stale HTML. A post-click review exception is explicitly uncertain rather than releasing its sending hold.
+
+The only historical assertion changed expects the new `Link ·` progress prefix whilst retaining exact field types, question wording and submitted values. Feature acceptance passes 55 new cases, including reuse across different vacancies with their own facts and byte-verified CVs; all 49 historical dialogue cases pass in the 104-case final affected-path acceptance. The two new modules have 100% statement/branch coverage. The complete React suite passes 230 cases with per-file 100% coverage. [Testing](TESTING.md#specialised-agents-and-runtime-recovery-8-october-2026) records the complete regression boundary separately.
+
 ## Complete-system validation, 6 October 2026
 
 Reviewed all six failures from the 1,436-case complete execution. Two legacy assertions expected a full evidence paragraph after the authorised concise-answer change; two discovery mocks lacked the discarded-ID keyword; two record journeys searched the active queue after confirmed records moved to Archive. The corrections retain exact expected answers, evidence/model provenance, candidate/document immutability, sanitised discovery logs and zero-send/capacity assertions. Desktop/mobile record tests now load current data, open Archive, verify the empty active queue after reload, and retain screenshot/PDF downloads, accessibility, deep-link and locking assertions.

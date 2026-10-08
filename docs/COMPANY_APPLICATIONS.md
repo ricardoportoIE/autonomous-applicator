@@ -1,5 +1,7 @@
 # Company-site applications
 
+**Scout** now owns research and preparation; **Link** and **Bridge** are the two application executors. Both can diagnose recognised pre-send technical faults using GPT-6.1 Sol and reopen the same reviewed application twice within one held attempt. Bridge also receives primary external Apply destinations from Link. Live gates, archived documents and confirmed/uncertain outcomes remain shared. [Specialised agents](SPECIALISED_AGENTS.md) details routing, runtime budgets and learning.
+
 Two specialised executors share the existing FIFO owner, approved candidate facts, vacancy-specific documents, review decisions, sending budget, history and global pause: LinkedIn Easy Apply and company websites. The second executor adds neither concurrent submissions nor another application quota.
 
 ## Setup and routing

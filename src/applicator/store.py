@@ -858,6 +858,7 @@ class Store:
         job: Job,
         *,
         external_target: str | None = None,
+        checkpoint_only: bool = False,
     ) -> None:
         """Repeat mutable gates immediately before the browser's irreversible click."""
         with self.connect(True) as db:
@@ -894,7 +895,8 @@ class Store:
                         raise ValueError(
                             "This company-site vacancy already has a sent or uncertain application; reconcile it before retrying"
                         )
-                db.execute("INSERT OR REPLACE INTO config VALUES (?,?)", (key, str(attempt)))
+                if not checkpoint_only:
+                    db.execute("INSERT OR REPLACE INTO config VALUES (?,?)", (key, str(attempt)))
             if (
                 current != revision
                 or not row
@@ -915,11 +917,12 @@ class Store:
                 != State.READY
             ):
                 raise ValueError("Submission policy changed before sending")
-            db.execute("UPDATE attempts SET sent_day=? WHERE id=?", (day_key(), attempt))
-            db.execute(
-                "UPDATE submission_records SET sent_at=? WHERE attempt_id=?",
-                (datetime.now(UTC).isoformat(), attempt),
-            )
+            if not checkpoint_only:
+                db.execute("UPDATE attempts SET sent_day=? WHERE id=?", (day_key(), attempt))
+                db.execute(
+                    "UPDATE submission_records SET sent_at=? WHERE attempt_id=?",
+                    (datetime.now(UTC).isoformat(), attempt),
+                )
 
     def confirm_not_sent(self, app_id: int, revision: int) -> None:
         with self.connect(True) as db:

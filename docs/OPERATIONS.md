@@ -1,5 +1,11 @@
 # Operating guide
 
+## Agent roles and runtime recovery
+
+The monitor names **Scout** during research/preparation, **Link** during Easy Apply and **Bridge** during company execution. All share the same Start/Pause control and FIFO. `diagnosing runtime error` indicates GPT-6.1 Sol diagnosis; `retrying application` shows the recovery count, at most two retries within the current attempt. A successful reopen keeps the same archived CV/cover letter and held capacity. Inspect the application journal for `runtime_recovery_attempt`, `runtime_recovery_outcome` and `form_diagnostic` events. The diagnostic HTML remains available even if recovery succeeds.
+
+An exhausted/rejected diagnosis becomes an explicit review hold. Resolve its actual problem before an explicit manual retry; the worker does not repeatedly resume that hold in later cycles. Missing answers still use the existing Questions/review controls. Authentication requires browser-login. An uncertain possible send requires reconciliation before another submission. Company execution remains separately enabled with exact public HTTPS hosts. [Specialised agents](SPECIALISED_AGENTS.md) explains the checks and memory.
+
 ## Company-site applications
 
 Agent settings now provide a company-site enable switch and exact HTTPS hostnames. Enabling it broadens LinkedIn search to external Apply opportunities, routing them to a separate visible browser under the same FIFO and sending budget. Configured company job links can be imported when complete published metadata exists; otherwise enter the details manually. Unknown domains, missing documents/answers, unfamiliar forms and verification challenges require review. Post-click uncertain results must be reconciled before retrying. [Company-site applications](COMPANY_APPLICATIONS.md) describes supported native forms, GPT interpretation, local method memory and duplicate-destination protection.

@@ -1,5 +1,7 @@
 # Reusable recovery for future applications
 
+**Link** and **Bridge** now share bounded runtime diagnosis and retries, while **Scout** handles research and preparation. A recognised pre-send technical failure can reopen the same reviewed opportunity at most twice per held attempt, retaining its archived documents and reservation. Confirmed recovery methods become private reusable hints; failed reuse restores model diagnosis. Pending facts, authentication and possible sending prohibit retries. [Specialised agents and runtime recovery](SPECIALISED_AGENTS.md) explains the separate runtime budget, live checkpoints and event evidence.
+
 The company-site executor uses the shared truthful question resolver and native/label/ARIA recovery strategies. Verified native site methods persist by hostname and semantic form shape, with live actions rechecked on reuse. Pre-send diagnostics and stages support tested repairs. This is local experience memory rather than autonomous code changes or model training; unknown facts and uncertain sends never become approval. See [company-site applications](COMPANY_APPLICATIONS.md).
 
 Previously validated technical repairs are implemented in the common LinkedIn adapter, question resolver and storage contracts. Every new opportunity uses those same functions. They contain no exceptions tied to the application or vacancy identifiers that originally exposed the failures. Importing another opportunity or restarting the workspace does not remove these repairs.

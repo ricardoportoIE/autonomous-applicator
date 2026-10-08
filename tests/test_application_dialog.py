@@ -244,11 +244,13 @@ def test_native_dialog_full_submission_against_an_intercepted_provider(
         "awaiting_confirmation",
     ]
     assert [
-        detail for _, detail in stages if detail.startswith("Checking ") and " field: " in detail
+        detail
+        for _, detail in stages
+        if detail.startswith("Link · Checking ") and " field: " in detail
     ] == [
-        "Checking text field: Email address.",
-        "Checking select-one field: Phone country code.",
-        "Checking tel field: Mobile phone number.",
+        "Link · Checking text field: Email address.",
+        "Link · Checking select-one field: Phone country code.",
+        "Link · Checking tel field: Mobile phone number.",
     ] * 2
     assert submitted == [
         {"email": profile.email, "country": "Ireland (+353)", "phone": "5550100", "files": 1}

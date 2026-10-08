@@ -195,6 +195,8 @@ def observed_actions(scope: Locator, *, form: bool) -> list[dict[str, str]]:
 class ExternalBrowser(LinkedInBrowser):
     """Share the audited callback lifecycle, but use a separate browser and navigation."""
 
+    agent_name = "Bridge"
+
     def __init__(
         self,
         data: Path,
@@ -255,11 +257,12 @@ class ExternalBrowser(LinkedInBrowser):
     ) -> str:
         self.external_sending_url = None
         self.form_diagnostic = {}
-        self.form_diagnostics_evidence = []
         self.confirmation_evidence = {}
         self.check_target(url)
         if self.profile is None or not self.profile.confirmed:
             raise ReviewRequired("Confirm the candidate facts before submitting applications")
+        self.recovery_host = urlsplit(url).hostname
+        self.recovery_target = url
         with (
             nullcontext(playwright) if playwright is not None else sync_playwright() as runtime,
             self.context(runtime) as context,
@@ -652,6 +655,8 @@ def run_linkedin_handoff(
     ):
         setattr(executor, name, getattr(owner, name))
     executor.progress = owner.report
+    # Each handoff contributes only its own evidence; the owner retains earlier retries.
+    executor.form_diagnostics_evidence = []
     original_gate = executor.before_submit
 
     if original_gate is not None:
@@ -668,6 +673,8 @@ def run_linkedin_handoff(
         return executor.run_target(target, job, folder, progress, playwright=playwright)
     finally:
         owner.form_stage = executor.form_stage
+        owner.recovery_host = executor.recovery_host
+        owner.recovery_target = executor.recovery_target
         owner.form_diagnostic = executor.form_diagnostic
-        owner.form_diagnostics_evidence = executor.form_diagnostics_evidence
+        owner.form_diagnostics_evidence.extend(executor.form_diagnostics_evidence)
         owner.confirmation_evidence = executor.confirmation_evidence

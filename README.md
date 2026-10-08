@@ -12,6 +12,12 @@ A personal engineering portfolio project by [Ricardo Porto](https://github.com/r
 
 The system combines a React and TypeScript dashboard, a Python API, grounded AI assistance and permitted browser integrations. It evaluates opportunities, prepares vacancy-specific CVs and cover letters, processes one application at a time, and preserves what was actually sent. Candidate knowledge and automation policy remain under the user's control.
 
+**Scout**, **Link** and **Bridge** separate research/preparation, Easy Apply and company-site execution under one FIFO owner. Both application agents diagnose recognised pre-send technical failures with GPT-6.1 Sol, can reopen the same reviewed opportunity twice during execution, and retain confirmed recovery methods locally. Retries reuse archived vacancy-specific documents and one reservation; missing facts and uncertain sending remain in review. [Responsibilities and recovery design](docs/SPECIALISED_AGENTS.md).
+
+![Named application agent and bounded runtime recovery in the packaged monitor](docs/assets/specialised-agents.png)
+
+*Agent monitor captured on 8 October 2026 from a labelled fictional journal; no provider or model request was made.*
+
 **Python · FastAPI · SQLite · React · TypeScript · Tailwind CSS · Playwright · OpenAI Responses API · GitHub Actions**
 
 ![Current desktop workspace showing processing history, queue totals and sending capacity](docs/assets/dashboard.png)
@@ -59,7 +65,7 @@ Job discovery supports verified company-name and company-logo headers. A failed 
 | Capability | User outcome |
 | --- | --- |
 | Discovery and import | Paste a LinkedIn or configured company job link, search Easy Apply and external Apply opportunities, import a public Greenhouse board or enter details manually. Search, filter and sort the queue. |
-| Two application executors | LinkedIn Easy Apply and native company forms share one FIFO worker and sending limit. GPT-6.1 Sol interprets observed actions; verified form methods and error diagnostics persist locally. [Design and current controls](docs/COMPANY_APPLICATIONS.md). |
+| Three specialised agents | Scout researches and prepares; Link handles Easy Apply; Bridge handles company websites. One FIFO owner and sending limit, bounded runtime diagnosis and verified local recovery memory. [Responsibilities and design](docs/SPECIALISED_AGENTS.md). |
 | Explainable fit | Inspect matched technologies, evidence gaps, location considerations and explicit blockers before acting. |
 | Tailored documents | Generate A4 PDF/DOCX CVs and a required cover letter from approved evidence, with hashes and preparation provenance. |
 | Questionnaire assistance | Resolve routine questions from approved facts; request a separate GPT-6.1 Sol draft and explicitly review, edit and approve it. |
@@ -198,7 +204,7 @@ Resume recovery recognises contained filenames and exact accessible radio names,
 
 ## Quality and verification
 
-The complete React suite passed **226 Vitest tests across 19 files on 8 October 2026**, with **100% lines, statements, functions and branches in all 13 authored runtime TypeScript/TSX modules**, including the bootstrap. Coverage is enforced **per file** in CI: 1,017 statements, 924 lines, 361 functions and 1,100 branch outcomes. Only type-only contracts and declaration files are excluded. Libraries, generated bundles and test code are outside this measurement.
+The complete React suite passed **230 Vitest tests across 19 files on 8 October 2026**, with **100% lines, statements, functions and branches in all 13 authored runtime TypeScript/TSX modules**, including the bootstrap. Coverage is enforced **per file** in CI: 1,019 statements, 926 lines, 362 functions and 1,102 branch outcomes. Only type-only contracts and declaration files are excluded. Libraries, generated bundles and test code are outside this measurement.
 
 | Verification layer | What it checks |
 | --- | --- |
@@ -214,7 +220,7 @@ The backend requires **100% statement and branch coverage in every authored Pyth
 
 Verification results, measured coverage and any outstanding checks are recorded in [delivery status](docs/STATUS.md). [Review findings](docs/CODE_REVIEW.md) explain corrected faults and their regressions. Coverage establishes execution, not compatibility with every live provider layout; behaviour assertions and isolated provider fixtures provide additional evidence.
 
-Validation on **8 October 2026** verifies the current **1,775-case Python inventory** through a complete 1,758-case execution and a final 128-case affected-path run. All **4,437 statements and 1,674 branch outcomes across 25 runtime modules** are covered, with the independent inventory gate passing. [Testing](docs/TESTING.md#full-system-validation-8-october-2026) records the partitions, final corrections and coverage consolidation. Separate production Chromium coverage measures **95.59% statements/lines, 90.57% branches and 88.38% functions** across 12 dashboard modules; React unit coverage retains its own 100% per-file gate. The [threat model](docs/SECURITY.md) defines protection against hostile pages, malformed requests and untrusted provider content. Tests isolate credentials and prevent CLI fixtures from loading the operator's `.env`. The [offline benchmark](docs/PERFORMANCE.md) records bounded in-process read measurements, excluding browser rendering, document generation and model/provider latency.
+Validation on **8 October 2026** verifies the current **1,830-case Python inventory** through a complete 1,829-case execution and final 104-case affected-path acceptance, including the corrected progress-prefix assertion and an added cross-vacancy recovery case. All **4,640 statements and 1,724 branch outcomes across 27 runtime modules** are covered, with the independent inventory gate passing. [Testing](docs/TESTING.md#complete-regression-and-final-acceptance) records the partitions, corrections and same-source consolidation. Separate production Chromium coverage measures **95.59% statements/lines, 90.61% branches and 88.38% functions** across 12 dashboard modules; React unit coverage retains its own 100% per-file gate. The [threat model](docs/SECURITY.md) defines protection against hostile pages, malformed requests and untrusted provider content. Tests isolate credentials and prevent CLI fixtures from loading the operator's `.env`. The [offline benchmark](docs/PERFORMANCE.md) records bounded in-process read measurements, excluding browser rendering, document generation and model/provider latency.
 
 The historical duration-review correction passed **418 focused cases**, including 14 new regressions for exact owner instructions, legacy narratives, readiness, restart provenance and independent missing durations. [Duration review validation](docs/TESTING.md#resolved-duration-review-holds-6-october-2026) retains its original scope and reproduction command separately from current complete validation.
 
