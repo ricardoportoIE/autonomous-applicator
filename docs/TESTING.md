@@ -1,5 +1,46 @@
 # Testing and coverage
 
+## Clean complete release validation, 8 October 2026
+
+Performed a fresh complete execution against application revision `29d3bbb` on **Windows, Python 3.14.2 and Node.js 24.20.0**. All **1,830 Python cases across 81 files passed**, with zero test failures. No application or test changes were needed. A frozen digest comparison verified all 147 Python/TypeScript application and test files were unchanged throughout execution.
+
+| Disjoint partition | Passed cases | Duration |
+| --- | --- | --- |
+| 1 | 319 | 676.14 seconds |
+| 2 | 521 | 874.70 seconds |
+| 3 | 493 | 407.05 seconds |
+| 4 | 497 | 760.47 seconds |
+
+Every test file belongs to exactly one partition, and the verified inventory matches all current Python test files. The private runner's repository import path was corrected before collecting the final fourth partition; the application, tests and standard CI command were unchanged. Each successful partition used a new independent coverage file. Consolidation uses **only these four fresh measurements**, with no earlier focused-run coverage. The result and independent source-inventory gate pass at **100% in every one of the 27 runtime modules**: **4,640/4,640 statements and 1,724/1,724 branch outcomes**. No executable exclusions were introduced.
+
+The complete React suite passed **230 cases across 19 files in 56.37 seconds**, retaining per-file **100% statements, lines, functions and branches in all 13 runtime modules**: 1,019 statements, 926 lines, 362 functions and 1,102 branch outcomes. Existing production-browser coverage was moved aside before execution, so the new packaged Chromium report contains only fresh captures: **95.59% statements/lines, 90.53% branches and 88.38% functions across 12 modules**. This separate scenario measurement is not the unit coverage gate.
+
+Python lint/format/mypy, TypeScript, ESLint, Prettier, tracked-file hygiene, asset reproducibility, all eight Windows ACL scenarios, dependency audits and the offline benchmark passed. Audited dependencies have no known vulnerabilities; the unpublished editable package is outside the Python advisory index. A separate scan of the 12 pending local commits checked 189 blobs for credential patterns, private paths and current local contact values, with no matches. Authenticated live checks and a private comparison preserved **33 applications, candidate revision 15, all 64 document hashes, facts, answers, settings and attempts**. The server and networking remain paused. No real provider action or paid model request was made.
+
+The operator authorised remote publication after clean validation. GitHub Actions rechecks Windows/Linux and Python 3.12/3.14 after publication; those future results are independent of this local acceptance record.
+
+```powershell
+uv run python -m pytest
+uv run python scripts/check_backend_coverage.py
+npm test
+npm run coverage:browser
+npm run typecheck
+npm run lint
+npm run format:check
+npm run build
+git diff --exit-code -- src/applicator/static
+uv run python -m ruff check .
+uv run python -m ruff format --check .
+uv run python -m mypy src
+uv run python scripts/check_repository_hygiene.py
+./tests/powershell/test_private_permissions.ps1
+npm audit --audit-level=low
+uv run python -m pip_audit
+uv run python scripts/benchmark_local.py
+```
+
+Earlier entries below retain their original execution and consolidation boundaries.
+
 ## Specialised agents and runtime recovery, 8 October 2026
 
 The feature acceptance passes **55 new cases** across `test_agents.py` and `test_runtime_recovery.py`. Both new runtime modules have **100% statements and branch outcomes**: 47 statements/two outcomes in `agents.py`, and 110 statements/28 outcomes in `runtime_recovery.py`. The final broader acceptance passes **104 cases in 152.41 seconds**, including all 49 existing application-dialog cases with the new named progress prefix.

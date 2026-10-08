@@ -1,5 +1,13 @@
 # Delivery and validation record
 
+## Clean complete acceptance before remote publication, 8 October 2026
+
+Fresh complete regression against `29d3bbb` passed **all 1,830 Python tests across 81 files**, with no failures and no application/test changes. Four disjoint successful partitions measured the same frozen source, and their four fresh coverage files alone pass the independent gate at **100% in all 27 runtime modules**: 4,640 statements and 1,724 branch outcomes. This replaces the need to rely on the earlier full execution plus affected-path recheck. [Release validation](TESTING.md#clean-complete-release-validation-8-october-2026) records exact counts, durations and inventory verification.
+
+The complete React suite passed **230 cases in 56.37 seconds**, with 100% per-file runtime coverage in 13 modules. Fresh packaged Chromium coverage is separate. Static/type/format checks, reproducible assets, source and pending-history hygiene, all eight native Windows ACL scenarios, dependency audits and offline benchmark assertions passed. A private comparison retained **33 applications, revision 15, all 64 document hashes and existing facts, answers, settings and attempts**. The server and networking remain paused; no real application or paid model request was performed.
+
+Remote publication is now authorised. The documentation records completed local acceptance; the ensuing GitHub Actions platform matrix reports its own results independently.
+
 ## Scout, Link and Bridge with runtime recovery, 8 October 2026
 
 Separated research/preparation into **Scout**, Easy Apply into **Link** and company execution into **Bridge**, retaining one FIFO, operation lease and sending limit. Link hands primary external Apply destinations to Bridge. Both application paths use bounded GPT-6.1 Sol diagnosis for recognised pre-send technical faults, a durable two-retry allowance, archived document reuse and live pre/post-model checkpoints. Confirmed recovery methods persist locally; failed reuse requests fresh diagnosis. Missing facts, authentication and possible sending prohibit replay. The monitor names the agent and exposes diagnosis/retry stages; its new fictional capture is reproducible.
