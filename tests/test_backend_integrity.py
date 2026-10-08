@@ -241,7 +241,9 @@ def test_inconsistent_ready_evaluation_without_evidence_is_held_for_review(
     store, service, app_id = setup(data, profile, job)
     original = service_module.evaluate(job, profile, store.settings())
     original.evidence_ids = []
-    monkeypatch.setattr(service_module, "evaluate", lambda *args: original.model_copy(deep=True))
+    monkeypatch.setattr(
+        "applicator.application_management.evaluate", lambda *args: original.model_copy(deep=True)
+    )
     service.prepare(app_id)
     row = store.application(app_id)
     assert row["state"] == State.REVIEW and row["manifest"] == {}

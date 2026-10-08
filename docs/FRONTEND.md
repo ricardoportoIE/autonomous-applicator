@@ -1,5 +1,7 @@
 # React frontend and migration map
 
+Agent settings expose company-site enablement and exact hostname configuration. Both executors share the FIFO queue and sending quota. URL-only opportunity entry accepts configured company metadata, with an explicit manual-entry fallback. Existing status/activity/confirmation views show company-site stages and provider screenshots through shared contracts. The complete 8 October 2026 React suite passed **226 cases across 19 files**, with **100% statements, lines, functions and branches in all 13 authored runtime modules**: 1,017 statements, 924 lines, 361 functions and 1,100 branch outcomes. See [company-site applications](COMPANY_APPLICATIONS.md).
+
 The local dashboard is implemented in React and strict TypeScript, built with Vite and Tailwind CSS. All six workspace areas and existing API operations are retained. Forms for adding or editing opportunities, candidate facts, qualifications, contacts and Greenhouse imports open native dialogues from explicit buttons. Dialogues have accessible names, keyboard containment, Escape/close handling and focus restoration. Failed saves keep the draft visible and explain the error inside the dialogue. Closing a dialogue discards unsaved input; successful saves update the underlying record and close it.
 
 The main automation control toggles **Start agent / Pause agent** and shows **Starting agent… / Pausing agent…** while saving. It suppresses duplicate control requests separately from ordinary workspace work, so pausing remains possible during a slow operation. Start wakes the background queue immediately. The global pause preserves the user's separate networking switch, and stale responses cannot repopulate a locked workspace.
@@ -22,7 +24,7 @@ Routine answers' instruction modal includes **Generate instruction with GPT-6.1 
 
 ## Feature parity
 
-**Add opportunity** now defaults to a URL-only LinkedIn importer with a visible importing state, disabled duplicate submissions and retained input on failure. **Enter details manually** preserves every previous field and existing-opportunity editing keeps its complete form. Import completion is bound to the opening session both before and after refreshing the queue; a late response cannot close or populate a replacement session. The backend operation journal records each read/save stage. Unsupported websites retain manual entry and the separate Greenhouse board route. See [single-link operations](OPERATIONS.md#import-one-opportunity-from-its-link).
+**Add opportunity** defaults to a URL-only importer for LinkedIn and configured company websites, with a visible importing state, disabled duplicate submissions and retained input on failure. **Enter details manually** preserves every previous field and existing-opportunity editing keeps its complete form. Import completion is bound to the opening session both before and after refreshing the queue; a late response cannot close or populate a replacement session. The backend operation journal records each read/save stage. Unsupported websites retain manual entry and the separate Greenhouse board route. See [single-link operations](OPERATIONS.md#import-one-opportunity-from-its-link).
 
 | Area | Retained information and operations | Organisation |
 | --- | --- | --- |

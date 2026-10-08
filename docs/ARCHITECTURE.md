@@ -1,5 +1,7 @@
 # Architecture
 
+Company-site applications add a second specialised executor under the existing operation lease and FIFO worker. `ExternalBrowser` shares truthful field helpers and the audited callback lifecycle with `LinkedInBrowser`, with separate navigation guards and a persistent browser profile. Its explicit task-local native-form surface changes neither the DOM nor LinkedIn origin checks. Shared callbacks retain questionnaire resolution, archived fields, progress, confirmation evidence and the final sending transaction. See [company-site applications](COMPANY_APPLICATIONS.md).
+
 ## Components
 
 The private `question_library` module adds candidate-owned prompts alongside the existing source-only resolver. Store captures job/review questions, and a separate browser observer captures every reachable field before resolution, including already approved answers and dropdown options discovered after opening the widget. Settings presents General and Routine answers tabs. The local catalogue, observation links and immutable prompt versions use three SQLite tables. GPT-6.1 Sol returns a structured match and grounded answer; current instruction versions, field signatures, explicit approvals and native validity govern acceptance. Changes queue affected pending applications for re-preparation, and active operation ownership blocks mid-operation edits. See [the question instruction contract](QUESTION_INSTRUCTIONS.md).

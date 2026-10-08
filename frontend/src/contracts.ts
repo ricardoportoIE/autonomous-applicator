@@ -31,6 +31,8 @@ export interface Settings {
   linkedin_authorised: boolean;
   connections_enabled: boolean;
   discovery_enabled: boolean;
+  external_applications_enabled?: boolean;
+  external_allowed_hosts?: string[];
   daily_limit: number;
   daily_connection_limit: number;
   auto_threshold: number;

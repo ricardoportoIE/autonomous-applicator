@@ -134,6 +134,29 @@ class Service:
             else "No submission integration; use manual hand-off.",
         )
         scope = job.source != "linkedin" or settings.linkedin_authorised
+        if (
+            permitted
+            and job.source in {"manual", "greenhouse", "permitted"}
+            and (
+                settings.external_applications_enabled
+                or isinstance(self.adapters.get(job.source), LinkedInBrowser)
+            )
+        ):
+            from .external_urls import external_url
+
+            try:
+                if not settings.external_applications_enabled:
+                    raise ValueError("Enable company-site applications in Agent settings")
+                external_url(job.url, settings.external_allowed_hosts)
+            except ValueError as exc:
+                check("external_target", "Company-site destination", False, str(exc))
+            else:
+                check(
+                    "external_target",
+                    "Company-site destination",
+                    True,
+                    "The HTTPS hostname is configured for the company-site executor.",
+                )
         check(
             "scope",
             "LinkedIn authorisation",
@@ -525,7 +548,12 @@ class Service:
 
             def final_gate() -> None:
                 validate_manifest(row["manifest"], submission_folder, revision)
-                self.store.mark_sending(app_id, attempt, revision, job)
+                if adapter.external_sending_url:
+                    self.store.mark_sending(
+                        app_id, attempt, revision, job, external_target=adapter.external_sending_url
+                    )
+                else:
+                    self.store.mark_sending(app_id, attempt, revision, job)
 
             adapter.before_submit = final_gate
 

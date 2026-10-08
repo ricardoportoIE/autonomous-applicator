@@ -87,7 +87,7 @@ def test_url_import_failure_retains_draft_and_manual_entry(dashboard):
     page.get_by_label("Job URL", exact=True).fill(url)
     page.get_by_role("button", name="Save opportunity", exact=True).click()
     expect(page.get_by_role("dialog").get_by_role("alert")).to_contain_text(
-        "exact LinkedIn job URL"
+        "Enable company-site applications"
     )
     expect(page.get_by_label("Job URL", exact=True)).to_have_value(url)
     expect(page.get_by_role("button", name="Save opportunity", exact=True)).to_be_enabled()

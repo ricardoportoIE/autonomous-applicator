@@ -117,6 +117,43 @@ def test_only_signature_protocols_and_blank_lines_can_be_excluded(measured):
     )
 
 
+def test_canonical_annotation_imports_are_not_runtime_exclusions(measured):
+    root, path, report = measured
+    source = "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from .store import Store\n"
+    path.write_text(source, encoding="utf-8")
+    report["files"]["src/applicator/example.py"]["excluded_lines"] = [2, 3]
+    assert gate.type_import_declarations(source) == {2, 3}
+    assert gate.validate_report(root, report) == (1, 1, 2)
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "if TYPE_CHECKING:\n    import example\n",
+        "from other import TYPE_CHECKING\nif TYPE_CHECKING:\n    import example\n",
+        "from typing import TYPE_CHECKING as tc\nif tc:\n    import example\n",
+        "import other as TYPE_CHECKING\nif TYPE_CHECKING:\n    import example\n",
+        "from typing import TYPE_CHECKING\nTYPE_CHECKING=True\nif TYPE_CHECKING:\n    import example\n",
+        "from typing import TYPE_CHECKING\nimport other as TYPE_CHECKING\nif TYPE_CHECKING:\n    import example\n",
+        "from typing import TYPE_CHECKING\ndef TYPE_CHECKING(): pass\nif TYPE_CHECKING:\n    import example\n",
+        "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    send_application()\n",
+        "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    import example\n    send_application()\n",
+        "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    import example\nelse:\n    send_application()\n",
+        "from typing import TYPE_CHECKING\nif not TYPE_CHECKING:\n    import example\n",
+        "from typing import TYPE_CHECKING\ndef runtime():\n    if TYPE_CHECKING:\n        import example\n",
+    ],
+)
+def test_annotation_exception_rejects_runtime_or_shadowed_type_guards(measured, source):
+    root, path, report = measured
+    path.write_text(source, encoding="utf-8")
+    report["files"]["src/applicator/example.py"]["excluded_lines"] = list(
+        range(2, len(source.splitlines()) + 1)
+    )
+    assert gate.type_import_declarations(source) == set()
+    with pytest.raises(ValueError, match="Runtime coverage exclusions"):
+        gate.validate_report(root, report)
+
+
 @pytest.mark.parametrize("branches", [True, False])
 def test_cli_reports_counts_and_rejects_line_only_measurement(
     measured, monkeypatch, capsys, branches

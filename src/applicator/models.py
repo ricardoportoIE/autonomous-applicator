@@ -119,9 +119,30 @@ class Settings(Contract):
     linkedin_authorised: bool = False
     connections_enabled: bool = False
     discovery_enabled: bool = False
+    external_applications_enabled: bool = False
+    external_allowed_hosts: list[str] = Field(
+        default_factory=lambda: [
+            "boards.greenhouse.io",
+            "job-boards.greenhouse.io",
+            "boards-api.greenhouse.io",
+            "jobs.lever.co",
+            "jobs.eu.lever.co",
+            "api.lever.co",
+            "api.eu.lever.co",
+        ],
+        min_length=1,
+        max_length=30,
+    )
     daily_connection_limit: int = Field(default=3, ge=1, le=10)
     search_keywords: str = Field(default="Python Backend Engineer", min_length=1, max_length=200)
     search_location: str = Field(default="Ireland", min_length=1, max_length=200)
+
+    @field_validator("external_allowed_hosts")
+    @classmethod
+    def external_hosts(cls, values: list[str]) -> list[str]:
+        from .external_urls import public_hostname
+
+        return list(dict.fromkeys(public_hostname(value) for value in values))
 
     @field_validator("allowed_countries")
     @classmethod

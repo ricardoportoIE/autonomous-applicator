@@ -1,5 +1,7 @@
 # Reusable recovery for future applications
 
+The company-site executor uses the shared truthful question resolver and native/label/ARIA recovery strategies. Verified native site methods persist by hostname and semantic form shape, with live actions rechecked on reuse. Pre-send diagnostics and stages support tested repairs. This is local experience memory rather than autonomous code changes or model training; unknown facts and uncertain sends never become approval. See [company-site applications](COMPANY_APPLICATIONS.md).
+
 Previously validated technical repairs are implemented in the common LinkedIn adapter, question resolver and storage contracts. Every new opportunity uses those same functions. They contain no exceptions tied to the application or vacancy identifiers that originally exposed the failures. Importing another opportunity or restarting the workspace does not remove these repairs.
 
 ## Shared repairs and their proof

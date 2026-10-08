@@ -27,6 +27,44 @@ def protocol_declarations(source: str) -> set[int]:
     return allowed
 
 
+def type_import_declarations(source: str) -> set[int]:
+    """Allow only import declarations guarded by typing's unmodified TYPE_CHECKING."""
+    tree = ast.parse(source)
+    bindings = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.Import, ast.ImportFrom))
+        and any((alias.asname or alias.name) == "TYPE_CHECKING" for alias in node.names)
+    ]
+    if len(bindings) != 1 or not isinstance(bindings[0], ast.ImportFrom):
+        return set()
+    declaration = bindings[0]
+    if declaration.module != "typing" or not any(
+        alias.name == "TYPE_CHECKING" and alias.asname is None for alias in declaration.names
+    ):
+        return set()
+    if any(
+        isinstance(node, ast.Name)
+        and node.id == "TYPE_CHECKING"
+        and not isinstance(node.ctx, ast.Load)
+        or isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+        and node.name == "TYPE_CHECKING"
+        for node in ast.walk(tree)
+    ):
+        return set()
+    allowed: set[int] = set()
+    for node in tree.body:
+        if (
+            isinstance(node, ast.If)
+            and isinstance(node.test, ast.Name)
+            and node.test.id == "TYPE_CHECKING"
+            and not node.orelse
+            and all(isinstance(item, (ast.Import, ast.ImportFrom)) for item in node.body)
+        ):
+            allowed.update(range(node.lineno, (node.end_lineno or node.lineno) + 1))
+    return allowed
+
+
 def validate_report(root: Path, report: dict[str, Any]) -> tuple[int, int, int]:
     inventory = {
         path.relative_to(root).as_posix(): path
@@ -43,7 +81,7 @@ def validate_report(root: Path, report: dict[str, Any]) -> tuple[int, int, int]:
         excluded = set(record["excluded_lines"])
         substantive = {line for line in excluded if source.splitlines()[line - 1].strip()}
         if (
-            substantive - protocol_declarations(source)
+            substantive - (protocol_declarations(source) | type_import_declarations(source))
             or "pragma: no cover" in source
             or "pragma: no branch" in source
         ):

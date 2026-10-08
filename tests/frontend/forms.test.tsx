@@ -27,6 +27,35 @@ function submit(button: string) {
   );
 }
 
+it("configures two executors with a shared quota and supports older settings snapshots", async () => {
+  const older = { ...settings };
+  delete older.external_allowed_hosts;
+  const mutate = vi.spyOn(h.workspace, "mutate").mockResolvedValue();
+  render(<SettingsForm settings={older} workspace={h.workspace} />);
+  expect(screen.getByText(/share one FIFO queue/)).toBeInTheDocument();
+  const toggle = screen.getByLabelText(
+    "Enable company-site applications and include external Apply opportunities in LinkedIn search",
+  );
+  expect(toggle).not.toBeChecked();
+  fireEvent.click(toggle);
+  fill(
+    "External application hosts, comma-separated",
+    "jobs.lever.co, careers.example.com, jobs.lever.co",
+  );
+  submit("Save agent settings");
+  await waitFor(() => expect(mutate).toHaveBeenCalledOnce());
+  expect(mutate).toHaveBeenCalledWith(
+    "/settings",
+    "PUT",
+    expect.objectContaining({
+      external_applications_enabled: true,
+      external_allowed_hosts: ["jobs.lever.co", "careers.example.com"],
+      daily_limit: settings.daily_limit,
+    }),
+    "Agent settings saved.",
+  );
+});
+
 it.each([true, false])(
   "imports a URL-only opportunity and reports created=%s",
   async (created) => {

@@ -58,7 +58,8 @@ Job discovery supports verified company-name and company-logo headers. A failed 
 
 | Capability | User outcome |
 | --- | --- |
-| Discovery and import | Paste a LinkedIn job link to read and queue the vacancy, search configured opportunities, import a public Greenhouse board or enter details manually. Search, filter and sort the queue. |
+| Discovery and import | Paste a LinkedIn or configured company job link, search Easy Apply and external Apply opportunities, import a public Greenhouse board or enter details manually. Search, filter and sort the queue. |
+| Two application executors | LinkedIn Easy Apply and native company forms share one FIFO worker and sending limit. GPT-6.1 Sol interprets observed actions; verified form methods and error diagnostics persist locally. [Design and current controls](docs/COMPANY_APPLICATIONS.md). |
 | Explainable fit | Inspect matched technologies, evidence gaps, location considerations and explicit blockers before acting. |
 | Tailored documents | Generate A4 PDF/DOCX CVs and a required cover letter from approved evidence, with hashes and preparation provenance. |
 | Questionnaire assistance | Resolve routine questions from approved facts; request a separate GPT-6.1 Sol draft and explicitly review, edit and approve it. |
@@ -139,6 +140,7 @@ Business rules are invariants enforced by the API and persistence layer. The int
 | Late reads can replace a newer page or reveal locked data | Use session generations and request ownership; invalidate obsolete responses and revoke private blob URLs. | [API client](frontend/src/api.ts), [race regressions](tests/frontend/session-races.test.ts) |
 | Today's profile does not prove yesterday's submission | Archive per-attempt snapshots and documents; keep observed provider fields separate from supplied candidate facts. | [Submission records](src/applicator/submission_records.py), [record browser tests](tests/test_submission_record_browser.py) |
 | Unbounded automation complicates recovery | Require configured scope, bounded adapters, confirmed-send limits and manual handling of unsupported portals. Prefer an explained stop to a guessed action. | [Operating guide](docs/OPERATIONS.md), [browser adapters](src/applicator/browser.py) |
+| Employer portals vary and change | Let GPT select observed actions, recheck native controls and retain verified methods locally. Unknown behaviour remains reviewable rather than becoming a new permission. | [Company-site executor](src/applicator/external_browser.py), [supported contract](docs/COMPANY_APPLICATIONS.md) |
 | A private tool still needs accessible, maintainable UX | Use strict TypeScript, native dialogues, labelled controls and keyboard tabs; serve local compiled assets under CSP. | [Feature map](docs/FRONTEND.md), [production UI tests](tests/test_react_frontend.py) |
 
 ### Decision policy
@@ -160,11 +162,14 @@ flowchart LR
     API --> Service[Application service]
     Worker --> Service
     Service --> Policy[Fit, eligibility and readiness policy]
-    Service --> AI[Bounded OpenAI evidence assistance]
+    Service --> AI[Grounded GPT-6.1 Sol assistance]
     Service --> Docs[Local CV and cover-letter renderer]
     Service --> Store[(SQLite revisions, attempts and journal)]
     Service --> Browser[Registered Playwright adapters]
-    Browser --> Provider[Authorised provider or local fixture]
+    Browser --> Easy[LinkedIn Easy Apply]
+    Browser --> Company[Company-site native forms]
+    Easy --> Provider[Authorised provider or local fixture]
+    Company --> Provider
     Docs --> Files[Private documents and submission archives]
     Browser --> Files
 ```
@@ -179,6 +184,8 @@ flowchart LR
 
 The configured model is **`gpt-6.1-sol`**, called through the OpenAI Responses API with structured output, `store=False`, a bounded timeout and no automatic provider retries.
 
+For company navigation, GPT receives value-free form semantics and recognised action identifiers. It chooses an observed action or review; local code rejects changed controls, unknown destinations, selectors and executable instructions. Verified native methods can be reused after live checks, with error HTML retained privately for tested repairs. The model neither rewrites the agent nor trains itself from submissions.
+
 For documents, AI ranks existing evidence identifiers for the vacancy. Validation rejects unknown or unapproved references, mismatched model identity and stale profile/job fingerprints. The local renderer preserves factual wording and records the model, evidence references and generation metadata. With AI preparation enabled, API or validation failures leave the opportunity in review without silently falling back to another preparation method.
 
 For questionnaires, **Suggest with GPT-6.1 Sol** returns a separate draft with supporting facts and review notes. Contact fields and sensitive answers are excluded from that request. Unknown legal, immigration or exceptional facts require candidate input; a provider's prefilled answer is not approval.
@@ -191,7 +198,7 @@ Resume recovery recognises contained filenames and exact accessible radio names,
 
 ## Quality and verification
 
-The complete React suite passed **181 Vitest tests across 17 files on 6 October 2026**, with **100% lines, statements, functions and branches in all 11 authored runtime TypeScript/TSX modules**, including the bootstrap. Coverage is enforced **per file** in CI: 907 statements, 824 lines, 327 functions and 962 branch outcomes. Only type-only contracts and declaration files are excluded. Libraries, generated bundles and test code are outside this measurement.
+The complete React suite passed **226 Vitest tests across 19 files on 8 October 2026**, with **100% lines, statements, functions and branches in all 13 authored runtime TypeScript/TSX modules**, including the bootstrap. Coverage is enforced **per file** in CI: 1,017 statements, 924 lines, 361 functions and 1,100 branch outcomes. Only type-only contracts and declaration files are excluded. Libraries, generated bundles and test code are outside this measurement.
 
 | Verification layer | What it checks |
 | --- | --- |
@@ -203,13 +210,13 @@ The complete React suite passed **181 Vitest tests across 17 files on 6 October 
 | Static and dependency checks | Strict TypeScript and mypy, ESLint, Ruff, Prettier, npm audit, pip-audit and tracked-file privacy checks. |
 | Packaging and CI | Reproducible committed assets and a Windows/Linux matrix on Python 3.12 and 3.14 with Node.js 24. |
 
-The backend requires **100% statement and branch coverage in every one of its 21 Python modules**. CI checks the complete source inventory and rejects missing paths or runtime exclusions on every Windows/Linux and Python 3.12/3.14 job; each run records its exact interpreter-specific statement and branch counts. React unit tests retain their separate 100% per-file runtime coverage gate. [Testing and coverage](docs/TESTING.md) defines the scope, fixtures and reproduction commands.
+The backend requires **100% statement and branch coverage in every authored Python application module**. CI checks the complete source inventory and rejects missing paths or runtime exclusions on every Windows/Linux and Python 3.12/3.14 job; each run records its exact interpreter-specific statement and branch counts. React unit tests retain their separate 100% per-file runtime coverage gate. [Testing and coverage](docs/TESTING.md) defines the scope, fixtures and reproduction commands.
 
 Verification results, measured coverage and any outstanding checks are recorded in [delivery status](docs/STATUS.md). [Review findings](docs/CODE_REVIEW.md) explain corrected faults and their regressions. Coverage establishes execution, not compatibility with every live provider layout; behaviour assertions and isolated provider fixtures provide additional evidence.
 
-Complete validation on **6 October 2026** exercised **1,436 Python cases**, including every recent answer-policy, instruction-library, archive, discovery and upload regression. All **3,619 statements and 1,346 branch outcomes across 21 runtime modules** were covered, with the independent per-module gate passing. Six outdated test expectations/simulators were corrected; all **51 affected cases** passed in the final recheck. [Testing](docs/TESTING.md#full-system-validation-6-october-2026) records the complete-run and recheck results separately. Production Chromium coverage measured **98.68% statements/lines, 91.90% branches and 94.38% functions** across ten dashboard modules; React unit coverage has its separate 100% per-file gate. The [threat model](docs/SECURITY.md) defines protection against hostile pages, malformed requests and untrusted provider content. Tests isolate credentials and prevent CLI fixtures from loading the operator's `.env`. The [offline benchmark](docs/PERFORMANCE.md) records bounded in-process read measurements, excluding browser rendering, document generation and model/provider latency.
+Validation on **8 October 2026** verifies the current **1,775-case Python inventory** through a complete 1,758-case execution and a final 128-case affected-path run. All **4,437 statements and 1,674 branch outcomes across 25 runtime modules** are covered, with the independent inventory gate passing. [Testing](docs/TESTING.md#full-system-validation-8-october-2026) records the partitions, final corrections and coverage consolidation. Separate production Chromium coverage measures **95.59% statements/lines, 90.57% branches and 88.38% functions** across 12 dashboard modules; React unit coverage retains its own 100% per-file gate. The [threat model](docs/SECURITY.md) defines protection against hostile pages, malformed requests and untrusted provider content. Tests isolate credentials and prevent CLI fixtures from loading the operator's `.env`. The [offline benchmark](docs/PERFORMANCE.md) records bounded in-process read measurements, excluding browser rendering, document generation and model/provider latency.
 
-The subsequent duration-review correction passed **418 focused cases**, including 14 new regressions for exact owner instructions, legacy narratives, readiness, restart provenance and independent missing durations. Changed lines and branches were covered; this focused run does not replace the preceding complete coverage baseline at `f0119b6`. [Duration review validation](docs/TESTING.md#resolved-duration-review-holds-6-october-2026) records the scope and reproduction command.
+The historical duration-review correction passed **418 focused cases**, including 14 new regressions for exact owner instructions, legacy narratives, readiness, restart provenance and independent missing durations. [Duration review validation](docs/TESTING.md#resolved-duration-review-holds-6-october-2026) retains its original scope and reproduction command separately from current complete validation.
 
 ## Run locally
 
@@ -237,7 +244,7 @@ For permitted LinkedIn access, complete manual sign-in and verification in the d
 uv run python -m applicator.cli browser-login
 ```
 
-Configure the declared scope separately in Agent settings. The public profile is not edited. Supported invitations use **Send without a note**; unsupported portals retain manual hand-off. See [setup, permissions and recovery](docs/OPERATIONS.md).
+Configure the declared scope separately in Agent settings. The public profile is not edited. Supported invitations use **Send without a note**. Enable company-site applications separately to include external Apply opportunities and use the second executor; unfamiliar portals retain manual hand-off. See [company-site applications](docs/COMPANY_APPLICATIONS.md) and [setup, permissions and recovery](docs/OPERATIONS.md).
 
 ### Development checks
 

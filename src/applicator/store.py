@@ -850,7 +850,15 @@ class Store:
                 )
             self.event(db, "submission_finished", str(state), app_id)
 
-    def mark_sending(self, app_id: int, attempt: int, revision: int, job: Job) -> None:
+    def mark_sending(
+        self,
+        app_id: int,
+        attempt: int,
+        revision: int,
+        job: Job,
+        *,
+        external_target: str | None = None,
+    ) -> None:
         """Repeat mutable gates immediately before the browser's irreversible click."""
         with self.connect(True) as db:
             settings = Settings.model_validate_json(
@@ -870,6 +878,23 @@ class Store:
                 job.source == "linkedin" and not settings.linkedin_authorised
             ):
                 raise ValueError("Submission permission changed before sending")
+            if external_target is not None:
+                from .external_urls import destination_key, external_url
+
+                if not settings.external_applications_enabled:
+                    raise ValueError("Company-site permission changed before sending")
+                external_url(external_target, settings.external_allowed_hosts)
+                key = destination_key(external_target)
+                claimed = db.execute("SELECT value FROM config WHERE key=?", (key,)).fetchone()
+                if claimed and int(claimed[0]) != attempt:
+                    prior = db.execute(
+                        "SELECT status FROM attempts WHERE id=?", (int(claimed[0]),)
+                    ).fetchone()
+                    if prior and prior[0] in {"held", "confirmed"}:
+                        raise ValueError(
+                            "This company-site vacancy already has a sent or uncertain application; reconcile it before retrying"
+                        )
+                db.execute("INSERT OR REPLACE INTO config VALUES (?,?)", (key, str(attempt)))
             if (
                 current != revision
                 or not row

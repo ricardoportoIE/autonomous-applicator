@@ -1,5 +1,45 @@
 # Testing and coverage
 
+## Company-site executor, 8 October 2026
+
+Company-site checks contribute **98 new cases**: isolated unit/API boundaries, fully intercepted Chromium journeys, six native-surface isolation/label regressions and two packaged desktop/mobile settings cases. The final affected-path acceptance passed **128 cases in 86.03 seconds**, including all 98 feature cases and the complete 30-case coverage-gate suite. Tests make no employer requests or paid AI calls. The two new runtime modules have **100% statements and branch outcomes**: `external_browser.py` measures **329 statements and 122 outcomes**, and `external_urls.py` **29 statements and ten outcomes**. Shared form helpers retain LinkedIn dialogue isolation, and settings persist without starting the global agent.
+
+Coverage exercises structured GPT plans, local plan validation, separate visible browser configuration, published job metadata, Apply links/popup/same-tab buttons, native field types, job-specific CV/cover bytes, all reachable questions, policy changes at the final transaction, destination deduplication, upload/answer changes during model latency, verified method reuse, bounded loops, saved diagnostics and uncertain final confirmation. Post-send policy changes cannot release a sent attempt: disabling the feature preserves an explicit confirmation, whilst a revoked confirmation destination retains uncertainty and its reservation. Hashes are verified against real browser `File` content; model answers and employers are fictional. The unused false branch inside the hand-off gate was removed because the closure is only installed with a real gate. No runtime exclusion was added.
+
+The complete React suite passed **226 cases across 19 files**, retaining **100% in all 13 authored runtime modules**: **1,017 statements, 924 lines, 361 functions and 1,100 branch outcomes**. Strict TypeScript, ESLint, Python lint/mypy and the production build passed. A reproducible screenshot uses an isolated fictional workspace and blocks external requests. [Company-site applications](COMPANY_APPLICATIONS.md) defines compatibility and recovery boundaries.
+
+Reproduce the feature checks:
+
+```powershell
+uv run pytest tests/test_external_applications.py tests/test_external_form_edges.py tests/test_external_api.py tests/test_external_surface.py tests/test_external_settings_frontend.py --override-ini addopts= --cov=applicator.external_browser --cov=applicator.external_urls --cov-branch --cov-fail-under=100 -q
+npm test
+npm run typecheck
+npm run lint
+npm run build
+uv run python scripts/capture_company_settings.py
+```
+
+## Full-system validation, 8 October 2026
+
+The complete execution on **Windows/Python 3.14.2 and Node.js 24.20.0** passed **1,758 cases across all 79 Python test files** in four parallel, non-overlapping partitions: 319 in 709.18 seconds, 517 in 860.81 seconds, 493 in 431.39 seconds and 429 in 794.03 seconds. Each partition used disposable workspaces and its own coverage file. The final affected-path run then passed **128 cases in 86.03 seconds**, including 17 cases added after complete collection: two post-send regressions, two missing boundary cases and 13 annotation-gate regressions. Together they verify every case in the current **1,775-case inventory**. This records a complete execution followed by final affected-path acceptance, rather than a second fresh complete run.
+
+The consolidated report covers **4,437/4,437 statements and 1,674/1,674 branch outcomes in all 25 Python application modules**, with the independent per-module inventory gate passing. Final company-executor code was re-exercised after its post-confirmation policy correction and service-worker blocking: **all 98 feature cases passed in 82.01 seconds**, freshly covering both new modules at 100%. Initial consolidation exposed one missing preflight statement, one released-destination branch and a pre-existing annotation-only import rejected by the inventory checker. Added behavioural assertions and strict AST recognition for that non-runtime declaration; no executable path or coverage percentage was exempted.
+
+Earlier broad checks also identified five stale test expectations: an evaluation patch targeting the old dependency, one LinkedIn-only URL error message and three Open/Trash-ambiguous UI selections. Corrected those fixtures before the accepted complete execution, retaining their original readiness, document, capacity, revision, draft and accessibility assertions. Independently configured manual adapters remain usable when the new executor is disabled.
+
+| Check | Accepted result |
+| --- | --- |
+| React unit suite | 226 cases across 19 files in 60.69 seconds; all 13 runtime modules at 100% statements, lines, functions and branches |
+| Production Chromium coverage | 12 dashboard modules; 95.59% statements/lines, 90.57% branches and 88.38% functions; browser gates passed, separate from React unit coverage |
+| Static checks | Ruff, Python formatting, strict mypy for 25 source files, TypeScript, ESLint and Prettier passed |
+| Reproducible assets | Production rebuild matches staged assets; the new screenshot uses fictional records |
+| Native permissions | All eight Windows ACL scenarios passed |
+| Dependencies | npm and the editable-package-excluding Python audit found no known dependency vulnerabilities; the local unpublished project is outside the advisory index |
+| Offline performance | Disposable-workspace benchmark retained count/order/fit and zero-send assertions; no live workspace or credentials loaded |
+| Privacy and activation | Tracked-file hygiene passed; paused server activation retained 33 applications, candidate revision 15 and all 64 document hashes |
+
+No real application, invitation or paid model request was made. No remote push or new remote CI result is claimed. Standard CI continues to start a fresh complete measurement for each platform/interpreter.
+
 ## Manual review at the final sending gate, 7 October 2026
 
 The final `Store.mark_sending` check used the base evaluator rather than the scoped candidate decision, so an approved experience criterion passed preparation/reservation but failed immediately before Submit. Changed that transaction to the shared review-aware evaluator. Fresh affected-path acceptance passed **107 cases in 42.28 seconds**, including **16 new regressions**. The changed function reached **100% of its measured executable lines and branch outcomes: 18 lines and eight outcomes**. Whole-store coverage in this focused run was **69.55%**; this is not a fresh complete-backend coverage claim.
@@ -225,7 +265,7 @@ The complete Python suite must reach **100% statement and branch coverage in eve
 
 Pytest measures branches as well as statements and fails below 100%. A second gate checks the JSON report against every authored Python application file, rejects missing or unexpected modules, requires zero missing statements and branches in each module and validates the counters. CI runs both checks independently on Windows and Linux with Python 3.12 and 3.14. A percentage rounded to 100% cannot satisfy these checks while a missing path remains.
 
-No runtime module is omitted and no coverage-ignore directives are permitted. Coverage.py's default exclusion of the signature-only `Adapter(Protocol)` declaration is retained: it defines a typing contract with an ellipsis rather than a runtime implementation. The inventory gate checks the source and allows only such signature-only protocols and blank lines; an excluded concrete method fails the gate. Test code, repository tooling and generated frontend assets are outside the Python application metric. The coverage gate has its own acceptance and rejection tests.
+No runtime module is omitted and no coverage-ignore directives are permitted. Coverage.py's default exclusion of the signature-only `Adapter(Protocol)` declaration is retained: it defines a typing contract with an ellipsis rather than a runtime implementation. Canonical, import-only `if TYPE_CHECKING` declarations also sit outside runtime execution. The inventory gate checks their AST, rejects shadowed/reassigned guards, executable bodies and alternate branches, and continues rejecting excluded concrete methods. Blank lines are permitted. Test code, repository tooling and generated frontend assets are outside the Python application metric. The coverage gate has its own acceptance and rejection tests, including 13 new annotation-declaration regressions.
 
 ## Behaviour verified
 

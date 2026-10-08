@@ -1063,7 +1063,9 @@ def test_preflight_recheck_and_mocked_submission_update_budget_and_timeline(dash
     page.reload()
     expect(page.locator("#readiness")).to_contain_text("Agent enabled")
     page.get_by_role("button", name="Applications", exact=True).click()
-    page.locator("#application-list tbody tr").first.get_by_role("button").click()
+    page.locator("#application-list tbody tr").first.get_by_role(
+        "button", name=re.compile(r"^Open ")
+    ).click()
     checks = page.get_by_role("region", name="Local submission checks")
     expect(checks).to_contain_text("All local checks passed.")
     before = app.state.store.events(app_id)
@@ -1100,7 +1102,9 @@ def test_preflight_blocks_changed_profile_and_passes_accessibility_checks(dashbo
     expect(page.locator("#readiness")).to_contain_text("Agent enabled")
     page.set_viewport_size({"width": width, "height": 1000})
     page.get_by_role("button", name="Applications", exact=True).click()
-    page.locator("#application-list tbody tr").first.get_by_role("button").click()
+    page.locator("#application-list tbody tr").first.get_by_role(
+        "button", name=re.compile(r"^Open ")
+    ).click()
     profile, _ = app.state.store.profile()
     profile.confirmed = False
     app.state.store.save_profile(profile)

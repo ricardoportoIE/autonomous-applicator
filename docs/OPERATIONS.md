@@ -1,5 +1,9 @@
 # Operating guide
 
+## Company-site applications
+
+Agent settings now provide a company-site enable switch and exact HTTPS hostnames. Enabling it broadens LinkedIn search to external Apply opportunities, routing them to a separate visible browser under the same FIFO and sending budget. Configured company job links can be imported when complete published metadata exists; otherwise enter the details manually. Unknown domains, missing documents/answers, unfamiliar forms and verification challenges require review. Post-click uncertain results must be reconciled before retrying. [Company-site applications](COMPANY_APPLICATIONS.md) describes supported native forms, GPT interpretation, local method memory and duplicate-destination protection.
+
 ## Resolve a review or remove an opportunity
 
 If a manually approved experience review previously stopped at **submitting** with **Submission policy changed before sending**, the older final gate ignored the saved decision. The shared evaluation now applies that decision at the irreversible-click boundary too. Inspect the attempt journal first: an explicit **No submission click was attempted** record identifies an unsent review hold. Reapply the existing review decision to refresh readiness after loading the corrected server. Keep truthful answers; do not reconcile the record as submitted or retry an uncertain attempt. Independent permission, eligibility and capacity changes still stop the send.
@@ -48,7 +52,7 @@ An existing source identifier returns the existing application without replacing
 
 Import journalling is a global read operation. Its completed detail identifies the saved application, but it does not claim application-preparation ownership. Restart recovery therefore retains an existing prepared application's state and documents if the import was interrupted. The earlier import-result labels remain readable in historical entries.
 
-Only exact supported LinkedIn job links are automatically opened. Other origins, embedded credentials, explicit ports and non-job paths are rejected before launching the browser. For another website, select **Enter details manually**; the complete existing form remains available. Public Greenhouse boards retain their separate fixed-origin importer. Editing an existing opportunity still opens its complete details form.
+LinkedIn imports accept only exact supported job links. With company-site applications enabled, the same modal also accepts HTTPS URLs on configured exact hostnames and reads one complete published JSON-LD `JobPosting`. Missing or ambiguous metadata requires **Enter details manually**; the complete existing form remains available. Embedded credentials, unsafe ports and unconfigured destinations are rejected before launching the browser. Public Greenhouse boards retain their separate fixed-origin importer. Editing an existing opportunity still opens its complete details form. See [company-site setup](COMPANY_APPLICATIONS.md#setup-and-routing).
 
 ## Diagnosing a questionnaire hold
 

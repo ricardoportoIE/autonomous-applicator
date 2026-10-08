@@ -1,5 +1,15 @@
 # Delivery and validation record
 
+## Company-site applications, 8 October 2026
+
+Added a second executor for configured native company forms, sharing the FIFO, truthful answers, vacancy-specific documents, quota, final gate and history with LinkedIn Easy Apply. Enabling the feature removes the Easy Apply-only search filter. Company Apply links/buttons transfer to a separate visible persistent browser; configured URLs support metadata import. GPT-6.1 Sol chooses observed actions, and verified site methods persist locally. Pre-send diagnostics, uploaded byte hashes, post-model answer checks and destination claims protect review/recovery and prevent duplicate external sending.
+
+Complete regression execution passed **1,758 Python cases**, followed by **128 final affected-path cases in 86.03 seconds**; all **1,775 cases in the current inventory** were verified. The consolidated report and independent inventory gate confirm **100% statements and branches in all 25 runtime modules**: 4,437 statements and 1,674 branch outcomes. The 98 new company-site cases include surface isolation, desktop/mobile settings, destination recovery and post-send policy changes; 13 additional regressions verify annotation-only coverage declarations. [Testing](TESTING.md#full-system-validation-8-october-2026) records partitions, fixture repairs and consolidation boundaries.
+
+React passed **226 cases in 60.69 seconds**, retaining 100% per-file runtime coverage in 13 modules. The final browser-guard recheck passed **all 98 feature cases in 82.01 seconds**, with both new modules freshly at 100%. Separate packaged-browser coverage and static/build checks passed, as did all eight native Windows ACL cases and dependency audits. The fictional screenshot and [company-site guide](COMPANY_APPLICATIONS.md) explain setup, supported forms and deliberate review boundaries; arbitrary websites and all Workday/ATS layouts are not certified.
+
+The paused loopback server restarted successfully. A fresh private comparison preserved **33 applications, revision 15 and 64 document hashes**, including existing facts, answers, configuration and attempt records. The new feature is opt-in under Agent settings. The global agent remains paused. No real application, networking action, paid model request or remote push was performed.
+
 ## Manual review final-gate repair, 7 October 2026
 
 Diagnosed a submitting-stage review hold after an already approved production-experience shortfall. The stored diagnostic and journal confirmed form completion and an unsent attempt: the failure occurred in the last local policy check, before Submit. That check still used the base evaluator, ignoring the scoped decision honoured by the other preparation/submission checks. It now uses the same review-aware evaluation inside the existing sending transaction, retaining current permission, candidate/job identity, quota and other factual policy gates.

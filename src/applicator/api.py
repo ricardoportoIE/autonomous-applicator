@@ -23,6 +23,7 @@ from .browser import LinkedInBrowser, linkedin_job_id
 from .discovery import greenhouse
 from .discovery_memory import DiscoveryMemory
 from .documents import validate_manifest
+from .external_browser import ExternalBrowser, SitePlan, plan_site_step
 from .models import (
     Advice,
     Contract,
@@ -200,7 +201,32 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
 
     def configure_adapter() -> None:
         profile, _ = store.profile()
-        service.adapters["linkedin"] = LinkedInBrowser(data, profile)
+
+        def interpret_site(observation: dict[str, Any]) -> SitePlan:
+            if (
+                not os.environ.get("OPENAI_API_KEY")
+                or os.environ.get("OPENAI_MODEL", QUESTION_MODEL) != QUESTION_MODEL
+            ):
+                raise ValueError("Configure GPT-6.1 Sol for company-site form interpretation")
+            try:
+                with OpenAI(timeout=180, max_retries=0) as ai_client:
+                    return plan_site_step(ai_client, observation)
+            except Exception as exc:
+                raise ValueError(
+                    "Company-site interpretation failed; check the model configuration and review the current form"
+                ) from exc
+
+        external = ExternalBrowser(data, profile, settings=store.settings, planner=interpret_site)
+        linkedin = LinkedInBrowser(data, profile)
+        if store.settings().external_applications_enabled:
+            linkedin.external_executor = external
+            for source in ("manual", "greenhouse", "permitted"):
+                service.adapters[source] = external
+        else:
+            for source in ("manual", "greenhouse", "permitted"):
+                if isinstance(service.adapters.get(source), ExternalBrowser):
+                    service.adapters.pop(source, None)
+        service.adapters["linkedin"] = linkedin
 
     discovery_memory = DiscoveryMemory(store)
 
@@ -208,6 +234,7 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
         settings = store.settings()
         profile, _ = store.profile()
         adapter = LinkedInBrowser(data, profile)
+        adapter.include_external_jobs = settings.external_applications_enabled
         adapter.progress = operation.progress
         adapter.discovery_failure = discovery_memory.defer
         adapter.discovery_stopping = lambda: (
@@ -565,7 +592,10 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
 
     @app.get("/api/applications/{app_id}/preflight", dependencies=auth)
     def preflight(app_id: int) -> Preflight:
-        return service.preflight(app_id, {"linkedin"})
+        sources = {"linkedin"}
+        if store.settings().external_applications_enabled:
+            sources.update({"manual", "greenhouse", "permitted"})
+        return service.preflight(app_id, sources)
 
     @app.get("/api/applications/{app_id}/events", dependencies=auth)
     def application_events(app_id: int) -> list[dict[str, Any]]:
@@ -640,18 +670,25 @@ def create_app(data: Path, token: str, *, worker: bool = False) -> FastAPI:
     @app.post("/api/jobs/from-url", dependencies=auth)
     def import_job(link: OpportunityLink) -> dict[str, Any]:
         # Validate before acquiring the browser: never navigate to arbitrary input.
-        linkedin_job_id(link.url)
-        if not store.settings().linkedin_authorised:
-            raise ValueError("Configure the declared LinkedIn authorisation scope first")
+        from urllib.parse import urlsplit
+
+        linkedin = urlsplit(link.url).hostname in {"linkedin.com", "www.linkedin.com"}
+        if linkedin:
+            linkedin_job_id(link.url)
+            if not store.settings().linkedin_authorised:
+                raise ValueError("Configure the declared LinkedIn authorisation scope first")
+            browser: LinkedInBrowser = LinkedInBrowser(data)
+        else:
+            browser = ExternalBrowser(data, settings=store.settings)
+            browser.check_target(link.url)
         with service.operations.run("import_opportunity") as operation, browser_lock:
-            browser = LinkedInBrowser(data)
             browser.progress = operation.progress
             try:
                 job = browser.read_opportunity(link.url)
             except BrowserError as exc:
                 raise HTTPException(
                     502,
-                    "The opportunity could not be read. Check the dedicated LinkedIn browser "
+                    "The opportunity could not be read. Check the dedicated browser "
                     "session and page layout, then retry or enter the details manually. "
                     "No opportunity was saved.",
                 ) from exc

@@ -7,6 +7,7 @@ import re
 import uuid
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import UTC, datetime
 from html import escape
 from pathlib import Path
@@ -59,13 +60,34 @@ class SubmissionProgress(TypedDict):
     step: int
 
 
+# An explicit, task-local surface lets the proven field helpers work on a native
+# company form. LinkedIn navigation and origin checks remain separate and unchanged.
+_form_surface: ContextVar[tuple[Page, Locator] | None] = ContextVar("form_surface", default=None)
+
+
+@contextmanager
+def native_form_surface(page: Page, form: Locator) -> Iterator[None]:
+    if form.count() != 1 or not form.evaluate("el => el.tagName === 'FORM'"):
+        raise ValueError("Expected one native application form")
+    token = _form_surface.set((page, form))
+    try:
+        yield
+    finally:
+        _form_surface.reset(token)
+
+
 def capture_form_diagnostic(
     page: Page, data: Path, source_id: str, step: int, stage: str
 ) -> dict[str, Any]:
     """Retain bounded, inert dialogue HTML locally without filled values or raw errors."""
     evidence: dict[str, Any] = {"source_id": source_id, "step": step, "stage": stage}
     try:
-        dialog = page.get_by_role("dialog").filter(visible=True)
+        surface = _form_surface.get()
+        dialog = (
+            surface[1]
+            if surface and surface[0] is page
+            else page.get_by_role("dialog").filter(visible=True)
+        )
         if dialog.count() != 1:
             raise ValueError("Expected one visible application dialogue")
         html = dialog.evaluate(r"""dialog => {
@@ -466,6 +488,10 @@ def approved_answer(label: str, profile: Profile) -> str | None:
 
 def application_dialog(page: Page) -> Locator:
     """Wait for one visible native or ARIA dialog and its rendered form controls."""
+    surface = _form_surface.get()
+    if surface and surface[0] is page:
+        surface[1].wait_for(timeout=10000)
+        return surface[1]
     dialog = page.get_by_role("dialog").filter(visible=True)
     dialog.wait_for(timeout=10000)
     controls = dialog.locator(
@@ -861,6 +887,22 @@ def field_locator(dialog: Locator, field: dict[str, Any]) -> Locator:
         if field["id"]
         else dialog.get_by_label(str(field["label"]), exact=True)
     )
+    if not field["id"] and field.get("tag") == "select" and locator.count() == 0:
+        # Wrapped native labels can include option text in their accessible name.
+        # Reconstruct the same value-free label used by form_questions, then require
+        # a unique live select rather than assigning IDs or choosing the first one.
+        selects = dialog.locator("select")
+        indices = selects.evaluate_all(
+            r"""(els, label) => els.flatMap((el,index)=>{
+          const copy=el.labels?.[0]?.cloneNode(true);
+          copy?.querySelectorAll('input,select,textarea,[aria-hidden="true"]').forEach(node=>node.remove());
+          const text=(copy?.textContent.trim() || '').replace(/\s*\*$/,'').trim();
+          return el.checkVisibility() && !el.disabled && text===label ? [index] : [];
+        })""",
+            str(field["label"]),
+        )
+        if len(indices) == 1:
+            locator = selects.nth(indices[0])
     if locator.count() != 1:
         raise ValueError("Ambiguous form control identifiers require manual review")
     return locator
@@ -891,7 +933,7 @@ def set_boolean_control(
     shape = ""
     for attempt in range(3):
         current = current_field(page, field)
-        dialog = page.get_by_role("dialog").filter(visible=True)
+        dialog = application_dialog(page)
         locator = field_locator(dialog, current)
         try:
             state = locator.evaluate("""el => {
@@ -1063,7 +1105,7 @@ def _fill_question_fields(
     memory: Callable[[str, str | None], str | None] | None,
     observe_question: Callable[[Question], None] | None = None,
 ) -> None:
-    dialog = page.get_by_role("dialog").filter(visible=True)
+    dialog = application_dialog(page)
     resolved: dict[tuple[str, tuple[str, ...], str], str | None] = {}
 
     def answer(label: str, choices: list[str], required: bool) -> str | None:
@@ -1392,6 +1434,9 @@ class LinkedInBrowser:
         self.form_diagnostic: dict[str, Any] = {}
         self.form_diagnostics_evidence: list[dict[str, Any]] = []
         self.form_stage = "opening_opportunity"
+        self.external_executor: LinkedInBrowser | None = None
+        self.include_external_jobs = False
+        self.external_sending_url: str | None = None
 
     def report(self, stage: str, detail: str) -> None:
         self.form_stage = stage
@@ -1454,7 +1499,13 @@ class LinkedInBrowser:
             with self.discovery_step("opening_job_search", "Opening the LinkedIn job search."):
                 page.goto(
                     "https://www.linkedin.com/jobs/search/?"
-                    + urlencode({"keywords": keywords, "location": location, "f_AL": "true"}),
+                    + urlencode(
+                        {
+                            "keywords": keywords,
+                            "location": location,
+                            **({} if self.include_external_jobs else {"f_AL": "true"}),
+                        }
+                    ),
                     wait_until="domcontentloaded",
                     timeout=60000,
                 )
@@ -1601,6 +1652,7 @@ class LinkedInBrowser:
     def submit(self, job: Job, answers: dict[str, str], folder: Path) -> str:
         self.form_diagnostic = {}
         self.form_diagnostics_evidence = []
+        self.external_sending_url = None
         progress: SubmissionProgress = {"submitted": False, "pending": {}, "step": 0}
         try:
             return self._submit(job, answers, folder, progress)
@@ -1644,6 +1696,21 @@ class LinkedInBrowser:
                 raise ValueError("Job location changed; re-import and review")
             if " ".join(current_job.description.split()) != " ".join(job.description.split()):
                 raise ValueError("Job description changed; re-import and review")
+            if (
+                self.external_executor is not None
+                and not page.get_by_role("main")
+                .get_by_role("button", name=re.compile(r"^Easy Apply\b"))
+                .or_(
+                    page.get_by_role("main").get_by_role("link", name=re.compile(r"^Easy Apply\b"))
+                )
+                .filter(visible=True)
+                .count()
+            ):
+                from .external_browser import run_linkedin_handoff
+
+                return run_linkedin_handoff(
+                    self, page, job, folder, progress, playwright=playwright
+                )
             self.report("opening_application", "Opening the Easy Apply form.")
             open_easy_apply(page, self.report)
             seen_steps: set[str] = set()

@@ -346,7 +346,7 @@ export function JobForm({
               if (!workspace.api.isCurrent(session)) return;
               workspace.message(
                 result.created
-                  ? "Opportunity imported from LinkedIn. Added to the preparation queue."
+                  ? "Opportunity imported. Added to the preparation queue."
                   : "This opportunity is already in your queue. Its saved details have been preserved.",
               );
               done();
@@ -354,19 +354,22 @@ export function JobForm({
           }}
         >
           <p>
-            Paste a LinkedIn job link. The agent reads the title, company,
-            location and full description using your dedicated browser session.
+            Paste a LinkedIn or configured company job link. The agent reads the
+            title, company, location and full description using your dedicated
+            browser session.
           </p>
           <Field label="Job URL" name="url" type="url" required />
           <p className="muted">
-            Other websites: use manual entry or the Greenhouse board importer.
+            Company sites need company-site applications enabled and an exact
+            hostname in Agent settings. If published job metadata is
+            unavailable, use manual entry or the Greenhouse board importer.
             Application questions are discovered when the application form is
             opened.
           </p>
           <p role="status" aria-live="polite">
             {state.pending
               ? "Importing… Opening the opportunity, reading details and saving to the queue."
-              : "Ready to import. Your declared LinkedIn authorisation and browser sign-in are required."}
+              : "Ready to import. LinkedIn requires your declared authorisation and browser sign-in; company links require a configured hostname."}
           </p>
           <div className="form-actions">
             <button disabled={state.pending}>
@@ -585,6 +588,7 @@ export function SettingsForm({
             "discovery_enabled",
             "ai_document_preparation",
             "routine_answers_enabled",
+            "external_applications_enabled",
           ] as const)
             value[name] = checked(form, name);
           for (const name of [
@@ -596,6 +600,9 @@ export function SettingsForm({
           ] as const)
             value[name] = Number(text(form, name));
           value.allowed_countries = splitList(text(form, "allowed_countries"));
+          value.external_allowed_hosts = splitList(
+            text(form, "external_allowed_hosts"),
+          );
           value.search_keywords = text(form, "search_keywords");
           value.search_location = text(form, "search_location");
           value.automatic_location_policy = text(
@@ -643,6 +650,40 @@ export function SettingsForm({
             value={settings.daily_limit}
             required
           />
+          <h3>Application executors</h3>
+          <p>
+            LinkedIn Easy Apply and company websites share one FIFO queue and
+            one daily sending limit. One opportunity is processed at a time.
+          </p>
+          <Check
+            name="external_applications_enabled"
+            label="Enable company-site applications and include external Apply opportunities in LinkedIn search"
+            checked={settings.external_applications_enabled}
+          />
+          <Field
+            label="External application hosts, comma-separated"
+            name="external_allowed_hosts"
+            rows={3}
+            value={(
+              settings.external_allowed_hosts ?? [
+                "boards.greenhouse.io",
+                "job-boards.greenhouse.io",
+                "boards-api.greenhouse.io",
+                "jobs.lever.co",
+                "jobs.eu.lever.co",
+                "api.lever.co",
+                "api.eu.lever.co",
+              ]
+            ).join(", ")}
+            required
+          />
+          <small>
+            Use exact hostnames, such as careers.example.com. Company forms open
+            in a separate visible browser. Native forms are supported; sign-in,
+            CAPTCHA, embedded forms and unfamiliar controls need review.
+            Successful interaction methods are remembered locally; sending is
+            never retried after an uncertain result.
+          </small>
           <Check
             name="routine_answers_enabled"
             label="Answer routine questions from approved facts"
